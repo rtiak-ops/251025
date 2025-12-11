@@ -3,3 +3,6 @@ SQLAlchemy[asyncio]
 asyncpg
 alembic
 uvicorn
+passlib[bcrypt]
+bcrypt==4.0.1
+python-jose[cryptography]

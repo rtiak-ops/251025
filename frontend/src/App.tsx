@@ -1,12 +1,9 @@
 import { useEffect, useState } from "react";
-// APIからToDoを取得する関数をインポート
-import { getTodos } from "./api";
-// ToDoの型定義をインポート
+import { getTodos, getStoredToken, clearToken } from "./api";
 import type { Todo } from "./types";
-// 各ToDoアイテムを表示するコンポーネントをインポート
 import TodoItem from "./components/TodoItem";
-// 新しいToDoを追加するためのフォームコンポーネントをインポート
 import TodoForm from "./components/TodoForm";
+import AuthForm from "./components/AuthForm";
 
 /**
  * メインのアプリケーションコンポーネント
@@ -17,12 +14,16 @@ export default function App() {
   const [todos, setTodos] = useState<Todo[]>([]);
   // データの読み込み中かどうかを管理する状態 (初期値はtrueで、最初の読み込み中を示す)
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [token, setToken] = useState<string | null>(getStoredToken());
 
   /**
    * APIからToDoリストを読み込み、状態を更新する非同期関数
    * フォームからの追加やアイテムの変更後に再読み込みするためにも使用
    */
   const load = async () => {
+    if (!token) {
+      return;
+    }
     // データの取得開始時にローディング状態を true に設定
     setIsLoading(true);
     try {
@@ -40,11 +41,21 @@ export default function App() {
     }
   };
 
-  // コンポーネントがマウントされた時に一度だけ load 関数を実行
-  // 依存配列 `[]` により、最初のレンダリング後に一度だけ実行される
   useEffect(() => {
-    load();
-  }, []);
+    if (token) {
+      load();
+    }
+  }, [token]);
+
+  const handleAuthenticated = (newToken: string) => {
+    setToken(newToken);
+  };
+
+  const handleLogout = () => {
+    clearToken();
+    setToken(null);
+    setTodos([]);
+  };
 
   /**
    * コンポーネントのレンダリング部分
@@ -52,26 +63,34 @@ export default function App() {
   return (
     <div className="max-w-lg mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4 text-center">ToDo リスト</h1>
-      
-      {/* TodoForm: 新しいToDoを追加するフォーム
-          onAdd={load} で、新しいToDoが追加された後にリストを再読み込みさせる */}
-      <TodoForm onAdd={load} />
 
-      <div className="mt-4 border rounded">
-        {isLoading ? (
-          // 1. ローディング状態が true の場合（データ取得中）: 読み込みメッセージを表示
-          <p className="p-4 text-center text-gray-500">読み込み中... ⏳</p>
-        ) : todos.length === 0 ? (
-          // 2. ローディングが完了し、かつ ToDoリストが空の場合: データがない旨のメッセージを表示
-          <p className="p-4 text-center text-gray-500">ToDoはありません。追加しましょう！✨</p>
-        ) : (
-          // 3. ローディングが完了し、ToDoリストにアイテムがある場合: リストを表示
-          todos.map((t) => (
-            // TodoItem: 各ToDoアイテムを表示し、変更（完了・削除など）があった場合は load でリストを再読み込み
-            <TodoItem key={t.id} todo={t} onChange={load} />
-          ))
-        )}
-      </div>
+      {!token ? (
+        <AuthForm onAuthenticated={handleAuthenticated} />
+      ) : (
+        <>
+          <div className="flex justify-end mb-2">
+            <button
+              className="text-sm text-blue-600 underline"
+              onClick={handleLogout}
+            >
+              ログアウト
+            </button>
+          </div>
+          <TodoForm onAdd={load} />
+
+          <div className="mt-4 border rounded">
+            {isLoading ? (
+              <p className="p-4 text-center text-gray-500">読み込み中... ⏳</p>
+            ) : todos.length === 0 ? (
+              <p className="p-4 text-center text-gray-500">
+                ToDoはありません。追加しましょう！✨
+              </p>
+            ) : (
+              todos.map((t) => <TodoItem key={t.id} todo={t} onChange={load} />)
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

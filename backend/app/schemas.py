@@ -1,6 +1,32 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from datetime import datetime
 from typing import Optional # 型ヒントとしてOptionalを使用する場合はインポート
+
+class UserBase(BaseModel):
+    email: str
+
+class UserCreate(UserBase):
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def password_max_72_bytes(cls, v: str) -> str:
+        if len(v.encode("utf-8")) > 72:
+            # bcryptは72バイト以降を無視するため、明示的にエラーを返す
+            raise ValueError("Password must be 72 bytes or less (bcrypt limit)")
+        return v
+
+class UserOut(UserBase):
+    id: int
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
 
 # ----------------------------------------------------------------------
 # 1. 基本となるTo Doアイテムのスキーマ (TodoBase)
@@ -69,6 +95,8 @@ class TodoOut(TodoBase):
 
     # 更新日時: レコード更新時に現在の日時を自動設定
     updated_at: datetime
+
+    owner_id: Optional[int] = None
                 
     # Pydantic V2方式: orm_modeの代替としてmodel_configを使用
     # Pydanticモデルが、Pythonのオブジェクト（例: SQLALchemyのモデル）

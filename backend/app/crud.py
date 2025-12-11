@@ -1,27 +1,57 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete # delete もインポートして、より明示的に削除を行うことも可能
 from typing import Optional # 型ヒントの充実
+from fastapi import HTTPException
 from . import models, schemas # models は DB スキーマ、schemas は Pydantic スキーマを想定
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+async def get_user_by_email(db: AsyncSession, email: str) -> Optional[models.User]:
+    result = await db.execute(select(models.User).where(models.User.email == email))
+    return result.scalar_one_or_none()
+
+async def create_user(db: AsyncSession, user: schemas.UserCreate) -> models.User:
+    try:
+        hashed_password = pwd_context.hash(user.password)
+    except ValueError as e:
+        # bcrypt limitation (72 bytes) or other hashing issues
+        raise HTTPException(status_code=400, detail=str(e))
+    db_user = models.User(email=user.email, hashed_password=hashed_password)
+    db.add(db_user)
+    await db.commit()
+    await db.refresh(db_user)
+    return db_user
+
+async def authenticate_user(db: AsyncSession, email: str, password: str) -> Optional[models.User]:
+    user = await get_user_by_email(db, email=email)
+    if not user:
+        return None
+    if not pwd_context.verify(password, user.hashed_password):
+        return None
+    return user
 
 # Todo リストを取得する
-async def get_todos(db: AsyncSession) -> list[models.Todo]:
+async def get_todos(db: AsyncSession, owner_id: int) -> list[models.Todo]:
     """
     データベースから全ての Todo アイテムを取得します。
     """
     # SELECT * FROM todos のクエリを作成し、非同期で実行
     # execute() は Result オブジェクトを返す
-    result = await db.execute(select(models.Todo))
+    result = await db.execute(
+        select(models.Todo).where(models.Todo.owner_id == owner_id)
+    )
     
     # scalars().all() で、Result オブジェクトから Todo オブジェクトのリストを抽出
     return result.scalars().all()
 
 # 新しい Todo を作成する
-async def create_todo(db: AsyncSession, todo: schemas.TodoCreate) -> models.Todo:
+async def create_todo(db: AsyncSession, todo: schemas.TodoCreate, owner_id: int) -> models.Todo:
     """
     新しい Todo アイテムを作成し、DB にコミットします。
     """
     # Pydantic モデル (schemas.TodoCreate) のデータを DB モデル (models.Todo) に展開してインスタンス化
-    new_todo = models.Todo(**todo.model_dump()) # .dict() の代わりに .model_dump() を使用（Pydantic v2 推奨）
+    new_todo = models.Todo(**todo.model_dump(), owner_id=owner_id) # .dict() の代わりに .model_dump() を使用（Pydantic v2 推奨）
     
     # セッションに追加 (INSERT 操作)
     db.add(new_todo)
@@ -36,7 +66,7 @@ async def create_todo(db: AsyncSession, todo: schemas.TodoCreate) -> models.Todo
     return new_todo
 
 # Todo を ID で更新する
-async def update_todo(db: AsyncSession, todo_id: int, todo: schemas.TodoUpdate) -> Optional[models.Todo]:
+async def update_todo(db: AsyncSession, todo_id: int, todo: schemas.TodoUpdate, owner_id: int) -> Optional[models.Todo]:
     """
     指定された ID の Todo アイテムを更新します。
     更新対象のフィールドは Pydantic スキーマ (TodoUpdate) に含まれるもののみです。
@@ -44,7 +74,9 @@ async def update_todo(db: AsyncSession, todo_id: int, todo: schemas.TodoUpdate) 
     # ID を条件に Todo アイテムを取得するクエリを実行
     # .where() で WHERE 句を指定
     result = await db.execute(
-        select(models.Todo).where(models.Todo.id == todo_id)
+        select(models.Todo).where(
+            models.Todo.id == todo_id, models.Todo.owner_id == owner_id
+        )
     )
     
     # 結果から単一のオブジェクトを取得。存在しなければ None
@@ -70,14 +102,16 @@ async def update_todo(db: AsyncSession, todo_id: int, todo: schemas.TodoUpdate) 
     return db_todo
 
 # Todo を ID で削除する
-async def delete_todo(db: AsyncSession, todo_id: int) -> Optional[models.Todo]:
+async def delete_todo(db: AsyncSession, todo_id: int, owner_id: int) -> Optional[models.Todo]:
     """
     指定された ID の Todo アイテムを削除します。
     削除された Todo オブジェクトを返します。
     """
     # 削除対象の Todo を ID で取得
     result = await db.execute(
-        select(models.Todo).where(models.Todo.id == todo_id)
+        select(models.Todo).where(
+            models.Todo.id == todo_id, models.Todo.owner_id == owner_id
+        )
     )
     db_todo = result.scalar_one_or_none()
     
@@ -95,12 +129,14 @@ async def delete_todo(db: AsyncSession, todo_id: int) -> Optional[models.Todo]:
 
 # ---
 # 🌟 (補足) 特定の ID の Todo を取得する関数を追加すると便利です
-async def get_todo_by_id(db: AsyncSession, todo_id: int) -> Optional[models.Todo]:
+async def get_todo_by_id(db: AsyncSession, todo_id: int, owner_id: int) -> Optional[models.Todo]:
     """
     指定された ID の Todo アイテムを単体で取得します。
     """
     result = await db.execute(
-        select(models.Todo).where(models.Todo.id == todo_id)
+        select(models.Todo).where(
+            models.Todo.id == todo_id, models.Todo.owner_id == owner_id
+        )
     )
     # scalar_one_or_none() を使用すると、結果が 0 または 1 個の場合にオブジェクトを返す
     return result.scalar_one_or_none()

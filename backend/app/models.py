@@ -1,7 +1,17 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey
+from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base  # Baseクラスが定義されている場所に応じてインポート
 # from your_project_name.database import Base # 例: プロジェクト名を使った絶対インポート推奨
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
+    todos = relationship("Todo", back_populates="owner", cascade="all, delete-orphan")
 
 class Todo(Base):
     # テーブル名: 一般的に複数形を使用します
@@ -46,6 +56,9 @@ class Todo(Base):
         onupdate=datetime.now, # レコードが更新されるたびにこの値も更新されます
         nullable=False
     )
+
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    owner = relationship("User", back_populates="todos")
 
     # デバッグやログ出力で役立つ表現メソッド
     def __repr__(self):

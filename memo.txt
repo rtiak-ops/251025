@@ -1,0 +1,13 @@
+次のステップ/注意点
+バックエンド依存追加: cd backend && pip install -r requirements.txt。
+新しいテーブル・カラムを使うため、既存DBがある場合はマイグレーション/再作成が必要です（usersテーブルとtodos.owner_id）。
+.envなどに SECRET_KEY と ACCESS_TOKEN_EXPIRE_MINUTES を設定してください。
+テスト未実行。手動確認フロー推奨: 1) /auth/registerでユーザー作成→/auth/loginでトークン取得 2) トークン付きでTodo作成/取得/更新/削除 3) 異なるユーザーが他人のTodoにアクセスできないことを確認。
+
+トークン形式: HS256署名のJWT。backend/app/auth.py で create_access_token が jwt.encode() を使って発行しています。sub にユーザーの email を入れ、exp で有効期限を付与。
+取得フロー: /auth/login が UserCreate(email/password)を受け取り、パスワード検証後に access_token を返却（Bearerトークン）。
+バリデーション: OAuth2PasswordBearer（tokenUrl /auth/login）＋ get_current_user で Authorization: Bearer <token> ヘッダを読み取り、jwt.decode で検証・デコードし、メールからDBのユーザーを引き当て。失敗時は 401。
+保護リソース: /todos 系ルートで Depends(get_current_user) を必須にし、ユーザーIDに紐づくTodoだけを操作。
+依存パッケージ: python-jose[cryptography] と passlib[bcrypt] を requirements.txt に追加済み。
+注意: SECRET_KEY は環境変数で上書きしてください（デフォルト "CHANGE_ME" のままは不可）。ACCESS_TOKEN_EXPIRE_MINUTES も環境変数で調整可能。
+要するに、ログインでBearer JWTを発行し、以降はそのJWTを送って保護エンドポイントにアクセスする仕組みです。

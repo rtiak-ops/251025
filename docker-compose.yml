@@ -1,0 +1,72 @@
+services:
+  # データベースサービス (PostgreSQL)
+  db:
+    image: postgres:15 # 使用するPostgreSQLイメージのバージョン
+    container_name: todo_db_1025 # コンテナ名を明示的に設定
+    restart: always # コンテナが終了した場合に常に再起動するように設定 (本番環境では必須)
+    environment:
+      # データベース接続情報 (環境変数)
+      POSTGRES_USER: todo_user
+      POSTGRES_PASSWORD: todo_pass
+      POSTGRES_DB: todo_db
+    volumes:
+      # データを永続化するためのボリュームマッピング
+      - postgres_data:/var/lib/postgresql/data
+    # 外部からのアクセスは通常不要なため、ポートマッピングはコメントアウト (開発での確認用)
+    # ports:
+    #   - "5432:5432"
+    # 健康チェック (オプション: データベースが起動して利用可能かを確認)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # バックエンドサービス (例: FastAPI, Django)
+  backend:
+    build: ./backend # ./backendディレクトリにあるDockerfileを使用
+    container_name: todo_backend_1025
+    # uvicornの起動コマンド。ポート番号はコンテナ内のもの。
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: always
+    volumes:
+      # ホストのコードをコンテナにマウント (開発中のホットリロードに便利)
+      - ./backend:/app
+    environment:
+      # データベース接続URL。ホスト名は'db' (サービス名)
+      DATABASE_URL: postgresql+asyncpg://todo_user:todo_pass@db:5432/todo_db
+    depends_on:
+      # dbサービスに依存。dbが起動するまでbackendは起動しない
+      # healthcheckがdbに設定されている場合、dbがhealthcheckをパスするまで待つ設定がより良い
+      db:
+        condition: service_healthy
+    ports:
+      # ホストの8000番ポートをコンテナの8000番ポートにマッピング
+      - "8000:8000"
+
+  # フロントエンドサービス (例: Vue.js, React/Vite)
+  frontend:
+    build: ./frontend # ./frontendディレクトリにあるDockerfileを使用
+    container_name: todo_frontend_1025
+    restart: always
+    ports:
+      # ホストの5173番ポートをコンテナの5173番ポートにマッピング
+      - "5173:5173"
+    volumes:
+      # ホストのコードをコンテナにマウント (開発中のホットリロードに便利)
+      - ./frontend:/app
+      # node_modulesをマウントから除外（匿名ボリュームとして指定）。
+      # これにより、node_modulesはコンテナ内で管理され、ホスト側の依存関係と衝突するのを防ぐ。
+      - /app/node_modules
+    # 開発サーバーが必要な場合に true に設定されることが多い
+    stdin_open: true # 標準入力を開く (対話操作のサポート)
+    tty: true        # TTYを割り当てる (対話操作のサポート)
+    depends_on:
+      # フロントエンドがバックエンドに依存する場合（例: 開発サーバーがAPIを必要とする場合）
+      - backend
+
+# ボリューム定義
+volumes:
+  # データベース永続化用の名前付きボリューム
+  postgres_data:
+    driver: local # ローカルドライバを使用 (デフォルトだが明示)

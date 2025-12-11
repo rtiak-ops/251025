@@ -1,0 +1,10 @@
+docker desktop 起動
+
+docker compose up --build
+または、desktopですべてのコンテナ起動
+
+これで動かないなら以下操作
+
+ターミナルで
+cd frontend 
+npm run dev

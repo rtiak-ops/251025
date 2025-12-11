@@ -8,8 +8,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # 依存関係をインストールする前に、ホストOSで生成された
-# package-lock.jsonを削除し、Linux環境で再生成してインストールを成功させる
-RUN rm -f package-lock.json && npm install
+# package-lock.json を利用して依存関係をインストール
+RUN npm install
 
 # 残りのソースコードをコピー
 COPY . .

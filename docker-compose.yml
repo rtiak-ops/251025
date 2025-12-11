@@ -22,7 +22,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # バックエンドサービス (例: FastAPI, Django)
+  # バックエンドサービス (FastAPI)
   backend:
     build: ./backend # ./backendディレクトリにあるDockerfileを使用
     container_name: todo_backend_1025
@@ -44,7 +44,7 @@ services:
       # ホストの8000番ポートをコンテナの8000番ポートにマッピング
       - "8000:8000"
 
-  # フロントエンドサービス (例: Vue.js, React/Vite)
+  # フロントエンドサービス (React/Vite)
   frontend:
     build: ./frontend # ./frontendディレクトリにあるDockerfileを使用
     container_name: todo_frontend_1025

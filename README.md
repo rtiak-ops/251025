@@ -27,7 +27,7 @@ React（TypeScript）＋ FastAPI ＋ PostgreSQL ＋ Docker で構築していま
 
 ### 1. リポジトリをクローン
 git clone https://github.com/rtiak-ops/251025
-cd リポジトリ名
+cd 251025
 
 ### 2. Docker で起動
 docker compose up --build

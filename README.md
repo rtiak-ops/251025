@@ -26,24 +26,15 @@ React（TypeScript）＋ FastAPI ＋ PostgreSQL ＋ Docker で構築していま
 ## 🚀 ローカル開発環境の起動方法
 
 ### 1. リポジトリをクローン
-git clone https://github.com/あなたの名前/リポジトリ名
+git clone https://github.com/rtiak-ops/251025
 cd リポジトリ名
-
-shell
-コードをコピーする
 
 ### 2. Docker で起動
 docker compose up --build
 
-shell
-コードをコピーする
-
 ### 3. アクセス
 ブラウザで開く  
-http://localhost:3000
-
-yaml
-コードをコピーする
+http://localhost:5173
 
 ---
 
@@ -53,9 +44,6 @@ yaml
 ├─ backend/ # FastAPI
 ├─ db/ # PostgreSQL
 └─ docker-compose.yml
-
-yaml
-コードをコピーする
 
 ---
 

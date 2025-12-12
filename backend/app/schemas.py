@@ -10,7 +10,9 @@ class UserCreate(UserBase):
 
     @field_validator("password")
     @classmethod
-    def password_max_72_bytes(cls, v: str) -> str:
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters long")
         if len(v.encode("utf-8")) > 72:
             # bcryptは72バイト以降を無視するため、明示的にエラーを返す
             raise ValueError("Password must be 72 bytes or less (bcrypt limit)")
@@ -46,6 +48,15 @@ class TodoBase(BaseModel):
     
     # 完了状態を示すフラグ。任意項目で、デフォルトはFalse（未完了）。
     completed: bool = False
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Title cannot be empty")
+        if len(v) > 100:
+            raise ValueError("Title must be 100 characters or less")
+        return v.strip()
 
 # ----------------------------------------------------------------------
 # 2. To Doアイテム作成時に入力されるデータ構造 (TodoCreate)

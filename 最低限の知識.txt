@@ -1,0 +1,24 @@
+このToDoアプリで最低限押さえると再現性が高いポイントを絞りました。
+
+何をするアプリ: React+TSフロントとFastAPI+PostgreSQLバックエンドのJWT付きToDo管理。登録→ログイン→自分のToDo CRUD。
+
+起動コマンド（Docker前提）: docker compose up --build（停止: docker compose down）。フロントhttp://localhost:5173, Swagger http://localhost:8000/docs。
+
+認証の肝: POST /auth/register→POST /auth/loginでJWT取得。フロントはローカルストレージauth_tokenを共通ヘッダーに自動付与。
+
+api.tsLines 30-41
+api.interceptors.request.use((config) => {  const token = localStorage.getItem(TOKEN_KEY);  if (token) {    config.headers = config.headers ?? {};    config.headers.Authorization = `Bearer ${token}`;  }  return config;});
+ToDo API（すべて認証必須）: 
+GET /todos一覧, POST /todos作成, PATCH /todos/{id}更新, DELETE /todos/{id}削除。404時は明示的にエラー返却。
+todos.pyLines 13-35
+@router.get("/", response_model=list[schemas.TodoOut])async def read_todos(...):    return await crud.get_todos(db, owner_id=current_user.id)@router.post("/", response_model=schemas.TodoOut)async def create_todo(...):    return await crud.create_todo(db, todo=todo, owner_id=current_user.id)
+
+データモデルの最小セット: 
+User{id,email,hashed_password,created_at} と Todo{id,title(<=100),description?,completed,created_at,updated_at,owner_id}。
+ユーザーに紐づくToDoのみ操作。
+
+フロントの流れ: トークン未所持→AuthFormで登録/ログイン→トークン保存→AppがgetTodosで一覧取得→TodoFormで追加→TodoItemで完了トグル/削除→成功後はload()で再取得。
+
+設定で覚えるもの: APIベースURLはVITE_API_BASE_URL（未指定時http://localhost:8000）、バックエンドはSECRET_KEYとDATABASE_URL必須（compose起動時はデフォルト環境変数が入る）。
+
+これだけ覚えておけば、起動・認証・CRUD・設定確認がすぐ再現できます。

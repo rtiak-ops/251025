@@ -5,6 +5,9 @@ export interface Todo {
   title: string; // Todoのタイトル (必須)
   description?: string; // Todoの詳細な説明 (オプション: ある場合のみ)
   completed: boolean; // Todoが完了しているかどうかを示すフラグ (必須)
+  created_at: string; // 作成日時 (ISO 8601形式)
+  updated_at: string; // 更新日時 (ISO 8601形式)
+  owner_id?: number; // 所有者のID (オプション)
 }
 
 // 💡 新しいTo-Doを作成するためのデータ構造

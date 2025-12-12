@@ -36,12 +36,16 @@ export default function TodoForm({ onAdd }: Props) {
 
       // 3. 成功した場合のみ、フォームをクリアし、親コンポーネントを更新
       setTitle(""); // 入力フィールドを空にする
-      onAdd();      // 親コンポーネントに更新を通知
+      onAdd(); // 親コンポーネントに更新を通知
     } catch (error) {
       // 4. APIコールが失敗した場合、エラーをコンソールに表示
-      console.error("ToDoの作成に失敗しました。APIを確認してください:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "タスクの追加に失敗しました。サーバーを確認してください。";
+      console.error("ToDoの作成に失敗しました:", errorMessage);
       // ユーザーにエラーメッセージを通知
-      alert("タスクの追加に失敗しました。サーバーを確認してください。");
+      alert(errorMessage);
     } finally {
       // 5. 成功・失敗に関わらず、最後にローディングを終了
       setIsLoading(false);

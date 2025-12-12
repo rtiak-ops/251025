@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getTodos, getStoredToken, clearToken } from "./api";
 import type { Todo } from "./types";
 import TodoItem from "./components/TodoItem";
@@ -20,7 +20,7 @@ export default function App() {
    * APIからToDoリストを読み込み、状態を更新する非同期関数
    * フォームからの追加やアイテムの変更後に再読み込みするためにも使用
    */
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!token) {
       return;
     }
@@ -39,13 +39,11 @@ export default function App() {
       // データの取得（成功・失敗に関わらず）が完了したら、ローディング状態を false に設定
       setIsLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
-    if (token) {
-      load();
-    }
-  }, [token]);
+    load();
+  }, [load]);
 
   const handleAuthenticated = (newToken: string) => {
     setToken(newToken);

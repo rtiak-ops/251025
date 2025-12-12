@@ -20,9 +20,13 @@ export default function TodoItem({ todo, onChange }: Props) {
       onChange();
     } catch (error) {
       // ネットワークエラーやサーバーエラーが発生した場合の処理
-      console.error("更新エラー:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "タスクの更新に失敗しました。時間をおいて再度お試しください。";
+      console.error("更新エラー:", errorMessage);
       // ユーザーに操作が失敗したことを通知
-      alert("タスクの更新に失敗しました。時間をおいて再度お試しください。");
+      alert(errorMessage);
     }
   };
 
@@ -34,10 +38,14 @@ export default function TodoItem({ todo, onChange }: Props) {
       // 成功したら、親コンポーネントに通知してリストを更新
       onChange();
     } catch (error) {
-      // ネットワークエラーやサーバーエラーが発生した場合の処理（改善点）
-      console.error("削除エラー:", error);
+      // ネットワークエラーやサーバーエラーが発生した場合の処理
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "タスクの削除に失敗しました。時間をおいて再度お試しください。";
+      console.error("削除エラー:", errorMessage);
       // ユーザーに操作が失敗したことを通知
-      alert("タスクの削除に失敗しました。時間をおいて再度お試しください。");
+      alert(errorMessage);
     }
   };
 

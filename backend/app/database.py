@@ -47,12 +47,9 @@ Base = declarative_base()
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     非同期データベースセッションを提供し、スコープを抜ける際に自動的に閉じるジェネレータ。
+    async withブロックにより、自動的にセッションが閉じられます。
     """
     async with AsyncSessionLocal() as session:
-        try:
-            # セッションを呼び出し元に提供 (yield)
-            yield session
-        finally:
-            # yieldから戻ってきたらセッションを閉じる
-            # withブロックを使用しているため、このclose()は厳密には不要な場合もあるが、明示的に記述することで安全性を高める
-            await session.close()
+        # セッションを呼び出し元に提供 (yield)
+        yield session
+        # async withブロックの終了時に自動的にセッションが閉じられます

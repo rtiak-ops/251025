@@ -23,7 +23,7 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     
     # アカウント作成日時: ユーザーが登録された日時を自動記録
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     
     # リレーションシップ: このユーザーが所有するTodoアイテムへの参照
     # back_populates: Todoモデルの"owner"属性と双方向にリンク
@@ -61,14 +61,14 @@ class Todo(Base):
     
     # 作成日時: レコード作成時に現在の日時を自動設定
     created_at = Column(
-        DateTime, 
+        DateTime(timezone=True), 
         default=lambda: datetime.now(timezone.utc), 
         nullable=False
     )
     
     # 更新日時: レコード更新時に現在の日時を自動設定
     updated_at = Column(
-        DateTime, 
+        DateTime(timezone=True), 
         default=lambda: datetime.now(timezone.utc), 
         onupdate=lambda: datetime.now(timezone.utc), # レコードが更新されるたびにこの値も更新されます
         nullable=False

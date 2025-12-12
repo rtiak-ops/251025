@@ -53,10 +53,13 @@ export default function TodoForm({ onAdd }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 p-2">
+    <form
+      onSubmit={handleSubmit}
+      className="flex gap-2 p-2 bg-white border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700"
+    >
       <input
         type="text"
-        className="border rounded p-2 flex-grow"
+        className="border rounded p-2 flex-grow bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
         placeholder={isLoading ? "追加中です..." : "新しいタスクを入力"} // ローディング中はプレースホルダーを変更
         value={title}
         onChange={(e) => setTitle(e.target.value)}
@@ -64,11 +67,11 @@ export default function TodoForm({ onAdd }: Props) {
         disabled={isLoading}
       />
       <button
-        className={`rounded px-4 ${
+        className={`rounded px-4 transition-colors duration-150 ${
           // 入力が空、またはローディング中の場合はボタンを無効化し、スタイルを変更
           isInputEmpty || isLoading
-            ? "bg-gray-400 text-gray-700 cursor-not-allowed"
-            : "bg-blue-500 hover:bg-blue-600 text-white"
+            ? "bg-gray-300 text-gray-600 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400"
+            : "bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-500"
         }`}
         // ボタンの無効化条件
         disabled={isInputEmpty || isLoading}

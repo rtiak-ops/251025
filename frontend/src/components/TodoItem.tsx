@@ -52,13 +52,19 @@ export default function TodoItem({ todo, onChange }: Props) {
   // UIのレンダリング
   return (
     // Tailwind CSSでスタイリング：flexコンテナ、両端揃え、アイテム中央寄せ、パディング、下線
-    <div className="flex justify-between items-center p-2 border-b">
+    <div className="flex justify-between items-center p-2 border-b border-gray-200 dark:border-gray-700">
       {/* Todoのタイトルとチェックボックスのエリア */}
-      <label className="flex items-center gap-2">
+      <label className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
         {/* チェックボックス：現在の完了状態を表示し、変更時にtoggle関数を実行 */}
         <input type="checkbox" checked={todo.completed} onChange={toggle} />
         {/* Todoのタイトル：完了している場合は打ち消し線と灰色テキストを適用 */}
-        <span className={todo.completed ? "line-through text-gray-500" : ""}>
+        <span
+          className={
+            todo.completed
+              ? "line-through text-gray-500 dark:text-gray-400"
+              : ""
+          }
+        >
           {todo.title}
         </span>
       </label>
@@ -66,7 +72,7 @@ export default function TodoItem({ todo, onChange }: Props) {
       {/* 削除ボタン：クリック時にremove関数を実行 */}
       <button
         onClick={remove}
-        className="text-red-500 hover:text-red-700" // ホバー時のスタイルを追加
+        className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300" // ホバー時のスタイルを追加
       >
         削除
       </button>

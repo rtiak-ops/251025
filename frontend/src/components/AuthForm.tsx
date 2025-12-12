@@ -6,85 +6,88 @@ import { loginUser, registerUser } from "../api";
  */
 interface Props {
   // 認証が成功した時に呼び出されるコールバック関数
-  // 取得したアクセストークンを親コンポーネントに渡す
   onAuthenticated: (token: string) => void;
 }
 
 /**
  * ログインと新規登録を切り替えられる認証フォームコンポーネント
- *
- * - ログインモード: 既存ユーザーのログイン
- * - 登録モード: 新規ユーザーの登録とログイン（登録後、自動的にログインも実行される）
  */
 export default function AuthForm({ onAuthenticated }: Props) {
-  // フォームの入力値を管理する状態
-  const [email, setEmail] = useState(""); // メールアドレスの入力値
-  const [password, setPassword] = useState(""); // パスワードの入力値
-
-  // フォームのモード（"login" = ログイン, "register" = 新規登録）
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"login" | "register">("login");
-
-  // APIリクエストのローディング状態
   const [isLoading, setIsLoading] = useState(false);
-
-  // エラーメッセージ（認証に失敗した場合など）
   const [error, setError] = useState<string | null>(null);
 
   /**
    * フォーム送信時の処理
-   *
-   * ログインモードの場合はログインのみ実行、
-   * 登録モードの場合は登録を実行してから自動的にログインを実行します。
    */
   const handleSubmit = async (e: React.FormEvent) => {
-    // フォームのデフォルトの送信動作（ページリロード）を防止
     e.preventDefault();
 
-    // ローディング状態を開始、エラーメッセージをクリア
     setIsLoading(true);
     setError(null);
 
     try {
-      // 登録モードの場合、まず新規ユーザーを登録
       if (mode === "register") {
         await registerUser(email, password);
-        // 登録が成功したら、自動的にログインを実行する
       }
 
-      // ログインを実行（登録モードの場合は登録後に実行、ログインモードの場合は最初に実行）
       const token = await loginUser(email, password);
-
-      // 認証成功: 親コンポーネントにトークンを渡す
-      // これにより、アプリケーション全体が認証済み状態になる
       onAuthenticated(token.access_token);
-    } catch (err) {
-      // エラーが発生した場合（登録失敗、ログイン失敗、ネットワークエラーなど）
-      console.error(err);
+      
+    } catch (err: any) { // 👈 修正箇所はこのブロック
+      console.error("認証リクエスト失敗:", err); // ★コンソールで詳細を確認可能
 
-      // エラーメッセージを取得
-      // Errorインスタンスの場合はそのメッセージを、それ以外の場合はデフォルトメッセージを使用
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "認証に失敗しました。メールとパスワードを確認してください。";
+      let displayMessage = "認証に失敗しました。メールとパスワードを確認してください。";
 
-      // エラーメッセージを状態に設定（UIに表示される）
-      setError(errorMessage);
+      // 1. サーバーからのレスポンスがあるかチェック (errがAxiosErrorの場合)
+      if (err.response) {
+        const data = err.response.data;
+
+        // 2. 422 Unprocessable Entity の場合 (Pydanticバリデーションエラー)
+        if (err.response.status === 422 && data && Array.isArray(data.detail)) {
+          // Pydanticエラーの配列 (data.detail) を処理
+          displayMessage = data.detail
+            .map((d: any) => {
+              const field = d.loc[d.loc.length - 1]; // エラーが発生したフィールド名
+              return `${field}: ${d.msg}`;
+            })
+            .join(' | ');
+
+        // 3. 400 Bad Request, 401 Unauthorized などの場合 (カスタムエラー)
+        } else if (data && data.detail) {
+          // detailが文字列または、安全に文字列化できるデータの場合
+          displayMessage = (typeof data.detail === 'string') 
+                         ? data.detail 
+                         : `サーバーからの応答: ${err.response.status}`;
+        }
+      } 
+      // 4. Axiosやネットワークエラーの場合
+      else if (err.message) {
+        displayMessage = err.message;
+      }
+      
+      // 5. 最終チェック: displayMessageがオブジェクトでないことを確認 (念のため)
+      if (typeof displayMessage === 'object' && displayMessage !== null) {
+          displayMessage = "入力データまたは通信エラーです。";
+      }
+
+      setError(displayMessage);
     } finally {
-      // 成功・失敗に関わらず、ローディング状態を終了
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="border rounded p-4">
+    <div className="border rounded p-4 bg-white dark:bg-gray-800 dark:border-gray-700">
       <h2 className="text-lg font-semibold mb-2 text-center">
         {mode === "login" ? "ログイン" : "新規登録"}
       </h2>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <input
           type="email"
-          className="border rounded p-2"
+          className="border rounded p-2 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
           placeholder="メールアドレス"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -92,16 +95,17 @@ export default function AuthForm({ onAuthenticated }: Props) {
         />
         <input
           type="password"
-          className="border rounded p-2"
+          className="border rounded p-2 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
           placeholder="パスワード"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
+        {/* エラーメッセージの表示箇所 */}
         {error && <p className="text-red-500 text-sm">{error}</p>}
         <button
           type="submit"
-          className="bg-blue-500 hover:bg-blue-600 text-white rounded py-2 disabled:bg-gray-400"
+          className="bg-blue-500 hover:bg-blue-600 text-white rounded py-2 disabled:bg-gray-400 disabled:text-gray-200 dark:bg-blue-600 dark:hover:bg-blue-500 dark:disabled:bg-gray-700 dark:disabled:text-gray-400"
           disabled={isLoading}
         >
           {isLoading
@@ -112,7 +116,7 @@ export default function AuthForm({ onAuthenticated }: Props) {
         </button>
         <button
           type="button"
-          className="text-sm text-blue-600 underline"
+          className="text-sm text-blue-600 underline dark:text-blue-300"
           onClick={() => setMode(mode === "login" ? "register" : "login")}
         >
           {mode === "login" ? "新規登録はこちら" : "ログインに切り替え"}

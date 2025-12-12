@@ -1,9 +1,9 @@
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, EmailStr
 from datetime import datetime
 from typing import Optional # 型ヒントとしてOptionalを使用する場合はインポート
 
 class UserBase(BaseModel):
-    email: str
+    email: EmailStr
 
 class UserCreate(UserBase):
     password: str

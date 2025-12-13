@@ -6,3 +6,9 @@ uvicorn
 passlib[bcrypt]
 bcrypt==4.0.1
 python-jose[cryptography]
+pytest
+pytest-asyncio
+httpx
+slowapi
+python-json-logger
+aiosqlite

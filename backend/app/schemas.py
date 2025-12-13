@@ -108,6 +108,7 @@ class TodoOut(TodoBase):
     updated_at: datetime
 
     owner_id: Optional[int] = None
+    order: int = 0
                 
     # Pydantic V2方式: orm_modeの代替としてmodel_configを使用
     # Pydanticモデルが、Pythonのオブジェクト（例: SQLALchemyのモデル）
@@ -116,5 +117,7 @@ class TodoOut(TodoBase):
     model_config = ConfigDict(from_attributes=True)
     
     # (注意) Pydantic V1の書き方 (非推奨):
-    # class Config:
     #     orm_mode = True
+
+class TodoReorder(BaseModel):
+    todo_ids: list[int]

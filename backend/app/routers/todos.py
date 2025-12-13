@@ -101,3 +101,16 @@ async def delete_todo(
         )
     # 削除成功メッセージを返す
     return {"message": "Deleted successfully", "todo_id": todo_id}
+
+# --- ToDo並び替え ---
+@router.post("/reorder", status_code=status.HTTP_200_OK)
+async def reorder_todos(
+    payload: schemas.TodoReorder,
+    db: AsyncSession = Depends(get_db),
+    current_user: schemas.UserOut = Depends(get_current_user),
+):
+    """
+    ToDoの並び順を更新します。
+    """
+    await crud.reorder_todos(db, todo_ids=payload.todo_ids, owner_id=current_user.id)
+    return {"message": "Order updated"}

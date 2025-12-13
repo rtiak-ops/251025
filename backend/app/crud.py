@@ -85,7 +85,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> Opti
 async def get_todos(db: AsyncSession, owner_id: int) -> list[models.Todo]:
     """データベースから全ての Todo アイテムを取得します。"""
     result = await db.execute(
-        select(models.Todo).where(models.Todo.owner_id == owner_id)
+        select(models.Todo).where(models.Todo.owner_id == owner_id).order_by(models.Todo.order)
     )
     return result.scalars().all()
 
@@ -129,7 +129,27 @@ async def delete_todo(db: AsyncSession, todo_id: int, owner_id: int) -> Optional
 
 async def get_todo_by_id(db: AsyncSession, todo_id: int, owner_id: int) -> Optional[models.Todo]:
     """指定された ID の Todo アイテムを単体で取得します。"""
-    result = await db.execute(
-        select(models.Todo).where(models.Todo.id == todo_id, models.Todo.owner_id == owner_id)
-    )
     return result.scalar_one_or_none()
+
+async def reorder_todos(db: AsyncSession, todo_ids: list[int], owner_id: int):
+    """
+    Todoのリスト順序を一括更新する
+    受け取ったIDリストの順番通りに order カラムを更新
+    """
+    # ユーザーのTodoだけ対象にするため、一度所有権を確認するのが望ましいが
+    # ここでは簡易的にリスト内のIDがユーザーのものであると仮定して更新、
+    # もしくは個別にUPDATEを実行する単純なループで実装
+    for index, t_id in enumerate(todo_ids):
+        # 効率化のためバルク更新が望ましいが、非同期ORMでの単純な実装としてループ処理
+        stmt = (
+            select(models.Todo)
+            .where(models.Todo.id == t_id)
+            .where(models.Todo.owner_id == owner_id)
+        )
+        result = await db.execute(stmt)
+        todo = result.scalar_one_or_none()
+        if todo:
+            todo.order = index
+            db.add(todo)
+    
+    await db.commit()

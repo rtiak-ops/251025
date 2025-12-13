@@ -1,60 +1,69 @@
-import { useEffect, useState, useCallback } from "react";
-import { getTodos, getStoredToken, clearToken } from "./api";
+import { useEffect, useState } from "react";
+import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
+import { Toaster, toast } from "react-hot-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getTodos, getStoredToken, clearToken, reorderTodos } from "./api";
 import type { Todo } from "./types";
 import TodoItem from "./components/TodoItem";
 import TodoForm from "./components/TodoForm";
 import AuthForm from "./components/AuthForm";
+import TodoSkeleton from "./components/TodoSkeleton";
 
 /**
  * メインのアプリケーションコンポーネント
- * ToDoリストの全体的な状態管理と表示を担当
+ * React Query (TanStack Query) を導入してデータ取得とキャッシュ管理を最適化
  */
 export default function App() {
-  // ToDoアイテムのリストを保持する状態
-  const [todos, setTodos] = useState<Todo[]>([]);
-  // データの読み込み中かどうかを管理する状態 (初期値はtrueで、最初の読み込み中を示す)
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const queryClient = useQueryClient();
   const [token, setToken] = useState<string | null>(getStoredToken());
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     const stored = localStorage.getItem("theme");
-    if (stored === "light" || stored === "dark") {
-      return stored;
-    }
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)"
-    ).matches;
-    return prefersDark ? "dark" : "light";
+    return stored === "light" || stored === "dark" 
+      ? stored 
+      : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   });
 
-  /**
-   * APIからToDoリストを読み込み、状態を更新する非同期関数
-   * フォームからの追加やアイテムの変更後に再読み込みするためにも使用
-   */
-  const load = useCallback(async () => {
-    if (!token) {
-      return;
-    }
-    // データの取得開始時にローディング状態を true に設定
-    setIsLoading(true);
-    try {
-      // APIからToDoリストを取得
-      const data = await getTodos();
-      // 取得したデータで todos 状態を更新
-      setTodos(data);
-    } catch (error) {
-      // エラーが発生した場合、コンソールにエラーを出力
-      console.error("ToDoリストの取得中にエラーが発生しました:", error);
-      // ※ここではユーザーにエラーを通知する状態管理（例：setError(true)）を追加しても良い
-    } finally {
-      // データの取得（成功・失敗に関わらず）が完了したら、ローディング状態を false に設定
-      setIsLoading(false);
-    }
-  }, [token]);
+  // ----------------------------------------------------------------------
+  // React Query: ToDoリストの取得
+  // ----------------------------------------------------------------------
+  const { 
+    data: todos = [], // 取得成功時のデータ（初期値は空配列）
+    isLoading,        // ローディング中かどうか
+    isError,          // エラーが発生したか
+    error             // エラーオブジェクト
+  } = useQuery<Todo[]>({
+    queryKey: ["todos"], // キャッシュのキー
+    queryFn: getTodos,   // 実行する関数
+    enabled: !!token,    // トークンがあるときだけ実行
+  });
 
+  // エラーハンドリング（React Queryのエラー状態監視）
   useEffect(() => {
-    load();
-  }, [load]);
+    if (isError) {
+      console.error("ToDoリストの取得エラー:", error);
+      toast.error("データの取得に失敗しました");
+    }
+  }, [isError, error]);
 
+  // ----------------------------------------------------------------------
+  // React Query: 並び替えの更新 (Mutation)
+  // ----------------------------------------------------------------------
+  const reorderMutation = useMutation({
+    mutationFn: (newOrderIds: number[]) => reorderTodos(newOrderIds),
+    onSuccess: () => {
+      // 成功したらキャッシュを無効化して最新データを再取得（念の為）
+      // 今回はonDragEndで楽観的更新(setQueryData)をしているので、
+      // 厳密には必須ではないが、整合性を保つために記述
+      queryClient.invalidateQueries({ queryKey: ["todos"] });
+    },
+    onError: () => {
+      toast.error("並び替えに失敗しました");
+      // 失敗時はキャッシュを無効化してサーバーの正しい順序に戻す
+      queryClient.invalidateQueries({ queryKey: ["todos"] });
+    }
+  });
+
+  // テーマ切り替え
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("theme", theme);
@@ -67,12 +76,44 @@ export default function App() {
   const handleLogout = () => {
     clearToken();
     setToken(null);
-    setTodos([]);
+    queryClient.clear(); // ログアウト時にキャッシュをクリア
+    toast.success("ログアウトしました");
   };
 
   /**
-   * コンポーネントのレンダリング部分
+   * データの変更があった場合にリストを更新するラッパー
+   * TodoItemやTodoFormから呼ばれる
    */
+  const handleDataChange = () => {
+    queryClient.invalidateQueries({ queryKey: ["todos"] });
+  };
+
+  // ----------------------------------------------------------------------
+  // ドラッグ＆ドロップのハンドリング
+  // ----------------------------------------------------------------------
+  const handleDragEnd = async (result: DropResult) => {
+    if (!result.destination) return;
+
+    const items = Array.from(todos);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    // 1. 楽観的UI更新: サーバー応答を待たずにReact Queryのキャッシュを直接書き換える
+    // これにより見た目の反映が爆速になる
+    queryClient.setQueryData(["todos"], items);
+
+    // 2. バックエンドへ送信
+    try {
+        const newOrderIds = items.map(t => t.id);
+        // mutateAsyncを使うとPromiseを返せるのでawaitできるが、
+        // ここではfire-and-forgetでも良い。エラー時はonErrorでロールバックされる。
+        reorderMutation.mutate(newOrderIds);
+    } catch (e) {
+        // mutationのonErrorで処理されるためここは基本通らない
+        console.error(e);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900 transition-colors duration-200 dark:bg-gray-900 dark:text-gray-100">
       <div className="max-w-lg mx-auto p-4">
@@ -99,26 +140,55 @@ export default function App() {
                 ログアウト
               </button>
             </div>
-            <TodoForm onAdd={load} />
+            
+            {/* 新規追加時はキャッシュを無効化して再取得 */}
+            <TodoForm onAdd={handleDataChange} />
 
             <div className="mt-4 border rounded bg-white dark:border-gray-700 dark:bg-gray-800">
               {isLoading ? (
-                <p className="p-4 text-center text-gray-500 dark:text-gray-300">
-                  読み込み中... ⏳
-                </p>
+                <div className="p-4">
+                  <TodoSkeleton />
+                </div>
               ) : todos.length === 0 ? (
                 <p className="p-4 text-center text-gray-500 dark:text-gray-300">
                   ToDoはありません。追加しましょう！✨
                 </p>
               ) : (
-                todos.map((t) => (
-                  <TodoItem key={t.id} todo={t} onChange={load} />
-                ))
+                <DragDropContext onDragEnd={handleDragEnd}>
+                  {/* Droppable: アイテムをドロップできる領域を定義（ここではリスト全体） */}
+                  <Droppable droppableId="todos">
+                    {(provided: any) => (
+                      <div
+                        {...provided.droppableProps} /* ライブラリが必要とするプロパティを展開して設定 */
+                        ref={provided.innerRef}      /* ライブラリがDOM要素を参照するために必要 */
+                      >
+                        {todos.map((t, index) => (
+                          /* Draggable: ドラッグ可能な個々のアイテム。keyとdraggableIdは一意である必要がある */
+                          <Draggable key={t.id} draggableId={t.id.toString()} index={index}>
+                            {(provided: any) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps} /* ドラッグ機能に必要なプロパティ */
+                                {...provided.dragHandleProps} /* ドラッグハンドル（掴む部分）のプロパティ。ここではアイテム全体を掴めるように設定 */
+                                className="border-b last:border-b-0 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" /* ドラッグ中に背景が透けないように色を指定 */
+                              >
+                                <TodoItem todo={t} onChange={handleDataChange} />
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {/* placeholder: ドラッグ中にリストのサイズが崩れないようにするためのスペースを確保 */}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
               )}
             </div>
           </>
         )}
       </div>
+      <Toaster position="bottom-right" />
     </div>
   );
 }

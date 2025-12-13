@@ -58,6 +58,9 @@ class Todo(Base):
         Boolean, 
         default=False
     )
+
+    # 表示順序: 並び替え用 (小さい数値が上)
+    order = Column(Integer, default=0, nullable=False)
     
     # 作成日時: レコード作成時に現在の日時を自動設定
     created_at = Column(

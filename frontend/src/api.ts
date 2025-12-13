@@ -207,3 +207,10 @@ export const breakdownTask = async (title: string): Promise<string[]> => {
     throw error;
   }
 };
+
+/**
+ * Todoの並び順を更新する
+ */
+export const reorderTodos = async (todoIds: number[]): Promise<void> => {
+    await api.post("/todos/reorder", { todo_ids: todoIds });
+};

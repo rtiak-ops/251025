@@ -18,6 +18,20 @@
 
 ---
 
+## 💎 リッチなUI/UX (Enhanced Users Experience)
+
+### 🖱️ 直感的なドラッグ＆ドロップ
+- **React Beautiful DnD** (`@hello-pangea/dnd`) を採用。
+- タスクの優先順位を、マウスやタッチ操作で直感的に並び替えることができます。
+- **楽観的UI更新 (Optimistic updates)** により、サーバー通信を待たずに瞬時に画面が反映され、ストレスフリーな操作感を実現。
+
+### ⚡ 高速でスムーズな動作
+- **TanStack Query (React Query)** を導入し、データ取得とキャッシュ管理を高度化。
+- **スケルトンローディング**: データ読み込み中は「くるくる」ではなく、コンテンツの骨組みを表示し、体感待ち時間を短縮。
+- **トースト通知**: アクションの結果（成功・失敗）を `react-hot-toast` でさりげなく、かつ明確にフィードバック。
+
+---
+
 ## 🛡️ エンジニアリング品質 (Production Ready)
 
 ### 1. 堅牢なバックエンド & セキュリティ
@@ -29,9 +43,9 @@
 - **自動テスト**: `pytest` + `sqlite(:memory:)` による高速かつクリーンなテスト環境。
 - **CI/CD**: GitHub Actions により、プッシュごとにテストと品質チェックを自動実行。
 
-### 3. モダンなフロントエンド
+### 3. モダンなフロントエンド設計
 - **React + TypeScript + Vite**: 型安全かつ高速な開発体験。
-- **UI/UX**: Tailwind CSS によるレスポンシブデザインと、AI思考中のローディング演出。
+- **状態管理**: TanStack Query によるサーバー状態の管理とキャッシュ戦略。
 
 ---
 
@@ -41,13 +55,15 @@
 |---|---|---|
 | **AI / LLM** | OpenAI API | タスク分解エンジン (gpt-3.5-turbo) |
 | **Frontend** | React, TypeScript | Vite採用で高速ビルド |
+| **State Mgmt** | **TanStack Query** | サーバー状態管理・キャッシュ・楽観的更新 |
+| **UI Libs** | **@hello-pangea/dnd** | ドラッグ＆ドロップ |
+| **UI Libs** | **react-hot-toast** | トースト通知 |
 | **Styling** | Tailwind CSS | ユーティリティファーストなCSS |
 | **Backend** | Python, FastAPI | 非同期ASGIフレームワーク |
 | **Database** | PostgreSQL | 本番用データ永続化 |
 | **ORM** | SQLAlchemy (Async) | 非同期DBアクセス |
 | **Testing** | pytest, httpx | インメモリSQLiteを用いた高速テスト |
 | **Security** | slowapi | レート制限 (Rate Limiting) |
-| **Logging** | python-json-logger | JSON形式の構造化ログ |
 | **Infra** | Docker Compose | フルスタック環境のコード化 |
 | **CI/CD** | GitHub Actions | テスト自動化パイプライン |
 
@@ -111,11 +127,11 @@ docker compose exec backend pytest -v
 │   │   │   ├── ai.py    # AI連携ロジック
 │   │   │   ├── auth.py  # 認証・レート制限
 │   │   │   └── ...
-│   │   ├── limiter.py   # セキュリティ設定
+│   │   ├── limiter.py  # セキュリティ設定
 │   │   └── main.py
 │   ├── tests/           # 自動テスト
 │   └── ...
-├── frontend/            # Reactアプリ
+├── frontend/            # Reactアプリ (Vite + TanStack Query)
 └── docker-compose.yml
 ```
 

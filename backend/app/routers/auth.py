@@ -42,7 +42,7 @@ async def register(user: schemas.UserCreate, db: AsyncSession = Depends(get_db))
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,  # 400 Bad Request
-            detail="Email already registered",  # エラーメッセージ
+            detail="このメールアドレスは既に登録されています",  # エラーメッセージ
         )
     
     # 新規ユーザーを作成（パスワードは自動的にハッシュ化される）
@@ -78,7 +78,7 @@ async def login(user: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
     if not db_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,  # 401 Unauthorized
-            detail="Incorrect email or password",  # エラーメッセージ（セキュリティ上、具体的な理由は示さない）
+            detail="メールアドレスまたはパスワードが間違っています",  # エラーメッセージ（セキュリティ上、具体的な理由は示さない）
             headers={"WWW-Authenticate": "Bearer"},  # Bearer認証が必要であることを示す
         )
     

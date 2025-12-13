@@ -12,10 +12,10 @@ class UserCreate(UserBase):
     @classmethod
     def validate_password(cls, v: str) -> str:
         if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters long")
+            raise ValueError("パスワードは8文字以上である必要があります")
         if len(v.encode("utf-8")) > 72:
             # bcryptは72バイト以降を無視するため、明示的にエラーを返す
-            raise ValueError("Password must be 72 bytes or less (bcrypt limit)")
+            raise ValueError("パスワードは72バイト以下である必要があります (bcryptの制限)")
         return v
 
 class UserOut(UserBase):

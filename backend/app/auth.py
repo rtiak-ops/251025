@@ -108,7 +108,7 @@ async def get_current_user(
     # 認証に失敗した場合に返す共通のエラーレスポンス
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,  # 401 Unauthorized
-        detail="Could not validate credentials",  # 認証情報が無効であることを示すメッセージ
+        detail="認証情報を検証できませんでした",  # 認証情報が無効であることを示すメッセージ
         headers={"WWW-Authenticate": "Bearer"},  # クライアントにBearer認証が必要であることを通知
     )
     

@@ -51,7 +51,19 @@ export default function AuthForm({ onAuthenticated }: Props) {
           displayMessage = data.detail
             .map((d: any) => {
               const field = d.loc[d.loc.length - 1]; // エラーが発生したフィールド名
-              return `${field}: ${d.msg}`;
+              const fieldName = (field === 'email' ? 'メールアドレス' : field === 'password' ? 'パスワード' : field);
+              
+              // エラーメッセージの翻訳・整形
+              let message = d.msg;
+              if (message.includes("value is not a valid email address")) {
+                message = "有効なメールアドレスの形式ではありません";
+              } else if (message === "Field required") {
+                message = "入力してください";
+              } else if (message.startsWith("Value error, ")) {
+                message = message.replace("Value error, ", "");
+              }
+
+              return `${fieldName}: ${message}`;
             })
             .join(' | ');
 

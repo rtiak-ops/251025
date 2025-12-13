@@ -13,7 +13,7 @@ COPY requirements.txt .
 # 依存関係をインストールします。
 # --no-cache-dir: pipキャッシュを無効にし、イメージサイズを小さくします。
 # この層はrequirements.txtが変更されない限りキャッシュされ再利用されます。
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --default-timeout=1000 --no-cache-dir -r requirements.txt
 
 # 2. アプリケーションコードのコピー
 # 依存関係のインストールが完了した後で、アプリケーションコード全体をコピーします。

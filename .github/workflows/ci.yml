@@ -40,6 +40,11 @@ jobs:
     # 4. テストの実行
     # pytestコマンドを実行し、失敗（Exit Code != 0）したらCIも失敗とみなされます
     - name: Run tests with pytest
+      env:
+        # アプリケーションが起動時にDATABASE_URL必須チェックを行っているため、
+        # テスト実行用のダミー値を設定してインポートエラーを防ぎます。
+        # (実際のテストではconftest.pyでSQLiteに差し替えられます)
+        DATABASE_URL: "postgresql+asyncpg://dummy:dummy@localhost/dummy"
       run: |
         export PYTHONPATH=$PYTHONPATH:.
         pytest tests/

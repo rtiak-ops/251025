@@ -12,3 +12,4 @@ httpx
 slowapi
 python-json-logger
 aiosqlite
+openai

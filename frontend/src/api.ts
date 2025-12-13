@@ -194,3 +194,16 @@ export const deleteTodo = async (id: number): Promise<void> => {
     throw new Error(errorMessage);
   }
 };
+
+/**
+ * AIによるタスク分解リクエスト
+ */
+export const breakdownTask = async (title: string): Promise<string[]> => {
+  try {
+    const res: AxiosResponse<{ subtasks: string[] }> = await api.post("/ai/breakdown", { title });
+    return res.data.subtasks;
+  } catch (error) {
+    console.error("Error breaking down task:", error);
+    throw error;
+  }
+};

@@ -1,63 +1,101 @@
-import type { Todo } from "../types.ts"; // Todoの型定義をインポート
-import { updateTodo, deleteTodo } from "../api"; // API関数（更新と削除）をインポート
+import type { Todo } from "../types.ts";
+import { updateTodo, deleteTodo } from "../api";
 
-// コンポーネントのPropsの型定義
+/**
+ * Propsインターフェース定義
+ * コンポーネントが受け取るデータの型を定義します。
+ */
 interface Props {
-  todo: Todo; // 表示するTodoオブジェクト
-  onChange: () => void; // Todoが更新または削除された後に親コンポーネントに再レンダリングを促すコールバック関数
+  /** 表示するTodoアイテムのデータオブジェクト */
+  todo: Todo;
+  /** 
+   * Todoの状態が変更された（更新または削除）際に呼び出されるコールバック関数。
+   * 親コンポーネントはこの関数を受け取ったら、Todoリストを再取得（リフレッシュ）して
+   * UIを最新の状態に更新する必要があります。
+   */
+  onChange: () => void;
 }
 
 /**
- * 個々のTodoアイテムを表示・操作するコンポーネント。
+ * TodoItem コンポーネント
+ * 
+ * リスト内の個々のTodoアイテムを表示し、操作するためのコンポーネントです。
+ * 
+ * 主な機能:
+ * 1. 【完了切り替え】: チェックボックスをクリックすると完了状態をAPI経由で更新します。
+ * 2. 【削除】: 削除ボタンをクリックするとTodoをAPI経由で削除します。
+ * 3. 【表示】: タイトルを表示し、完了済みの場合は取り消し線を表示します。
  */
 export default function TodoItem({ todo, onChange }: Props) {
-  // 完了状態をトグル（切り替え）する非同期関数
+  
+  /**
+   * 完了状態をトグル（切り替え）する非同期関数
+   * 
+   * チェックボックスの変更イベント（onChange）でトリガーされます。
+   * APIを呼び出してサーバー側のデータを更新し、成功後に親コンポーネントに通知します。
+   */
   const toggle = async () => {
     try {
-      // APIを呼び出し、完了状態を反転させて更新
+      // API呼び出し: 現在のcompleted状態を反転させて送信
+      // 成功するまで待機 (await)
       await updateTodo(todo.id, { completed: !todo.completed });
-      // 成功したら、親コンポーネントに通知してリストを更新
+      
+      // 更新成功後、親コンポーネントのリスト更新処理を呼び出す
       onChange();
     } catch (error) {
-      // ネットワークエラーやサーバーエラーが発生した場合の処理
+      // エラーハンドリング
+      // エラーメッセージを生成してアラート表示
       const errorMessage =
         error instanceof Error
           ? error.message
           : "タスクの更新に失敗しました。時間をおいて再度お試しください。";
       console.error("更新エラー:", errorMessage);
-      // ユーザーに操作が失敗したことを通知
       alert(errorMessage);
     }
   };
 
-  // Todoを削除する非同期関数
+  /**
+   * Todoを削除する非同期関数
+   * 
+   * 削除ボタンのクリックイベントでトリガーされます。
+   * APIを呼び出してデータを削除し、成功後に親コンポーネントに通知します。
+   */
   const remove = async () => {
     try {
-      // APIを呼び出し、Todoアイテムを削除
+      // API呼び出し: IDを指定してTodoを削除
       await deleteTodo(todo.id);
-      // 成功したら、親コンポーネントに通知してリストを更新
+      
+      // 削除成功後、親コンポーネントのリスト更新処理を呼び出す
       onChange();
     } catch (error) {
-      // ネットワークエラーやサーバーエラーが発生した場合の処理
+      // エラーハンドリング
       const errorMessage =
         error instanceof Error
           ? error.message
           : "タスクの削除に失敗しました。時間をおいて再度お試しください。";
       console.error("削除エラー:", errorMessage);
-      // ユーザーに操作が失敗したことを通知
       alert(errorMessage);
     }
   };
 
-  // UIのレンダリング
   return (
-    // Tailwind CSSでスタイリング：flexコンテナ、両端揃え、アイテム中央寄せ、パディング、下線
-    <div className="flex justify-between items-center p-2 border-b border-gray-200 dark:border-gray-700">
-      {/* Todoのタイトルとチェックボックスのエリア */}
-      <label className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
-        {/* チェックボックス：現在の完了状態を表示し、変更時にtoggle関数を実行 */}
-        <input type="checkbox" checked={todo.completed} onChange={toggle} />
-        {/* Todoのタイトル：完了している場合は打ち消し線と灰色テキストを適用 */}
+    // リストアイテムのコンテナ: Flexboxで左右配置、下線付き
+    // 外側のdivにはパディングを設けず、内部のlabelやbuttonでパディングを確保することでクリック領域を最大化
+    <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+      {/* 
+        左側: チェックボックスとタイトル 
+        flex-1を指定して残りの領域全体を埋めるようにし、labelタグで囲むことで
+        この領域内のどこをクリックしてもチェックボックスが反応するようにしています。
+      */}
+      <label className="flex-1 flex items-center gap-3 p-3 cursor-pointer text-gray-900 dark:text-gray-100">
+        <input 
+          type="checkbox" 
+          checked={todo.completed} 
+          onChange={toggle} 
+          className="cursor-pointer size-5 text-blue-600 rounded focus:ring-blue-500" // サイズやスタイルを少し調整
+        />
+        
+        {/* タイトル表示: 完了時は取り消し線(line-through)とグレー色を適用 */}
         <span
           className={
             todo.completed
@@ -69,10 +107,14 @@ export default function TodoItem({ todo, onChange }: Props) {
         </span>
       </label>
 
-      {/* 削除ボタン：クリック時にremove関数を実行 */}
+      {/* 
+        右側: 削除ボタン
+        p-3を指定してクリック領域を確保
+      */}
       <button
         onClick={remove}
-        className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300" // ホバー時のスタイルを追加
+        className="p-3 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+        title="削除"
       >
         削除
       </button>

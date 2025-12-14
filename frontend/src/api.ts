@@ -7,128 +7,155 @@ import type {
   AuthToken,
 } from "./types";
 
-// ----------------------------------------------------------------------
-// API設定とトークン管理
-// ----------------------------------------------------------------------
+// ============================================================================
+// API通信の設定ファイル (API Client Configuration)
+// ============================================================================
+// バックエンドサーバーとデータをやり取りするための設定と関数をまとめたファイルです。
+// 通信には "Axios (アクシオス)" というライブラリを使用しています。
 
-// 環境変数からAPIベースURLを取得
+// ----------------------------------------------------------------------------
+// 1. 基本設定 (Basic Setup)
+// ----------------------------------------------------------------------------
+
+// 接続先のサーバーURL (ベースURL) を決定します
+// 環境変数 (VITE_API_BASE_URL) が設定されていればそれを使い、なければローカル開発用のURLを使います
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
-// ローカルストレージに保存するトークンのキー名
+// ブラウザのローカルストレージに保存する認証トークンのキー名
+// キーを使って保存・取得・削除を行います
 const TOKEN_KEY = "auth_token";
 
-// Axiosインスタンスを作成
+// Axiosのインスタンス（通信するための道具）を作成します
+// これを使うことで、毎回URLの最初 (http://localhost:8000) を書かなくて済みます
 const api = axios.create({ baseURL: API_BASE });
 
-// ----------------------------------------------------------------------
-// リクエストインターセプター: 全てのAPIリクエストに認証トークンを自動追加
-// ----------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// 2. リクエストの前処理 (Interceptors)
+// ----------------------------------------------------------------------------
 
-// リクエストが送信される前に実行される処理
+// apiを使ってリクエストを送る「直前」に自動で行う処理を登録します
+// ここでは、ログインしている場合に「認証トークン」をヘッダーに自動で追加しています
 api.interceptors.request.use((config) => {
-  // ローカルストレージから認証トークンを取得
+  // 保存されているトークンを取り出す
   const token = localStorage.getItem(TOKEN_KEY);
 
-  // トークンが存在する場合、リクエストヘッダーに認証情報を追加
+  // トークンがあれば、リクエストの「Authorization」ヘッダーに追加する
+  // これにより、サーバーは「誰からのリクエストか」を識別できます
   if (token) {
     config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${token}`;
   }
 
-  return config;
+  return config; // 変更した設定でリクエストを続行
 });
 
-// ----------------------------------------------------------------------
-// トークン管理ユーティリティ関数
-// ----------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// 3. トークン管理の便利関数 (Token Helpers)
+// ----------------------------------------------------------------------------
 
+// 保存されているトークンを取得する関数
 export const getStoredToken = () => localStorage.getItem(TOKEN_KEY);
 
+// トークンを削除する関数 (ログアウト時などに使用)
 export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
 
+// トークンを保存する関数 (ログイン成功時に使用)
 export const saveToken = (token: string) =>
   localStorage.setItem(TOKEN_KEY, token);
 
-// ----------------------------------------------------------------------
-// 認証関連のAPI関数
-// ----------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// 4. API関数: 認証関連 (Authentication API)
+// ----------------------------------------------------------------------------
 
 /**
- * 新規ユーザー登録を行う関数
- *
- * @throws AxiosError - 登録に失敗した場合
+ * ユーザー登録 (サインアップ) を行う関数
+ * @param email - 登録するメールアドレス
+ * @param password - 登録するパスワード
+ * @returns 登録されたユーザー情報
  */
 export const registerUser = async (
   email: string,
   password: string
 ): Promise<User> => {
   try {
+    // POSTリクエストで /auth/register にデータを送信
     const res: AxiosResponse<User> = await api.post("/auth/register", {
       email,
       password,
     });
-    return res.data;
+    return res.data; // サーバーからのレスポンスデータを返す
   } catch (error) {
-    // 🚨 修正箇所: Errorでラップせず、AxiosErrorをそのままスローする
+    // エラーが起きた場合は、そのまま呼び出し元に伝えます
+    // ※呼び出し元で適切なエラーメッセージを表示するため
     console.error("Error registering user:", error);
     throw error;
   }
 };
 
 /**
- * ユーザーログインを行う関数
- *
- * @throws AxiosError - ログインに失敗した場合
+ * ログインを行う関数
+ * @param email - メールアドレス
+ * @param password - パスワード
+ * @returns 認証トークン情報
  */
 export const loginUser = async (
   email: string,
   password: string
 ): Promise<AuthToken> => {
   try {
+    // POSTリクエストで /auth/login にデータを送信
     const res: AxiosResponse<AuthToken> = await api.post("/auth/login", {
       email,
       password,
     });
 
+    // ログインに成功したら、受け取ったアクセストークンを保存する
     saveToken(res.data.access_token);
     return res.data;
   } catch (error) {
-    // 🚨 修正箇所: Errorでラップせず、AxiosErrorをそのままスローする
     console.error("Error logging in:", error);
     throw error;
   }
 };
 
-// ----------------------------------------------------------------------
-// ToDo関連のAPI関数 (この部分は変更なし)
-// ----------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// 5. API関数: ToDo関連 (ToDo API)
+// ----------------------------------------------------------------------------
 
 /**
- * 全てのToDoアイテムを取得する関数
+ * 自分のToDoリストを全て取得する関数
+ * @returns Todoアイテムの配列
  */
 export const getTodos = async (): Promise<Todo[]> => {
   try {
+    // GETリクエストで /todos からデータを取得
     const res: AxiosResponse<Todo[]> = await api.get("/todos");
     return res.data;
   } catch (error) {
+    // エラーハンドリング (エラー時の対応)
     const axiosError = error as AxiosError<{ detail?: string }>;
 
+    // もし「401 Unauthorized (認証エラー)」なら、トークンが無効なので削除する
     if (axiosError.response?.status === 401) {
       clearToken();
     }
 
+    // エラーメッセージを決定する (サーバーからのメッセージがあればそれを使う)
     const errorMessage =
       axiosError.response?.data?.detail ||
       axiosError.message ||
       "ToDoリストの取得に失敗しました";
 
     console.error("Error fetching todos:", errorMessage);
+    // 新しいエラーとして投げ直す (UI側でcatchして表示するため)
     throw new Error(errorMessage);
   }
 };
 
 /**
- * 新しいToDoアイテムを作成する関数
+ * 新しいToDoを追加する関数
+ * @param data - 作成するTodoのデータ (タイトル、説明)
+ * @returns 作成されたTodoデータ
  */
 export const createTodo = async ({
   title,
@@ -154,13 +181,17 @@ export const createTodo = async ({
 };
 
 /**
- * 既存のToDoアイテムを更新する関数
+ * ToDoの内容を更新する関数
+ * @param id - 更新するTodoのID
+ * @param data - 更新したいデータ (タイトルだけ、完了状態だけ、なども可)
+ * @returns 更新後のTodoデータ
  */
 export const updateTodo = async (
   id: number,
   data: UpdateTodoData
 ): Promise<Todo> => {
   try {
+    // PATCHリクエスト: データの一部だけを書き換えるときに使います
     const res: AxiosResponse<Todo> = await api.patch(`/todos/${id}`, data);
     return res.data;
   } catch (error) {
@@ -177,10 +208,12 @@ export const updateTodo = async (
 };
 
 /**
- * ToDoアイテムを削除する関数
+ * ToDoを削除する関数
+ * @param id - 削除するTodoのID
  */
 export const deleteTodo = async (id: number): Promise<void> => {
   try {
+    // DELETEリクエスト: データを消去するときに使います
     await api.delete(`/todos/${id}`);
   } catch (error) {
     const axiosError = error as AxiosError<{ detail?: string }>;
@@ -195,8 +228,14 @@ export const deleteTodo = async (id: number): Promise<void> => {
   }
 };
 
+// ----------------------------------------------------------------------------
+// 6. API関数: その他の機能 (Other Features)
+// ----------------------------------------------------------------------------
+
 /**
- * AIによるタスク分解リクエスト
+ * AIを使ってタスクを細分化する関数
+ * @param title - 元の大きなタスクのタイトル
+ * @returns 細分化されたサブタスクのリスト (文字列の配列)
  */
 export const breakdownTask = async (title: string): Promise<string[]> => {
   try {
@@ -209,8 +248,11 @@ export const breakdownTask = async (title: string): Promise<string[]> => {
 };
 
 /**
- * Todoの並び順を更新する
+ * Todoの並び順を更新する関数
+ * ドラッグ&ドロップで並び替えた後に呼び出されます
+ * @param todoIds - 並び替え後のTodo IDの配列
  */
 export const reorderTodos = async (todoIds: number[]): Promise<void> => {
+    // 並び順だけをサーバーに送信して保存してもらう
     await api.post("/todos/reorder", { todo_ids: todoIds });
 };

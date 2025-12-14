@@ -1,13 +1,35 @@
+<!-- 
+  このファイルはWebサイトの「骨組み」となるHTMLファイルです。
+  ブラウザが最初に読み込むのはこのファイルです。
+-->
 <!doctype html>
-<html lang="en">
+<!-- lang="en" は英語サイトであることを示します。日本語サイトなら "ja" に変更するのが一般的です -->
+<html lang="ja">
   <head>
+    <!-- 文字コードをUTF-8に設定（文字化けを防ぎます） -->
     <meta charset="UTF-8" />
+    
+    <!-- ファビコン（ブラウザのタブに表示される小さなアイコン）の設定 -->
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    
+    <!-- スマートフォンなどで見たときに、画面幅に合わせて適切に表示するための設定（レスポンシブ対応） -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    
+    <!-- ブラウザのタブや検索結果に表示されるタイトル -->
+    <title>Todoアプリ</title>
   </head>
   <body>
+    <!-- 
+      Reactアプリケーションが描画される場所です。
+      src/main.tsx の中で、この id="root" の要素を探して、
+      その中にアプリの中身を流し込む仕組みになっています。
+    -->
     <div id="root"></div>
+
+    <!-- 
+      Reactのプログラム（TypeScriptファイル）を読み込んでいます。
+      type="module" は、最新のJavaScript機能（import/exportなど）を使うための指定です。
+    -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

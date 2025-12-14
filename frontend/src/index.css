@@ -2,15 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Tailwindにない独自クラスがあればここに置く */
+/* 
+  === カスタムスタイルの定義 ===
+  Tailwindのユーティリティクラスだけでは表現しきれない場合や、
+  あえて意味のあるクラス名（セマンティックな名前）を付けたい場合にここに追記します。
+*/
+
+/* 
+  完了したTodoアイテムのスタイル 
+  @apply を使うと、CSSファイルの中でTailwindのクラスを適用できます。
+  line-through: 取り消し線
+  text-gray-500: 文字色をグレーにする
+*/
 .todo-completed {
   @apply line-through text-gray-500;
 }
 
+/* 
+  === グローバルスタイルの設定 ===
+  サイト全体に適用する基本設定です。
+*/
 body {
+  /* 
+     min-h-screen: 画面の高さいっぱいまで背景を広げる
+     bg-gray-100: 背景色を薄いグレーに
+     text-gray-900: 文字色を濃いグレー（ほぼ黒）に
+     antialiased: フォントを滑らかに表示（Macなどで特に有効）
+     transition-colors duration-200: ダークモード切り替え時の色変化を0.2秒かけてふわっとアニメーションさせる
+  */
   @apply min-h-screen bg-gray-100 text-gray-900 antialiased transition-colors duration-200;
 }
 
+/* 
+  === ダークモード対応 ===
+  htmlタグ（またはbodyの親要素）に "dark" クラスがついた時のスタイル
+  JavaScriptでテーマ切り替え時にこのクラスを付け外ししています。
+*/
 .dark body {
+  /* ダークモード時は背景を暗く、文字を白っぽくします */
   @apply bg-gray-900 text-gray-100;
 }

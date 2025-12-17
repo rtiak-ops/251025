@@ -1,72 +1,77 @@
 services:
-  # データベースサービス (PostgreSQL)
+  # --- データの保管庫 (データベース層) ---
+  # 大切なデータを守る、システムの心臓部です。
   db:
-    image: postgres:15 # 使用するPostgreSQLイメージのバージョン
-    container_name: todo_db_1025 # コンテナ名を明示的に設定
-    restart: always # コンテナが終了した場合に常に再起動するように設定 (本番環境では必須)
+    # 安定感抜群のPostgreSQL 17を採用しています。
+    image: postgres:17
+    container_name: todo_db_1025
+    # 万が一コンテナが倒れても、Dockerが自動で起こしてくれるので安心です。
+    restart: always
     environment:
-      # データベース接続情報 (環境変数)
+      # ここで設定した情報は、後でバックエンドから接続する時に使います。
       POSTGRES_USER: todo_user
       POSTGRES_PASSWORD: todo_pass
       POSTGRES_DB: todo_db
     volumes:
-      # データを永続化するためのボリュームマッピング
+      # 【重要】これがないと、コンテナを消した時にデータも消えてしまいます。
+      # データを「外出し」して、安全に永続化するための設定です。
       - postgres_data:/var/lib/postgresql/data
-    # 外部からのアクセスは通常不要なため、ポートマッピングはコメントアウト (開発での確認用)
+    # 外部からDBを直接覗きたい時は、下のコメントアウトを外すと5432番で繋がります。
     # ports:
     #   - "5432:5432"
-    # 健康チェック (オプション: データベースが起動して利用可能かを確認)
+    # DBが「準備完了」になったかを確認する仕組みです。
+    # 次のbackendサービスが「DBまだ？」と待てるようになります。
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # バックエンドサービス (FastAPI)
+  # --- 知能の部分 (バックエンド層 / FastAPI) ---
+  # データの処理や、データベースとのやり取りを担当します。
   backend:
-    build: ./backend # ./backendディレクトリにあるDockerfileを使用
+    # ./backendフォルダにあるDockerfileから、あなた専用のイメージを作ります。
+    build: ./backend
     container_name: todo_backend_1025
-    # uvicornの起動コマンド。ポート番号はコンテナ内のもの。
+    # --reloadをつけることで、プログラムを書き換えると即座に反映されます（開発の味方！）。
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     restart: always
     volumes:
-      # ホストのコードをコンテナにマウント (開発中のホットリロードに便利)
+      # 自分のパソコン上のコード変更を、リアルタイムでコンテナに伝えます。
       - ./backend:/app
     environment:
-      # データベース接続URL。ホスト名は'db' (サービス名)
+      # DBへの接続先です。ホスト名にはサービス名の「db」を指定するだけで繋がります。
       DATABASE_URL: postgresql+asyncpg://todo_user:todo_pass@db:5432/todo_db
     depends_on:
-      # dbサービスに依存。dbが起動するまでbackendは起動しない
-      # healthcheckがdbに設定されている場合、dbがhealthcheckをパスするまで待つ設定がより良い
+      # 「DBがちゃんと動き出してから、バックエンドを起動する」という順番を守る設定です。
       db:
         condition: service_healthy
     ports:
-      # ホストの8000番ポートをコンテナの8000番ポートにマッピング
+      # ブラウザ等から http://localhost:8000 でAPIにアクセスできるようになります。
       - "8000:8000"
 
-  # フロントエンドサービス (React/Vite)
+  # --- 見た目の部分 (フロントエンド層 / React/Vite) ---
+  # ユーザーが実際に操作する画面を表示します。
   frontend:
-    build: ./frontend # ./frontendディレクトリにあるDockerfileを使用
+    build: ./frontend
     container_name: todo_frontend_1025
     restart: always
     ports:
-      # ホストの5173番ポートをコンテナの5173番ポートにマッピング
+      # ブラウザで http://localhost:5173 を開くと、あなたのアプリが見えます！
       - "5173:5173"
     volumes:
-      # ホストのコードをコンテナにマウント (開発中のホットリロードに便利)
       - ./frontend:/app
-      # node_modulesをマウントから除外（匿名ボリュームとして指定）。
-      # これにより、node_modulesはコンテナ内で管理され、ホスト側の依存関係と衝突するのを防ぐ。
+      # 【工夫】コンテナ内のnode_modulesを保護し、動作を安定させています。
       - /app/node_modules
-    # 開発サーバーが必要な場合に true に設定されることが多い
-    stdin_open: true # 標準入力を開く (対話操作のサポート)
-    tty: true        # TTYを割り当てる (対話操作のサポート)
+    # 開発サーバーとのやり取りをスムーズにするための、おまじないのような設定です。
+    stdin_open: true
+    tty: true
     depends_on:
-      # フロントエンドがバックエンドに依存する場合（例: 開発サーバーがAPIを必要とする場合）
+      # まずは裏方のバックエンドが動いていることを確認します。
       - backend
 
-# ボリューム定義
+# --- 共通の道具箱 ---
 volumes:
-  # データベース永続化用の名前付きボリューム
+  # ここで名前を付けたボリュームは、コンテナを作り直しても残り続けます。
   postgres_data:
-    driver: local # ローカルドライバを使用 (デフォルトだが明示)
+    driver: local

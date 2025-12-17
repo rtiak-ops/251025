@@ -1,6 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from __future__ import annotations  # Python 3.10+: 型ヒントの前方参照を簡潔に
+
 import os
-from typing import Optional
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -12,6 +13,56 @@ from .database import get_db
 
 # ----------------------------------------------------------------------
 # JWT (JSON Web Token) 認証の設定
+# ----------------------------------------------------------------------
+# 
+# 【JWTとは？】
+# JWT (JSON Web Token) は、ユーザー認証のための「デジタル身分証明書」のようなものです。
+# ログイン成功時にサーバーが発行し、クライアントが保存して、以降のリクエストで提示します。
+# 
+# 【JWTの3つの構造】
+# JWTは「ヘッダー.ペイロード.署名」の3部分で構成されています:
+# 
+# 1. ヘッダー (Header)
+#    - トークンの種類（JWT）と署名アルゴリズム（HS256など）を記載
+#    - 例: {"alg": "HS256", "typ": "JWT"}
+# 
+# 2. ペイロード (Payload)
+#    - 実際のデータ（クレーム）を格納する部分
+#    - 例: {"sub": "user@example.com", "exp": 1234567890}
+#    - 主なクレーム:
+#      * sub (Subject): ユーザー識別子（このアプリではメールアドレス）
+#      * exp (Expiration): トークンの有効期限（UNIXタイムスタンプ）
+#      * iat (Issued At): トークンの発行日時
+# 
+# 3. 署名 (Signature)
+#    - ヘッダーとペイロードを秘密鍵で署名したもの
+#    - トークンが改ざんされていないことを保証します
+#    - 計算式: HMACSHA256(base64(header) + "." + base64(payload), SECRET_KEY)
+# 
+# 【JWTの動作フロー】
+# 
+# ステップ1: ログイン
+#   クライアント → サーバー: メールアドレス + パスワード
+#   サーバー: 認証成功 → JWTトークンを生成して返す
+# 
+# ステップ2: トークンの保存
+#   クライアント: 受け取ったトークンをlocalStorageなどに保存
+# 
+# ステップ3: 認証が必要なリクエスト
+#   クライアント → サーバー: リクエストヘッダーに "Authorization: Bearer <token>" を付与
+#   サーバー: トークンを検証（署名チェック + 有効期限チェック）
+#   サーバー: 検証成功 → ペイロードからユーザー情報を取得 → リクエスト処理
+# 
+# 【JWTのメリット】
+# ✓ ステートレス: サーバー側でセッション情報を保持する必要がない
+# ✓ スケーラブル: 複数サーバー間で認証情報を共有しやすい
+# ✓ 自己完結型: トークン自体にユーザー情報が含まれている
+# 
+# 【セキュリティ上の注意点】
+# ⚠ SECRET_KEYは絶対に秘密にする（漏洩すると偽造トークンを作られる）
+# ⚠ トークンの有効期限は短めに設定する（盗まれた場合のリスク軽減）
+# ⚠ HTTPS通信を使用する（トークンの盗聴を防ぐ）
+# ⚠ ペイロードには機密情報を入れない（Base64エンコードは暗号化ではない）
 # ----------------------------------------------------------------------
 
 # JWTトークンを署名するための秘密鍵（環境変数から取得、デフォルトは"CHANGE_ME"）
@@ -29,7 +80,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """
     JWT（JSON Web Token）アクセストークンを生成する関数
     

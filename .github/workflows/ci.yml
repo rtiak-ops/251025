@@ -1,50 +1,57 @@
 name: CI
 
 # 【トリガー設定】
-# push: main または master ブランチにプッシュされた時に発火
-# pull_request: それらのブランチへPRが出された時にも発火
+# いつこの自動処理を動かすかを決めます
 on:
   push:
+    # メインのコードが更新された時に、壊れていないか自動チェックします
     branches: [ "main", "master" ]
   pull_request:
+    # 本番に取り込む前に、テストが通ることを確認するために動かします
     branches: [ "main", "master" ]
 
 # 【ジョブ定義】
-# GitHub Actionsの仮想マシン上で実行される一連のタスク
+# GitHubが用意してくれる「まっさらなPC（仮想マシン）」上で行う作業手順です
 jobs:
   test-backend:
-    runs-on: ubuntu-latest  # 最新のUbuntu環境で実行
+    # 常に最新かつ安定したUbuntu環境を利用します
+    runs-on: ubuntu-latest
 
-    # Backendディレクトリ内でコマンドを実行するようにデフォルト設定
+    # 「backend」フォルダの中にソースコードがある構成に対応しています
     defaults:
       run:
         working-directory: ./backend
 
     steps:
-    # 1. リポジトリのチェックアウト（コードを仮想マシンにダウンロード）
-    - uses: actions/checkout@v3
+    # 1. コードの取得
+    # 実行環境にあなたのプログラムをコピーします
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-    # 2. Python環境のセットアップ（バージョン指定）
-    - name: Set up Python 3.10
+    # 2. Pythonの準備
+    # 開発環境と同じバージョン（3.13）を用意して、動作の不一致を防ぎます
+    - name: Set up Python 3.13
       uses: actions/setup-python@v4
       with:
-        python-version: "3.10"
+        python-version: "3.13"
 
-    # 3. 依存ライブラリのインストール
-    # requirements.txt に記載されたパッケージをインストールします
+    # 3. ライブラリの導入
+    # 実行に必要なツールをすべてインストールします
     - name: Install dependencies
       run: |
+        # pip自体を最新にすることで、インストールエラーのリスクを減らします
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
     # 4. テストの実行
-    # pytestコマンドを実行し、失敗（Exit Code != 0）したらCIも失敗とみなされます
+    # 最後に「プログラムが正しく動くか」を自動チェックします
     - name: Run tests with pytest
       env:
-        # アプリケーションが起動時にDATABASE_URL必須チェックを行っているため、
-        # テスト実行用のダミー値を設定してインポートエラーを防ぎます。
-        # (実際のテストではconftest.pyでSQLiteに差し替えられます)
+        # 【重要】アプリがデータベース接続を求める場合、ここで「仮の住所」を教えます。
+        # 実際のデータベースには繋ぎませんが、エラーで止まるのを防ぐための「おまじない」です。
         DATABASE_URL: "postgresql+asyncpg://dummy:dummy@localhost/dummy"
       run: |
+        # カレントディレクトリをパスに通し、pytestがモジュールを見つけられるようにします
         export PYTHONPATH=$PYTHONPATH:.
+        # testsフォルダ内のテストをすべて実行します
         pytest tests/

@@ -1,18 +1,21 @@
 # 必要なライブラリとモジュールのインポート
+from __future__ import annotations  # Python 3.10+: 型ヒントの前方参照を簡潔に
+
 import logging
 import sys
 from contextlib import asynccontextmanager  # ライフサイクル管理のための Context Manager をインポート
-from fastapi import FastAPI, Request                 # FastAPI のメインクラスをインポート
-from fastapi.middleware.cors import CORSMiddleware # CORSミドルウェアをインポート
-from pythonjsonlogger import jsonlogger # JSONロガー
-from slowapi import Limiter, _rate_limit_exceeded_handler # Rate Limiting
-from slowapi.util import get_remote_address # Rate Limiting
-from slowapi.errors import RateLimitExceeded # Rate Limiting
-from slowapi.middleware import SlowAPIMiddleware # Rate Limiting
+
+from fastapi import FastAPI  # FastAPI のメインクラスをインポート
+from fastapi.middleware.cors import CORSMiddleware  # CORSミドルウェアをインポート
+from pythonjsonlogger import jsonlogger  # JSONロガー
+from slowapi import Limiter, _rate_limit_exceeded_handler  # Rate Limiting
+from slowapi.errors import RateLimitExceeded  # Rate Limiting
+from slowapi.middleware import SlowAPIMiddleware  # Rate Limiting
+from slowapi.util import get_remote_address  # Rate Limiting
 
 # アプリケーション固有のモジュールをインポート
-from .routers import todos, auth, ai                # ToDo関連のエンドポイント（ルーター）をインポート
-from .database import engine, Base          # データベース接続エンジンと、モデルのベースクラスをインポート
+from .database import Base, engine  # データベース接続エンジンと、モデルのベースクラスをインポート
+from .routers import ai, auth, todos  # ToDo関連のエンドポイント（ルーター）をインポート
 
 # ----------------------------------------------------------------------
 # 0. ロギングとセキュリティ設定

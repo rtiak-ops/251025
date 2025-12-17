@@ -1,6 +1,8 @@
+from __future__ import annotations  # Python 3.10+: 型ヒントの前方参照を簡潔に
+
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import crud, schemas
@@ -100,8 +102,20 @@ async def login(request: Request, user: schemas.UserCreate, db: AsyncSession = D
     
     # 3. アクセストークン (JWT) の生成
     # 認証に成功したら、一時的なアクセス許可証であるトークンを作成します。
+    # 
+    # 【トークンに含まれる情報】
     # sub (Subject): トークンが誰のものかを示す識別子。ここでは一意なメールアドレスを使用しています。
-    # expires_delta: トークンの有効期限。セキュリティのため、必要最小限（例: 60分）に設定します。
+    # exp (Expiration): トークンの有効期限。セキュリティのため、必要最小限（例: 60分）に設定します。
+    # 
+    # 【生成されるトークンの例】
+    # eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyQGV4YW1wbGUuY29tIiwiZXhwIjoxNjk5OTk5OTk5fQ.signature
+    # ↑ この長い文字列が、クライアントに返されるJWTトークンです
+    # 
+    # 【クライアント側での使用方法】
+    # 1. このトークンをlocalStorageやcookieに保存
+    # 2. 以降の認証が必要なAPIリクエストで、HTTPヘッダーに以下を付与:
+    #    Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    # 3. サーバー側で自動的にトークンを検証し、ユーザーを特定
     access_token = create_access_token(
         data={"sub": db_user.email},  # トークンに含めるユーザー識別情報
         expires_delta=timedelta(minutes=60),  # トークンの有効期限（60分）

@@ -1,116 +1,246 @@
-from fastapi import APIRouter, Depends, HTTPException, status # statusをインポート
+"""
+ToDoアイテムのCRUD操作を行うAPIルーター
+
+このモジュールは、ToDoアイテムに関する以下の操作を提供します:
+- 全ToDoアイテムの取得（ログインユーザーのもののみ）
+- 新しいToDoアイテムの作成
+- 既存ToDoアイテムの更新（部分更新対応）
+- ToDoアイテムの削除
+- ToDoアイテムの並び替え
+
+全てのエンドポイントは認証が必要で、ログインユーザーのToDoのみを操作できます。
+"""
+
+from __future__ import annotations  # Python 3.10+: 型ヒントの前方参照を簡潔に
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from ..database import get_db
+
 from .. import crud, schemas
 from ..auth import get_current_user
+from ..database import get_db
 
+# ===========================
+# ルーター設定
+# ===========================
 # APIRouterのインスタンスを作成
 # prefix="/todos"で全てのルーティングが/todosから始まる
 # tags=["Todos"]でAPIドキュメント（Swagger UI/Redoc）でのグループ名を指定
 router = APIRouter(prefix="/todos", tags=["Todos"])
 
-# --- ToDoアイテムの読み取り（全件取得） ---
+
+# ===========================
+# ToDoアイテムの読み取り（全件取得）
+# ===========================
 @router.get(
     "/",
-    response_model=list[schemas.TodoOut], # レスポンスのPydanticモデルを指定（リスト型であることに注意）
-    status_code=status.HTTP_200_OK # 成功時のHTTPステータスコードを明示的に指定（200 OK）
+    response_model=list[schemas.TodoOut],  # レスポンスのPydanticモデルを指定（リスト型であることに注意）
+    status_code=status.HTTP_200_OK  # 成功時のHTTPステータスコードを明示的に指定（200 OK）
 )
-# Depends(get_db)により、リクエストごとに非同期DBセッションを取得
 async def read_todos(
-    db: AsyncSession = Depends(get_db),
-    current_user: schemas.UserOut = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),  # DBセッションを依存性注入で取得
+    current_user: schemas.UserOut = Depends(get_current_user),  # 認証済みユーザー情報を取得
 ) -> list[schemas.TodoOut]:
     """
-    全てのToDoアイテムを取得します。
+    ログインユーザーの全ToDoアイテムを取得します。
+    
+    【処理の流れ】
+    1. JWTトークンから現在のログインユーザーを特定
+    2. そのユーザーが所有する全てのToDoアイテムをデータベースから取得
+    3. 取得したToDoリストをJSON形式で返却
+    
+    【パラメータ】
+    - db: データベースセッション（自動注入）
+    - current_user: 認証済みユーザー情報（自動注入）
+    
+    【戻り値】
+    - ToDoアイテムのリスト（作成日時の昇順）
+    
+    【エラー】
+    - 401 Unauthorized: 認証トークンが無効または期限切れの場合
     """
     # crudモジュールの非同期関数を呼び出し、データベースからToDoリストを取得
+    # owner_idを指定することで、ログインユーザーのToDoのみを取得
     todos = await crud.get_todos(db, owner_id=current_user.id)
-    return todos # 取得したToDoリストを返す
+    return todos  # 取得したToDoリストを返す
 
-# --- ToDoアイテムの作成 ---
+
+# ===========================
+# ToDoアイテムの作成
+# ===========================
 @router.post(
     "/",
-    response_model=schemas.TodoOut, # レスポンスのPydanticモデルを指定（作成されたアイテム）
-    status_code=status.HTTP_201_CREATED # 作成成功時のHTTPステータスコードを明示的に指定（201 Created）
+    response_model=schemas.TodoOut,  # レスポンスのPydanticモデルを指定（作成されたアイテム）
+    status_code=status.HTTP_201_CREATED  # 作成成功時のHTTPステータスコードを明示的に指定（201 Created）
 )
-# リクエストボディをschemas.TodoCreateモデルで検証
 async def create_todo(
-    todo: schemas.TodoCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: schemas.UserOut = Depends(get_current_user),
+    todo: schemas.TodoCreate,  # リクエストボディをschemas.TodoCreateモデルで検証
+    db: AsyncSession = Depends(get_db),  # DBセッションを依存性注入で取得
+    current_user: schemas.UserOut = Depends(get_current_user),  # 認証済みユーザー情報を取得
 ) -> schemas.TodoOut:
     """
     新しいToDoアイテムを作成します。
+    
+    【処理の流れ】
+    1. リクエストボディからToDoの情報（タイトル、説明など）を受け取る
+    2. 現在のログインユーザーをToDoの所有者として設定
+    3. データベースに新しいToDoアイテムを保存
+    4. 作成されたToDoアイテムの情報を返却
+    
+    【パラメータ】
+    - todo: 作成するToDoの情報（title, description, completedなど）
+    - db: データベースセッション（自動注入）
+    - current_user: 認証済みユーザー情報（自動注入）
+    
+    【戻り値】
+    - 作成されたToDoアイテムの完全な情報（IDや作成日時を含む）
+    
+    【エラー】
+    - 401 Unauthorized: 認証トークンが無効または期限切れの場合
+    - 422 Unprocessable Entity: リクエストボディのバリデーションエラー
     """
     # crudモジュールの非同期関数を呼び出し、ToDoアイテムを作成
+    # owner_idを指定することで、ログインユーザーのToDoとして作成
     new_todo = await crud.create_todo(db, todo=todo, owner_id=current_user.id)
-    return new_todo # 作成されたToDoアイテムを返す
+    return new_todo  # 作成されたToDoアイテムを返す
 
-# --- ToDoアイテムの更新（部分更新/全体更新） ---
+
+# ===========================
+# ToDoアイテムの更新（部分更新/全体更新）
+# ===========================
 @router.patch(
     "/{todo_id}",
-    response_model=schemas.TodoOut, # レスポンスのPydanticモデルを指定（更新されたアイテム）
-    status_code=status.HTTP_200_OK # 成功時のHTTPステータスコードを明示的に指定（200 OK）
+    response_model=schemas.TodoOut,  # レスポンスのPydanticモデルを指定（更新されたアイテム）
+    status_code=status.HTTP_200_OK  # 成功時のHTTPステータスコードを明示的に指定（200 OK）
 )
-# todo_id（パスパラメータ）とtodo（リクエストボディ）を受け取る
 async def update_todo(
-    todo_id: int,
-    todo: schemas.TodoUpdate, # リクエストボディをschemas.TodoUpdateモデルで検証
-    db: AsyncSession = Depends(get_db),
-    current_user: schemas.UserOut = Depends(get_current_user),
+    todo_id: int,  # URLパスから更新対象のToDoのIDを取得
+    todo: schemas.TodoUpdate,  # リクエストボディをschemas.TodoUpdateモデルで検証
+    db: AsyncSession = Depends(get_db),  # DBセッションを依存性注入で取得
+    current_user: schemas.UserOut = Depends(get_current_user),  # 認証済みユーザー情報を取得
 ) -> schemas.TodoOut:
     """
-    指定されたIDのToDoアイテムを更新します。
+    指定されたIDのToDoアイテムを更新します（部分更新対応）。
+    
+    【処理の流れ】
+    1. URLパスから更新対象のToDoのIDを取得
+    2. リクエストボディから更新する項目を受け取る（全項目必須ではない）
+    3. 指定されたIDのToDoが存在し、かつログインユーザーの所有であることを確認
+    4. 指定された項目のみをデータベースで更新
+    5. 更新後のToDoアイテムの情報を返却
+    
+    【パラメータ】
+    - todo_id: 更新対象のToDoのID（URLパスパラメータ）
+    - todo: 更新する項目（title, description, completedなど、指定された項目のみ更新）
+    - db: データベースセッション（自動注入）
+    - current_user: 認証済みユーザー情報（自動注入）
+    
+    【戻り値】
+    - 更新されたToDoアイテムの完全な情報
+    
+    【エラー】
+    - 401 Unauthorized: 認証トークンが無効または期限切れの場合
+    - 404 Not Found: 指定されたIDのToDoが存在しない、または他のユーザーの所有の場合
+    - 422 Unprocessable Entity: リクエストボディのバリデーションエラー
     """
     # crudモジュールの非同期関数を呼び出し、ToDoアイテムを更新
+    # owner_idを指定することで、ログインユーザーのToDoのみを更新可能にする
     updated = await crud.update_todo(db, todo_id=todo_id, todo=todo, owner_id=current_user.id)
     
-    # 更新対象が見つからなかった場合
-    if updated is None: # Noneチェックのほうがより明示的で安全
-        # 404 Not Foundエラーを発生
+    # 更新対象が見つからなかった場合（存在しないIDまたは他のユーザーの所有）
+    if updated is None:  # Noneチェックのほうがより明示的で安全
+        # 404 Not Foundエラーを発生させ、クライアントに通知
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, # 404 Not Found
-            detail=f"Todo with id {todo_id} not found" # 詳細なエラーメッセージ
+            status_code=status.HTTP_404_NOT_FOUND,  # 404 Not Found
+            detail=f"Todo with id {todo_id} not found"  # 詳細なエラーメッセージ
         )
-    return updated # 更新されたToDoアイテムを返す
+    return updated  # 更新されたToDoアイテムを返す
 
-# --- ToDoアイテムの削除 ---
+
+# ===========================
+# ToDoアイテムの削除
+# ===========================
 @router.delete(
     "/{todo_id}",
-    status_code=status.HTTP_200_OK, # 成功時のHTTPステータスコードを明示的に指定（200 OK）
+    status_code=status.HTTP_200_OK,  # 成功時のHTTPステータスコードを明示的に指定（200 OK）
     # 削除成功時はレスポンスボディとしてJSONオブジェクトを返すためresponse_modelは不要
 )
-# todo_id（パスパラメータ）を受け取る
 async def delete_todo(
-    todo_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: schemas.UserOut = Depends(get_current_user),
-) -> dict: # 辞書型（JSONオブジェクト）を返すことを示唆
+    todo_id: int,  # URLパスから削除対象のToDoのIDを取得
+    db: AsyncSession = Depends(get_db),  # DBセッションを依存性注入で取得
+    current_user: schemas.UserOut = Depends(get_current_user),  # 認証済みユーザー情報を取得
+) -> dict:  # 辞書型（JSONオブジェクト）を返すことを示唆
     """
     指定されたIDのToDoアイテムを削除します。
+    
+    【処理の流れ】
+    1. URLパスから削除対象のToDoのIDを取得
+    2. 指定されたIDのToDoが存在し、かつログインユーザーの所有であることを確認
+    3. データベースから該当のToDoアイテムを削除
+    4. 削除成功メッセージを返却
+    
+    【パラメータ】
+    - todo_id: 削除対象のToDoのID（URLパスパラメータ）
+    - db: データベースセッション（自動注入）
+    - current_user: 認証済みユーザー情報（自動注入）
+    
+    【戻り値】
+    - 削除成功メッセージと削除されたToDoのIDを含むJSONオブジェクト
+    
+    【エラー】
+    - 401 Unauthorized: 認証トークンが無効または期限切れの場合
+    - 404 Not Found: 指定されたIDのToDoが存在しない、または他のユーザーの所有の場合
     """
     # crudモジュールの非同期関数を呼び出し、ToDoアイテムを削除
+    # owner_idを指定することで、ログインユーザーのToDoのみを削除可能にする
     deleted = await crud.delete_todo(db, todo_id=todo_id, owner_id=current_user.id)
     
-    # 削除対象が見つからなかった場合
-    if not deleted: # bool値のFalseが返された場合（削除対象が見つからない/削除に失敗）
-        # 404 Not Foundエラーを発生
+    # 削除対象が見つからなかった場合（存在しないIDまたは他のユーザーの所有）
+    if not deleted:  # bool値のFalseが返された場合（削除対象が見つからない/削除に失敗）
+        # 404 Not Foundエラーを発生させ、クライアントに通知
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, # 404 Not Found
-            detail=f"Todo with id {todo_id} not found" # 詳細なエラーメッセージ
+            status_code=status.HTTP_404_NOT_FOUND,  # 404 Not Found
+            detail=f"Todo with id {todo_id} not found"  # 詳細なエラーメッセージ
         )
     # 削除成功メッセージを返す
     return {"message": "Deleted successfully", "todo_id": todo_id}
 
-# --- ToDo並び替え ---
+
+# ===========================
+# ToDoアイテムの並び替え
+# ===========================
 @router.post("/reorder", status_code=status.HTTP_200_OK)
 async def reorder_todos(
-    payload: schemas.TodoReorder,
-    db: AsyncSession = Depends(get_db),
-    current_user: schemas.UserOut = Depends(get_current_user),
+    payload: schemas.TodoReorder,  # リクエストボディから新しい並び順（IDのリスト）を取得
+    db: AsyncSession = Depends(get_db),  # DBセッションを依存性注入で取得
+    current_user: schemas.UserOut = Depends(get_current_user),  # 認証済みユーザー情報を取得
 ):
     """
-    ToDoの並び順を更新します。
+    ToDoアイテムの並び順を更新します。
+    
+    【処理の流れ】
+    1. リクエストボディから新しい並び順（ToDoのIDリスト）を受け取る
+    2. 各ToDoのorder_indexを新しい順序に従って更新
+    3. ログインユーザーのToDoのみを対象とする
+    4. 更新成功メッセージを返却
+    
+    【パラメータ】
+    - payload: 新しい並び順を表すToDoのIDリスト（todo_ids）
+    - db: データベースセッション（自動注入）
+    - current_user: 認証済みユーザー情報（自動注入）
+    
+    【戻り値】
+    - 並び替え成功メッセージを含むJSONオブジェクト
+    
+    【エラー】
+    - 401 Unauthorized: 認証トークンが無効または期限切れの場合
+    - 422 Unprocessable Entity: リクエストボディのバリデーションエラー
+    
+    【使用例】
+    ドラッグ&ドロップでToDoの順序を変更した際に、フロントエンドから
+    新しい順序のIDリストを送信してデータベースに反映させます。
     """
+    # crudモジュールの非同期関数を呼び出し、ToDoの並び順を更新
+    # owner_idを指定することで、ログインユーザーのToDoのみを並び替え可能にする
     await crud.reorder_todos(db, todo_ids=payload.todo_ids, owner_id=current_user.id)
     return {"message": "Order updated"}

@@ -1,8 +1,11 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession # 非同期エンジンと非同期セッションをインポート
-from sqlalchemy.orm import sessionmaker, declarative_base          # セッション作成関数と宣言的基底クラスをインポート
-from typing import AsyncGenerator                                  # get_db関数の戻り値の型ヒントのためにインポート
-import os                                                          # 環境変数を読み込むためにインポート
-import logging                                                   # ロギングをインポート
+from __future__ import annotations  # Python 3.10+: 型ヒントの前方参照を簡潔に
+
+import logging  # ロギングをインポート
+import os  # 環境変数を読み込むためにインポート
+from collections.abc import AsyncGenerator  # Python 3.9+: typing.AsyncGeneratorより推奨
+
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine  # 非同期エンジンと非同期セッションをインポート
+from sqlalchemy.orm import declarative_base, sessionmaker  # セッション作成関数と宣言的基底クラスをインポート
 
 
 # 環境変数からデータベース接続URLを取得

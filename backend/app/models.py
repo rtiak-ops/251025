@@ -1,6 +1,10 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey
-from sqlalchemy.orm import relationship
+from __future__ import annotations  # Python 3.10+: 型ヒントの前方参照を簡潔に
+
 from datetime import datetime, timezone
+
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
+
 from .database import Base  # Baseクラスが定義されている場所に応じてインポート
 # from your_project_name.database import Base # 例: プロジェクト名を使った絶対インポート推奨
 

@@ -56,5 +56,4 @@ jobs:
         # カレントディレクトリをパスに通し、pytestがモジュールを見つけられるようにします
         export PYTHONPATH=$PYTHONPATH:.
         # testsフォルダ内のテストをすべて実行します
-        # 警告の原因となる古いオプションを上書きして実行
-        pytest -o "python_paths=" tests/
+        pytest tests/

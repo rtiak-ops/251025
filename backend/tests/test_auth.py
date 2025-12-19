@@ -37,10 +37,10 @@ async def test_login_success(client):
         "/auth/register",
         json={"email": email, "password": password, "username": email},
     )
-    # ログインは「data=」で「username」として送る
+    # ログインは JSON で email と password を送る
     response = await client.post(
         "/auth/login",
-        data={"username": email, "password": password},
+        json={"email": email, "password": password},
     )
     assert response.status_code == 200
     data = response.json()
@@ -57,6 +57,8 @@ async def test_login_failure(client):
     )
     response = await client.post(
         "/auth/login",
-        data={"username": email, "password": "wrongpassword"},
+        json={"email": email, "password": "wrongpassword"},
     )
+    if response.status_code != 401:
+        print(f"DEBUG: status={response.status_code}, body={response.text}")
     assert response.status_code == 401

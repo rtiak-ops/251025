@@ -19,6 +19,8 @@ import os
 
 # app.database のインポート時に DATABASE_URL が必要なので、事前にダミーを設定
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+# テスト実行中であることを示すフラグをセット（レート制限を無効化するため）
+os.environ["TESTING"] = "true"
 
 import pytest
 from httpx import ASGITransport, AsyncClient

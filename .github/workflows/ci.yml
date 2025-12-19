@@ -26,12 +26,12 @@ jobs:
     # 1. コードの取得
     # 実行環境にあなたのプログラムをコピーします
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     # 2. Pythonの準備
     # 開発環境と同じバージョン（3.13）を用意して、動作の不一致を防ぎます
     - name: Set up Python 3.13
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: "3.13"
 
@@ -50,8 +50,11 @@ jobs:
         # 【重要】アプリがデータベース接続を求める場合、ここで「仮の住所」を教えます。
         # 実際のデータベースには繋ぎませんが、エラーで止まるのを防ぐための「おまじない」です。
         DATABASE_URL: "postgresql+asyncpg://dummy:dummy@localhost/dummy"
+        # ↓ これを追加：テスト環境であることをアプリに伝える
+        TESTING: "true"
       run: |
         # カレントディレクトリをパスに通し、pytestがモジュールを見つけられるようにします
         export PYTHONPATH=$PYTHONPATH:.
         # testsフォルダ内のテストをすべて実行します
-        pytest tests/
+        # 警告の原因となる古いオプションを上書きして実行
+        pytest -o "python_paths=" tests/

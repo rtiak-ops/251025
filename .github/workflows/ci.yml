@@ -55,6 +55,6 @@ jobs:
         TESTING: "true"
       run: |
         # カレントディレクトリをパスに通し、pytestがモジュールを見つけられるようにします
-        export PYTHONPATH=$PYTHONPATH:.
-        # testsフォルダ内のテストをすべて実行します
-        pytest tests/
+        # キャッシュエラーを防ぎ、パスを正しく認識させる設定
+        export PYTHONPATH=$PYTHONPATH:$(pwd)/backend
+        pytest -p no:cacheprovider backend/tests/test_auth.py

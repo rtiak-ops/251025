@@ -11,39 +11,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. コードの取得
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # 2. Python 3.13 のセットアップ
     - name: Set up Python 3.13
       uses: actions/setup-python@v5
       with:
         python-version: "3.13"
 
-    # 3. 依存ライブラリのインストール
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        # backendフォルダの中に移動してインストールを実行
-        if [ -f backend/requirements.txt ]; then
+        # backend フォルダがあることを確認してからインストール
+        if [ -d "backend" ]; then
           pip install -r backend/requirements.txt
+        else
+          # ルートに直置きされている場合
+          pip install -r requirements.txt
         fi
 
-    # 4. テストの実行（ここが修正の肝です）
     - name: Run tests with pytest
       env:
         DATABASE_URL: "postgresql+asyncpg://dummy:dummy@localhost/dummy"
         TESTING: "true"
+        # 【最重要】設定ファイル(ini)を無視して、環境変数で強制的にモードを AUTO にします
+        PYTEST_ASYNCIO_MODE: "auto"
       run: |
-        # backendディレクトリをPythonの検索パスに絶対パスで追加
+        # 1. PYTHONPATH を絶対パスで設定
         export PYTHONPATH=${{ github.workspace }}/backend
         
-        # 設定ファイル(pytest.ini)に頼らず、すべての設定をコマンド引数で強制注入
-        # --rootdir で rootdir: /dev になる問題を物理的に解決
-        python -m pytest -v \
+        # 2. --rootdir で rootdir: /dev になる問題を物理的に防ぐ
+        # 3. -p no:cacheprovider で権限エラーを完全に封じ込める
+        # 4. python -m pytest で、正しいPython環境のpytestを呼び出す
+        python3 -m pytest -v \
           --rootdir=${{ github.workspace }}/backend \
           -p no:cacheprovider \
-          -o "asyncio_mode=auto" \
-          -o "asyncio_default_fixture_loop_scope=function" \
           ${{ github.workspace }}/backend/tests/test_auth.py

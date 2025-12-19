@@ -10,6 +10,11 @@ jobs:
   test-backend:
     runs-on: ubuntu-latest
 
+    # 【重要】すべての処理を backend フォルダ基準で行います
+    defaults:
+      run:
+        working-directory: ./backend
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -22,28 +27,23 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        # backend フォルダがあることを確認してからインストール
-        if [ -d "backend" ]; then
-          pip install -r backend/requirements.txt
-        else
-          # ルートに直置きされている場合
-          pip install -r requirements.txt
-        fi
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
     - name: Run tests with pytest
       env:
         DATABASE_URL: "postgresql+asyncpg://dummy:dummy@localhost/dummy"
         TESTING: "true"
-        # 【最重要】設定ファイル(ini)を無視して、環境変数で強制的にモードを AUTO にします
+        # 設定ファイルが読み込まれない場合の「保険」として環境変数でも AUTO を指定
         PYTEST_ASYNCIO_MODE: "auto"
       run: |
-        # 1. PYTHONPATH を絶対パスで設定
-        export PYTHONPATH=${{ github.workspace }}/backend
+        # 1. カレントディレクトリをパスに通す
+        export PYTHONPATH=$PYTHONPATH:.
         
-        # 2. --rootdir で rootdir: /dev になる問題を物理的に防ぐ
-        # 3. -p no:cacheprovider で権限エラーを完全に封じ込める
-        # 4. python -m pytest で、正しいPython環境のpytestを呼び出す
-        python3 -m pytest -v \
-          --rootdir=${{ github.workspace }}/backend \
+        # 2. 【最重要】「-c /dev/null」を削除しました。
+        # 代わりに「-c pytest.ini」で設定を強制読み込みし、
+        # 「--rootdir=.」で rootdir: /dev になるバグを物理的に防ぎます。
+        python -m pytest -v \
+          --rootdir=. \
+          -c pytest.ini \
           -p no:cacheprovider \
-          ${{ github.workspace }}/backend/tests/test_auth.py
+          tests/test_auth.py

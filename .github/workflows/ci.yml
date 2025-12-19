@@ -57,4 +57,4 @@ jobs:
         # カレントディレクトリをパスに通し、pytestがモジュールを見つけられるようにします
         export PYTHONPATH=$PYTHONPATH:.
         # testsフォルダ内のテストをすべて実行します
-        pytest tests/
+        pytest -W "ignore:Unknown config option:pytest.PytestConfigWarning" tests/

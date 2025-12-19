@@ -50,10 +50,15 @@ jobs:
         DATABASE_URL: "postgresql+asyncpg://dummy:dummy@localhost/dummy"
         TESTING: "true"
       run: |
-        # すでに defaults で backend フォルダにいるため、パスの指定を調整します。
-        # 1. PYTHONPATH にカレントディレクトリ（backend）を追加
-        export PYTHONPATH=$PYTHONPATH:.
+        # 1. 確実に backend ディレクトリに移動してから実行
+        cd ${GITHUB_WORKSPACE}/backend
         
-        # 2. キャッシュ無効化、設定ファイル明示、テストファイル指定
-        # backend フォルダ内に pytest.ini があるため、そのまま pytest を実行すれば読み込まれます。
-        pytest -p no:cacheprovider -c pytest.ini tests/test_auth.py
+        # 2. PYTHONPATH を絶対パスで上書き
+        export PYTHONPATH=${GITHUB_WORKSPACE}/backend
+        
+        # 3. 設定をコマンドライン引数で「直接」注入する
+        # これにより pytest.ini の読み込み失敗を物理的に回避します
+        pytest -p no:cacheprovider \
+               -o "asyncio_mode=auto" \
+               -o "asyncio_default_fixture_loop_scope=function" \
+               tests/test_auth.py

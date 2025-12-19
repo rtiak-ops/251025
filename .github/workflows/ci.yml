@@ -57,5 +57,4 @@ jobs:
         # カレントディレクトリをパスに通し、pytestがモジュールを見つけられるようにします
         export PYTHONPATH=$PYTHONPATH:.
         # testsフォルダ内のテストをすべて実行します
-        # 「-W ignore」を追加して、特定の警告を強制的に非表示にします
-        pytest -W "ignore:Unknown config option:pytest.PytestConfigWarning" tests/
+        pytest tests/

@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager  # ライフサイクル管理のた�
 
 from fastapi import FastAPI  # FastAPI のメインクラスをインポート
 from fastapi.middleware.cors import CORSMiddleware  # CORSミドルウェアをインポート
-from pythonjsonlogger import jsonlogger  # JSONロガー
+from pythonjsonlogger import json  # JSONロガー
 from slowapi import Limiter, _rate_limit_exceeded_handler  # Rate Limiting
 from slowapi.errors import RateLimitExceeded  # Rate Limiting
 from slowapi.middleware import SlowAPIMiddleware  # Rate Limiting

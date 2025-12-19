@@ -44,21 +44,23 @@ jobs:
         pip uninstall -y pytest-pythonpath
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-    # 4. テストの実行
+   # 4. テストの実行
     - name: Run tests with pytest
       env:
         DATABASE_URL: "postgresql+asyncpg://dummy:dummy@localhost/dummy"
         TESTING: "true"
       run: |
-        # 1. 確実に backend ディレクトリに移動してから実行
-        cd ${GITHUB_WORKSPACE}/backend
+        # 1. 物理的なカレントディレクトリを強制的に確認・移動
+        # フォルダ構造を無視して、tests/test_auth.py がある場所へ直接飛びます
+        cd backend || true
         
-        # 2. PYTHONPATH を絶対パスで上書き
-        export PYTHONPATH=${GITHUB_WORKSPACE}/backend
+        # 2. PYTHONPATHを絶対パスで固定
+        export PYTHONPATH=$(pwd)
         
-        # 3. 設定をコマンドライン引数で「直接」注入する
-        # これにより pytest.ini の読み込み失敗を物理的に回避します
-        pytest -p no:cacheprovider \
-               -o "asyncio_mode=auto" \
-               -o "asyncio_default_fixture_loop_scope=function" \
-               tests/test_auth.py
+        # 3. 設定ファイル(ini)を無視して、すべての設定を「引数」で強制注入
+        # mode=Mode.STRICT を破壊して Mode.AUTO に書き換えます
+        python -m pytest -p no:cacheprovider \
+          -o "asyncio_mode=auto" \
+          -o "asyncio_default_fixture_loop_scope=function" \
+          -o "pythonpath=." \
+          tests/test_auth.py

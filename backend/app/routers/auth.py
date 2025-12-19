@@ -1,4 +1,6 @@
-from __future__ import annotations  # Python 3.10+: 型ヒントの前方参照を簡潔に
+from __future__ import annotations
+from typing import Annotated
+  # Python 3.10+: 型ヒントの前方参照を簡潔に
 
 from datetime import timedelta
 
@@ -24,7 +26,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/register", response_model=schemas.UserOut, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
-async def register(user: schemas.UserCreate = Body(..., embed=False), request: Request = None, db: AsyncSession = Depends(get_db)):
+async def register(user: Annotated[schemas.UserCreate, Body(embed=False)], request: Request, db: AsyncSession = Depends(get_db)):
     """
     新規ユーザー登録エンドポイント
     
@@ -68,7 +70,7 @@ async def register(user: schemas.UserCreate = Body(..., embed=False), request: R
 
 @router.post("/login", response_model=schemas.Token)
 @limiter.limit("5/minute")
-async def login(user: schemas.UserCreate = Body(..., embed=False), request: Request = None, db: AsyncSession = Depends(get_db)):
+async def login(user: Annotated[schemas.UserCreate, Body(embed=False)], request: Request, db: AsyncSession = Depends(get_db)):
     """
     ユーザーログインエンドポイント
     

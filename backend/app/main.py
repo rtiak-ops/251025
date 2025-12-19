@@ -33,8 +33,8 @@ from .routers import ai, auth, todos  # ToDo関連のエンドポイント（ル
 #  - 「運用時の可観測性（Observability）」を高めるための重要な設定です
 logger = logging.getLogger(__name__)
 logHandler = logging.StreamHandler(sys.stdout)
-formatter = jsonlogger.JsonFormatter(
-    "%(asctime)s %(levelname)s %(name)s %(message)s",
+formatter = json.JsonFormatter(
+    '%(timestamp)s %(level)s %(name)s %(message)s',
     json_ensure_ascii=False
 )
 logHandler.setFormatter(formatter)

@@ -1,66 +1,49 @@
 name: CI
 
-# 【トリガー設定】
-# いつこの自動処理を動かすかを決めます
 on:
   push:
-    # メインのコードが更新された時に、壊れていないか自動チェックします
     branches: [ "main", "master" ]
   pull_request:
-    # 本番に取り込む前に、テストが通ることを確認するために動かします
     branches: [ "main", "master" ]
 
-# 【ジョブ定義】
-# GitHubが用意してくれる「まっさらなPC（仮想マシン）」上で行う作業手順です
 jobs:
   test-backend:
-    # 常に最新かつ安定したUbuntu環境を利用します
     runs-on: ubuntu-latest
-
-    # 「backend」フォルダの中にソースコードがある構成に対応しています
-    defaults:
-      run:
-        working-directory: ./backend
 
     steps:
     # 1. コードの取得
-    # 実行環境にあなたのプログラムをコピーします
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # 2. Pythonの準備
-    # 開発環境と同じバージョン（3.13）を用意して、動作の不一致を防ぎます
+    # 2. Python 3.13 のセットアップ
     - name: Set up Python 3.13
       uses: actions/setup-python@v5
       with:
         python-version: "3.13"
 
-    # 3. ライブラリの導入
-    # 実行に必要なツールをすべてインストールします
+    # 3. 依存ライブラリのインストール
     - name: Install dependencies
       run: |
-        # pip自体を最新にすることで、インストールエラーのリスクを減らします
         python -m pip install --upgrade pip
-        pip uninstall -y pytest-pythonpath
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        # backendフォルダの中に移動してインストールを実行
+        if [ -f backend/requirements.txt ]; then
+          pip install -r backend/requirements.txt
+        fi
 
-   # 4. テストの実行
+    # 4. テストの実行（ここが修正の肝です）
     - name: Run tests with pytest
       env:
         DATABASE_URL: "postgresql+asyncpg://dummy:dummy@localhost/dummy"
         TESTING: "true"
       run: |
-        # 1. 物理的なカレントディレクトリを強制的に確認・移動
-        # フォルダ構造を無視して、tests/test_auth.py がある場所へ直接飛びます
-        cd backend || true
+        # backendディレクトリをPythonの検索パスに絶対パスで追加
+        export PYTHONPATH=${{ github.workspace }}/backend
         
-        # 2. PYTHONPATHを絶対パスで固定
-        export PYTHONPATH=$(pwd)
-        
-        # 3. 設定ファイル(ini)を無視して、すべての設定を「引数」で強制注入
-        # mode=Mode.STRICT を破壊して Mode.AUTO に書き換えます
-        python -m pytest -p no:cacheprovider \
+        # 設定ファイル(pytest.ini)に頼らず、すべての設定をコマンド引数で強制注入
+        # --rootdir で rootdir: /dev になる問題を物理的に解決
+        python -m pytest -v \
+          --rootdir=${{ github.workspace }}/backend \
+          -p no:cacheprovider \
           -o "asyncio_mode=auto" \
           -o "asyncio_default_fixture_loop_scope=function" \
-          -o "pythonpath=." \
-          tests/test_auth.py
+          ${{ github.workspace }}/backend/tests/test_auth.py

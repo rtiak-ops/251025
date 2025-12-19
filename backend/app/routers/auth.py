@@ -1,128 +1,36 @@
-from __future__ import annotations
-from typing import Annotated
-  # Python 3.10+: 型ヒントの前方参照を簡潔に
-
-from datetime import timedelta
-
-from fastapi import APIRouter, Depends, HTTPException, Request, status, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from .. import crud, schemas
-from ..auth import create_access_token
+from .. import crud, schemas, auth
 from ..database import get_db
-from ..limiter import limiter
 
-# ----------------------------------------------------------------------
-# 認証関連のAPIエンドポイントを定義するルーター
-# ----------------------------------------------------------------------
-# このモジュールは、ユーザー登録（サインアップ）とログイン（サインイン）の機能を提供します。
-# FastAPIの APIRouter を使用して、メインのアプリケーションからエンドポイントを分割して管理しています。
-
-# APIRouterインスタンスを作成
-# prefix="/auth": このルーター内の全エンドポイントのURLの先頭に /auth が付きます（例: /auth/login）
-# tags=["Auth"]: Swagger UIなどのAPIドキュメントで「Auth」グループとして表示され、整理されやすくなります
-router = APIRouter(prefix="/auth", tags=["Auth"])
-
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register", response_model=schemas.UserOut, status_code=status.HTTP_201_CREATED)
-@limiter.limit("5/minute")
-async def register(user: Annotated[schemas.UserCreate, Body(embed=False)], request: Request, db: AsyncSession = Depends(get_db)):
-    """
-    新規ユーザー登録エンドポイント
-    
-    メールアドレスとパスワードを受け取り、新しいユーザーアカウントを作成します。
-    パスワードはセキュリティのため、ハッシュ化（不可逆暗号化）されてデータベースに保存されます。
-    
-    Args:
-        request: FastAPIのリクエストオブジェクト（Rate LimitでIP制限するために必要）
-        user: リクエストボディから受け取るユーザー作成データ（メールアドレス、パスワード）。
-              schemas.UserCreate モデルによるバリデーション（形式チェック）を通過したデータです。
-        db: データベースセッション。FastAPIの依存性注入（Dependency Injection）により提供されます。
-    
-    Returns:
-        作成されたユーザー情報（schemas.UserOut）。
-        セキュリティ上の理由から、レスポンスにはパスワード（ハッシュ値含む）を含めません。
-    
-    Raises:
-        HTTPException: メールアドレスが既に登録されている場合（400 Bad Request）
-    """
-    # 1. 重複チェック
-    # 受け取ったメールアドレスが、既にデータベースに存在するかを確認します。
-    # await を使用して、非同期にデータベース検索を行います（I/O待ち時間の効率化）。
-    existing = await crud.get_user_by_email(db, email=user.email)
-    
-    # 既に存在する場合は、重複エラーとして 400 Bad Request を返します。
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="このメールアドレスは既に登録されています",
-        )
-    
-    # 2. ユーザー作成
-    # バリデーションと重複チェックをパスした場合のみ、ユーザーを作成します。
-    # CRUD操作を行う関数内で、パスワードのハッシュ化などの処理が行われます。
-    created = await crud.create_user(db, user=user)
-    
-    # 3. レスポンス
-    # 作成されたユーザー情報を返します（パスワードフィールドは除外されています）。
-    return created
-
+async def register(
+    user: schemas.UserCreate = Body(...), # Body(...) を追加
+    db: AsyncSession = Depends(get_db)
+):
+    db_user = await crud.get_user_by_email(db, email=user.email)
+    if db_user:
+        raise HTTPException(status_code=400, detail="このメールアドレスは既に登録されています")
+    return await crud.create_user(db=db, user=user)
 
 @router.post("/login", response_model=schemas.Token)
-@limiter.limit("5/minute")
-async def login(user: Annotated[schemas.UserCreate, Body(embed=False)], request: Request, db: AsyncSession = Depends(get_db)):
-    """
-    ユーザーログインエンドポイント
-    
-    メールアドレスとパスワードによる認証を行い、成功した場合に JWT (JSON Web Token) を発行します。
-    クライアントはこのトークンを使用することで、以降の認証が必要なリクエストを行うことができます。
-    
-    Args:
-        user: ログイン用のユーザーデータ（schemas.UserCreate を流用）。
-        db: データベースセッション。
-    
-    Returns:
-        アクセストークンとトークンタイプを含むオブジェクト。
-    
-    Raises:
-        HTTPException: 認証失敗時（401 Unauthorized）。
-    """
-    # 1. ユーザー認証処理
-    # 入力されたメールアドレスとパスワード（平文）を使って、データベースのユーザーと照合します。
-    # authenticate_user 関数内で、入力パスワードをハッシュ化し、DB保存のハッシュ値と比較します。
-    db_user = await crud.authenticate_user(db, email=user.email, password=user.password)
-    
-    # 2. 認証失敗時のハンドリング
-    # ユーザーが見つからない、またはパスワードが不一致の場合
-    if not db_user:
+async def login(
+    # UserLogin がないので UserCreate を使用。Body(...) でJSON入力を強制。
+    login_data: schemas.UserCreate = Body(...), 
+    db: AsyncSession = Depends(get_db)
+):
+    # crud側の関数名や引数名は、プロジェクトの実装に合わせて調整してください
+    user = await crud.authenticate_user(
+        db, email=login_data.email, password=login_data.password
+    )
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="メールアドレスまたはパスワードが間違っています",
-            # WWW-Authenticateヘッダーは、クライアントにどのような認証が必要か（ここではBearer）を伝えます
+            detail="メールアドレスまたはパスワードが正しくありません",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # 3. アクセストークン (JWT) の生成
-    # 認証に成功したら、一時的なアクセス許可証であるトークンを作成します。
-    # 
-    # 【トークンに含まれる情報】
-    # sub (Subject): トークンが誰のものかを示す識別子。ここでは一意なメールアドレスを使用しています。
-    # exp (Expiration): トークンの有効期限。セキュリティのため、必要最小限（例: 60分）に設定します。
-    # 
-    # 【生成されるトークンの例】
-    # eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyQGV4YW1wbGUuY29tIiwiZXhwIjoxNjk5OTk5OTk5fQ.signature
-    # ↑ この長い文字列が、クライアントに返されるJWTトークンです
-    # 
-    # 【クライアント側での使用方法】
-    # 1. このトークンをlocalStorageやcookieに保存
-    # 2. 以降の認証が必要なAPIリクエストで、HTTPヘッダーに以下を付与:
-    #    Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-    # 3. サーバー側で自動的にトークンを検証し、ユーザーを特定
-    access_token = create_access_token(
-        data={"sub": db_user.email},  # トークンに含めるユーザー識別情報
-        expires_delta=timedelta(minutes=60),  # トークンの有効期限（60分）
-    )
-    
-    # 4. レスポンス
-    # 生成したアクセストークンを返します。
-    return schemas.Token(access_token=access_token)
+    access_token = auth.create_access_token(data={"sub": user.email})
+    return {"access_token": access_token, "token_type": "bearer"}

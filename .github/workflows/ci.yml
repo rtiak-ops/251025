@@ -41,6 +41,7 @@ jobs:
       run: |
         # pip自体を最新にすることで、インストールエラーのリスクを減らします
         python -m pip install --upgrade pip
+        pip uninstall -y pytest-pythonpath
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
     # 4. テストの実行

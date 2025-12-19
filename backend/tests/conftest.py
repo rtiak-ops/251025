@@ -15,6 +15,11 @@ pytestが自動的に読み込む特別な設定ファイルです。
 
 from __future__ import annotations  # Python 3.10+: 型ヒントの前方参照を簡潔に
 
+import os
+
+# app.database のインポート時に DATABASE_URL が必要なので、事前にダミーを設定
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine

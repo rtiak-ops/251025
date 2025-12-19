@@ -39,9 +39,8 @@
 - **可観測性 (Observability)**: `python-json-logger` による構造化ログ（JSON）で、Datadog/CloudWatch等での解析に対応。
 - **非同期設計**: FastAPI (`async/await`) を全面採用し、高負荷に強いアーキテクチャ。
 
-### 2. 品質保証 (QA & CI/CD)
+### 2. 品質保証 (QA)
 - **自動テスト**: `pytest` + `sqlite(:memory:)` による高速かつクリーンなテスト環境。
-- **CI/CD**: GitHub Actions により、プッシュごとにテストと品質チェックを自動実行。
 
 ### 3. モダンなフロントエンド設計
 - **React + TypeScript + Vite**: 型安全かつ高速な開発体験。
@@ -65,7 +64,6 @@
 | **Testing** | pytest, httpx | インメモリSQLiteを用いた高速テスト |
 | **Security** | slowapi | レート制限 (Rate Limiting) |
 | **Infra** | Docker Compose | フルスタック環境のコード化 |
-| **CI/CD** | GitHub Actions | テスト自動化パイプライン |
 
 ---
 
@@ -120,7 +118,6 @@ docker compose exec backend pytest -v
 
 ```text
 .
-├── .github/workflows/   # CI/CD (GitHub Actions)
 ├── backend/
 │   ├── app/
 │   │   ├── routers/

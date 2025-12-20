@@ -1,123 +1,107 @@
-# 🚀 AWS EC2 サクッとデプロイガイド (HTTP版)
+# 🚀 AWS EC2 デプロイ・決定版ガイド (HTTP版)
 
-このガイドでは、AWSの無料枠を活用して、ToDoアプリを最短ルート（HTTP）で公開し、動作確認が終わったらすぐに削除する手順を解説します。
-
----
-
-## 📅 全体の流れ
-1. **AWS コンソール操作**: サーバー（EC2）を借りる
-2. **接続**: 自分の PC からサーバーにログインする
-3. **準備**: サーバーに Docker などの必要なソフトを入れる
-4. **デプロイ**: アプリを動かす
-5. **後片付け**: 課金されないようにサーバーを消す
+このガイドは、**Amazon Linux 2023** を使用して、Webアプリを「確実」「最速」で公開するための手順書です。
 
 ---
 
-## 🛠️ ステップ 1: AWS でサーバーを借りる (EC2)
-
-1. **EC2 ダッシュボードへ**:
-   - AWS コンソールで「EC2」を検索し、[インスタンスを起動] をクリックします。
-
-2. **基本設定**:
-   - **名前**: `todo-app-test`
-   - **OS (AMI)**: `Amazon Linux 2023` (Free Tier eligible)
-   - **インスタンスタイプ**: `t3.micro` (無料枠対象)
-
-3. **キーペア (ログイン用鍵)**:
-   - [新しいキーペアの作成] をクリック。
-   - 名前: `todo-key`
-   - 形式: `.pem`
-   - **大切**: ダウンロードしたファイルは安全な場所に保存してください。
-
-4. **ネットワーク設定 (重要)**:
-   - [編集] をクリック。
-   - **セキュリティグループ規則**:
-     - `SSH`: ポート 22 (ソース: 自分のIP)
-     - `HTTP`: ポート 80 (ソース: Anywhere 0.0.0.0/0)
-     - ※ポート 443 は今回は不要です。
-
-5. **起動**:
-   - 右下の [インスタンスを起動] をクリック。
+## � 事前準備チェックリスト
+作業を始める前に、以下が手元にあるか確認してください。
+- [ ] AWS アカウント
+- [ ] 作成済みのキーペア（`.pem` ファイル）
+- [ ] サーバーのパブリック IP アドレス
 
 ---
 
-## 🛠️ ステップ 2: サーバーにログインする (SSH)
-
-1. **IPアドレスを確認**:
-   - インスタンス一覧から、作成したものの「パブリック IPv4 アドレス」をコピーします (例: `54.12.34.56`)。
-
-2. **接続する**:
-   - ターミナル（PowerShell等）を開き、鍵がある場所に移動して実行：
-   ```bash
-   ssh -i "todo-key.pem" ec2-user@あなたのIPアドレス
-   ```
+## �🛠️ ステップ 1: AWS コンソールの設定 (重要)
+サーバーを借りる際、以下の設定を必ず行ってください。
+1. **セキュリティグループの設定**:
+   - `SSH` (22番ポート): 自分のIPのみ許可
+   - `HTTP` (80番ポート): **全員 (0.0.0.0/0) に開放** 👈 これを忘れるとサイトが見れません！
 
 ---
 
-## 🛠️ ステップ 3: サーバーのセットアップ
+## 🛠️ ステップ 2: サーバーのセットアップ
+ターミナル（PowerShellやMacのターミナル）からログインし、以下のコマンドを順番にコピー＆ペーストしてください。
 
-サーバー内で以下のコマンドを順番に実行してください。
+### 1. 基本ツールのインストール
+```bash
+# OSを最新の状態にする
+sudo dnf update -y
 
-1. **Docker のインストール**:
-   ```bash
-   sudo dnf update -y
-   sudo dnf install -y docker
-   sudo systemctl start docker
-   sudo systemctl enable docker
-   sudo usermod -aG docker ec2-user
-   ```
+# Docker（コンテナを動かす道具）と Git（コードを取得する道具）をインストール
+sudo dnf install -y docker git
 
-2. **Docker Compose のインストール**:
-   ```bash
-   sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-   sudo chmod +x /usr/local/bin/docker-compose
-   ```
+# Dockerを起動し、次回から自動で起動するように設定
+sudo systemctl start docker
+sudo systemctl enable docker
 
-3. **再ログイン**:
-   - グループ設定反映のため、一度ログアウトして再ログインします。
-   ```bash
-   exit
-   ssh -i "todo-key.pem" ec2-user@あなたのIPアドレス
-   ```
+# 現在のユーザー(ec2-user)で sudo なしで Docker を使えるようにする
+sudo usermod -aG docker ec2-user
+```
 
----
+### 2. Docker Compose (最新版) の導入
+標準の古いコマンドではなく、最新のプラグイン版を入れます。
+```bash
+# プラグイン用フォルダを作成
+mkdir -p ~/.docker/cli-plugins
 
-## 🛠️ ステップ 4: アプリの起動
+# Buildx (高速ビルドツール) のダウンロード
+curl -SL https://github.com/docker/buildx/releases/download/v0.19.3/buildx-v0.19.3.linux-amd64 -o ~/.docker/cli-plugins/docker-buildx
 
-1. **ソースコードを取得**:
-   ```bash
-   git clone https://github.com/rtiak-ops/251025
-   cd 251025
-   ```
+# Docker Compose のダウンロード
+curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose
 
-2. **設定の確認 (重要)**:
-   - 今回は HTTP で動かすため、設定が以下のようになっているか確認してください：
-   - `frontend/nginx.conf.template` で `return 301 https://...` がコメントアウトされていること。
-   - `docker-compose.yml` の `DOMAIN_NAME` が `localhost` 等になっていること。
+# 実行権限を与える
+chmod +x ~/.docker/cli-plugins/docker-buildx ~/.docker/cli-plugins/docker-compose
+```
 
-3. **起動**:
-   ```bash
-   docker-compose up -d --build
-   ```
-
-4. **動作確認**:
-   - ブラウザで `http://あなたのパブリックIPアドレス` を開きます。
-   - ToDoの追加やAI機能が動けば成功です！ 🎉
+### 3. 設定の反映 (一度ログアウト)
+```bash
+exit
+```
+**※ 設定を反映させるため、必ず一度ログアウトしてから再度 SSH でログインしてください。**
 
 ---
 
-## � (参考) 永続化・HTTPS 化したい場合
-もし「すぐ消さずに使い続けたい」となった場合は、追加で以下の作業が必要です：
-1. **ドメイン取得**: Route 53 等でドメインを取得し、IPを紐付ける
-2. **証明書取得**: Certbot を使って SSL 証明書を発行する
-3. **Nginx設定の戻し**: `nginx.conf.template` の HTTPS セクションを有効化する
+## � ステップ 3: アプリの起動
+再ログイン後、プロジェクトをダウンロードして起動します。
+
+```bash
+# 1. ソースコードを GitHub から取得
+git clone https://github.com/rtiak-ops/251025
+cd 251025
+
+# 2. アプリをビルドしてバックグラウンドで起動
+docker compose up -d --build
+```
+
+✅ **確認**: ブラウザで `http://あなたのIPアドレス` を開き、アプリが表示されれば成功です！
 
 ---
 
-## 🧹 ステップ 5: 後片付け (超重要)
-**使い終わったら必ず消しましょう。放置すると無料枠を超えて課金される可能性があります。**
+## 🔄 アプリを更新する方法
+PCでコードを変更して GitHub にプッシュした後は、サーバーで以下を実行するだけです。
 
-1. AWSコンソールで対象のインスタンスを選択。
-2. [インスタンスの状態] -> **[インスタンスを終了]** をクリック。
-   - ※「停止」ではなく「終了(Terminate)」です。これでサーバーが削除され、課金が止まります。
-3. 左メニュー [Elastic IP] を確認し、もしあれば「解放」してください（今回は割り当てていなければ不要です）。
+```bash
+cd ~/251025
+# 最新のコードを取得
+git pull origin main
+# 更新分を反映して再起動
+docker compose up -d --build
+```
+
+---
+
+## 🧹 ステップ 4: 後片付け (課金停止)
+使い終わったら、無駄な料金がかからないように以下の手順で削除してください。
+
+1. **インスタンスの「終了 (Terminate)」**:
+   - AWSコンソールで「インスタンスを終了」します。
+   - **注意**: 「停止 (Stop)」ではなく「終了 (Terminate)」を選んでください。停止だとディスク料金がかかり続けます。
+2. **Elastic IP の解放**:
+   - 固定IPを取得していた場合は、必ず「解放」してください。未使用のまま放置すると課金されます。
+3. **ボリューム (EBS) の確認**:
+   - 通常は終了時に消えますが、念のため「ボリューム」一覧で残っていないか確認しましょう。
+
+---
+💡 **Tips**: 何かエラーが出たら `docker compose logs -f` でログを確認できます。

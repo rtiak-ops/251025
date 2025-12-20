@@ -129,93 +129,125 @@ export default function App() {
   };
 
   return (
-    // 全体のレイアウトと背景色設定
-    <div className="min-h-screen bg-gray-100 text-gray-900 transition-colors duration-200 dark:bg-gray-900 dark:text-gray-100">
-      <div className="max-w-lg mx-auto p-4">
-        {/* ヘッダー部分 */}
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-center">ToDo リスト</h1>
-          {/* テーマ切り替えボタン */}
-          <button
-            className="rounded px-3 py-1 text-sm border border-gray-300 bg-white shadow-sm transition-colors duration-200 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            aria-label="カラーテーマを切り替え"
-          >
-            {theme === "dark" ? "☀️ ライト" : "🌙 ダーク"}
-          </button>
-        </div>
-
-        {/* 
-          条件付きレンダリング: 
-          tokenがない（未ログイン） -> AuthFormを表示
-          tokenがある（ログイン済） -> Todoリストを表示
-        */}
-        {!token ? (
-          <AuthForm onAuthenticated={handleAuthenticated} />
-        ) : (
-          <>
-            {/* ログアウトボタン */}
-            <div className="flex justify-end mb-2">
+    // 全体のレイアウト設定: 余白(py-8)やグラデーション背景(CSS側で定義)を適用
+    <div className="min-h-screen py-8 px-4">
+      <div className="max-w-2xl mx-auto">
+        {/* === ヘッダーセクション === */}
+        {/* glassクラス: index.cssで定義した「グラスモーフィズム（すりガラス効果）」を適用 */}
+        <header className="flex items-center justify-between mb-8 glass p-6 rounded-3xl">
+          <div>
+            {/* タイトル: グラデーションテキスト(bg-clip-text)を使用してプレミアム感を演出 */}
+            <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">
+              TaskFlow
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">日々のタスクをスタイリッシュに管理</p>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {/* ダークモード切り替えボタン: btn-secondaryユーティリティを使用 */}
+            <button
+              className="btn-secondary text-sm flex items-center gap-2"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              aria-label="テーマを切り替え"
+            >
+              {theme === "dark" ? "☀️ ライト" : "🌙 ダーク"}
+            </button>
+            
+            {/* ログイン時のみログアウトボタンを表示 */}
+            {token && (
               <button
-                className="text-sm text-blue-600 underline dark:text-blue-400"
+                className="text-sm font-medium text-slate-500 hover:text-red-500 transition-colors"
                 onClick={handleLogout}
               >
                 ログアウト
               </button>
-            </div>
-            
-            {/* Todo追加フォーム */}
-            <TodoForm onAdd={handleDataChange} />
+            )}
+          </div>
+        </header>
 
-            {/* Todoリスト表示エリア */}
-            <div className="mt-4 border rounded bg-white dark:border-gray-700 dark:bg-gray-800">
-              {isLoading ? (
-                // データ取得中はスケルトン（読み込み中のグレーの枠）を表示
-                <div className="p-4">
-                  <TodoSkeleton />
-                </div>
-              ) : todos.length === 0 ? (
-                // データが空の場合のメッセージ
-                <p className="p-4 text-center text-gray-500 dark:text-gray-300">
-                  ToDoはありません。追加しましょう！✨
-                </p>
-              ) : (
-                // データがある場合：ドラッグ＆ドロップ可能なリストを表示
-                <DragDropContext onDragEnd={handleDragEnd}>
-                  {/* Droppable: ドロップ可能な領域 */}
-                  <Droppable droppableId="todos">
-                    {(provided: any) => (
-                      <div
-                        {...provided.droppableProps}
-                        ref={provided.innerRef}
-                      >
-                        {todos.map((t, index) => (
-                          /* Draggable: ドラッグ可能な各アイテム */
-                          <Draggable key={t.id} draggableId={t.id.toString()} index={index}>
-                            {(provided: any) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className="border-b last:border-b-0 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
-                              >
-                                <TodoItem todo={t} onChange={handleDataChange} />
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                </DragDropContext>
-              )}
+        {/* === メインコンテンツエリア === */}
+        <main className="space-y-6">
+          {!token ? (
+            // 未ログイン時: 認証フォームをカード形式で表示
+            <div className="glass p-8 rounded-3xl">
+              <AuthForm onAuthenticated={handleAuthenticated} />
             </div>
-          </>
-        )}
+          ) : (
+            <>
+              {/* ログイン済: タスク追加フォーム */}
+              <div className="glass p-6 rounded-3xl mb-8">
+                <TodoForm onAdd={handleDataChange} />
+              </div>
+
+              {/* タスクリスト表示エリア */}
+              <div className="glass rounded-3xl overflow-hidden min-h-[400px]">
+                {isLoading ? (
+                  // ローディング中: スケルトンを表示してガタつきを防止
+                  <div className="p-8 space-y-4">
+                    <TodoSkeleton />
+                    <TodoSkeleton />
+                    <TodoSkeleton />
+                  </div>
+                ) : todos.length === 0 ? (
+                  // タスクが0件の場合のメッセージ: 達成感を促すデザイン
+                  <div className="p-20 text-center">
+                    <div className="text-5xl mb-4">✨</div>
+                    <p className="text-lg font-medium text-slate-500 dark:text-slate-400">
+                      すべてのタスクが完了しました！ゆっくり休みましょう。
+                    </p>
+                  </div>
+                ) : (
+                  // タスクがある場合: ドラッグ＆ドロップ可能なリストを表示
+                  <DragDropContext onDragEnd={handleDragEnd}>
+                    <Droppable droppableId="todos">
+                      {(provided) => (
+                        <div
+                          {...provided.droppableProps}
+                          ref={provided.innerRef}
+                          className="p-4"
+                        >
+                          {todos.map((t, index) => (
+                            <Draggable key={t.id} draggableId={t.id.toString()} index={index}>
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  // snapshot.isDragging: ドラッグ中のアイテムを強調(影を濃く、少し大きく)
+                                  className={`mb-3 rounded-2xl transition-all ${
+                                    snapshot.isDragging ? 'shadow-2xl scale-105 z-50' : ''
+                                  }`}
+                                >
+                                  {/* 個々のタスクアイテムの背景 */}
+                                  <div className="bg-white/50 dark:bg-slate-800/50 rounded-2xl border border-white/20 dark:border-slate-700/50">
+                                    <TodoItem todo={t} onChange={handleDataChange} />
+                                  </div>
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
+                )}
+              </div>
+            </>
+          )}
+        </main>
       </div>
-      {/* 通知用コンポーネント（画面右下に配置） */}
-      <Toaster position="bottom-right" />
+      
+      {/* 通知用コンポーネント: カスタマイズしてデザインを統一 */}
+      <Toaster 
+        position="bottom-right"
+        toastOptions={{
+          className: 'dark:bg-slate-800 dark:text-white rounded-xl border border-white/10',
+          duration: 3000,
+        }}
+      />
     </div>
   );
 }
+
+

@@ -21,102 +21,43 @@ interface Props {
  */
 export default function AuthForm({ onAuthenticated }: Props) {
   // --- 状態管理 (State) ---
-  
-  // 入力されたメールアドレスを保持
   const [email, setEmail] = useState("");
-  
-  // 入力されたパスワードを保持
   const [password, setPassword] = useState("");
-  
-  // 現在のモード: "login"(ログイン) か "register"(新規登録) か
-  const [mode, setMode] = useState<"login" | "register">("login");
-  
-  // 通信中かどうか（ボタンを無効化したり、ローディング表示に使う）
+  const [mode, setMode] = useState<"login" | "register">("login"); // ログイン or 新規登録
   const [isLoading, setIsLoading] = useState(false);
-  
-  // エラーメッセージ（ログイン失敗時などに表示）
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * フォーム送信時の処理
-   */
-  /**
-   * 【フォーム送信ハンドラ】
-   * ユーザーが「ログイン」または「登録」ボタンを押した時に実行されます。
+   * フォーム送信ハンドラ
    */
   const handleSubmit = async (e: React.FormEvent) => {
-    // フォームのデフォルト動作（ページリロード）をキャンセル
     e.preventDefault();
-
-    // ローディング状態を開始し、以前のエラーをクリア
     setIsLoading(true);
     setError(null);
 
     try {
-      // --- 1. 新規登録モードの場合 ---
+      // 1. 新規登録モードの場合はまずユーザー作成
       if (mode === "register") {
-        // バックエンドの /register エンドポイントを呼び出す
-        // 成功すればDBにユーザーが作られる
         await registerUser(email, password);
       }
 
-      // --- 2. ログイン処理 (登録時も直後にログインする仕様) ---
-      // バックエンドの /token エンドポイントを呼び出してトークンを取得
+      // 2. ログイン処理（登録直後も同様にログイン）
       const token = await loginUser(email, password);
       
-      // --- 3. 親コンポーネントに成功を通知 ---
-      // 取得したアクセストークンを渡して、アプリ全体を「ログイン状態」にする
+      // 3. 親コンポーネントにトークンを渡してログイン状態へ
       onAuthenticated(token.access_token);
       
     } catch (err: any) {
-      console.error("認証リクエスト失敗:", err); // ★コンソールで詳細を確認可能
+      console.error("認証エラー:", err);
+      let displayMessage = "認証に失敗しました。";
 
-      let displayMessage = "認証に失敗しました。メールとパスワードを確認してください。";
-
-      // 1. サーバーからのレスポンスがあるかチェック (errがAxiosErrorの場合)
-      if (err.response) {
-        const data = err.response.data;
-
-        // 2. 422 Unprocessable Entity の場合 (Pydanticバリデーションエラー)
-        if (err.response.status === 422 && data && Array.isArray(data.detail)) {
-          // Pydanticエラーの配列 (data.detail) を処理
-          displayMessage = data.detail
-            .map((d: any) => {
-              const field = d.loc[d.loc.length - 1]; // エラーが発生したフィールド名
-              const fieldName = (field === 'email' ? 'メールアドレス' : field === 'password' ? 'パスワード' : field);
-              
-              // エラーメッセージの翻訳・整形
-              let message = d.msg;
-              if (message.includes("value is not a valid email address")) {
-                message = "有効なメールアドレスの形式ではありません";
-              } else if (message === "Field required") {
-                message = "入力してください";
-              } else if (message.startsWith("Value error, ")) {
-                message = message.replace("Value error, ", "");
-              }
-
-              return `${fieldName}: ${message}`;
-            })
-            .join(' | ');
-
-        // 3. 400 Bad Request, 401 Unauthorized などの場合 (カスタムエラー)
-        } else if (data && data.detail) {
-          // detailが文字列または、安全に文字列化できるデータの場合
-          displayMessage = (typeof data.detail === 'string') 
-                         ? data.detail 
-                         : `サーバーからの応答: ${err.response.status}`;
-        }
-      } 
-      // 4. Axiosやネットワークエラーの場合
-      else if (err.message) {
-        displayMessage = err.message;
+      // Pydanticバリデーションエラーやカスタムエラーの詳細を取得
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        displayMessage = Array.isArray(detail) 
+          ? detail.map((d: any) => d.msg).join(", ") 
+          : detail;
       }
-      
-      // 5. 最終チェック: displayMessageがオブジェクトでないことを確認 (念のため)
-      if (typeof displayMessage === 'object' && displayMessage !== null) {
-          displayMessage = "入力データまたは通信エラーです。";
-      }
-
       setError(displayMessage);
     } finally {
       setIsLoading(false);
@@ -124,59 +65,90 @@ export default function AuthForm({ onAuthenticated }: Props) {
   };
 
   return (
-    // 外枠のデザイン: 角丸、枠線、パディング、ダークモード対応
-    <div className="border rounded p-4 bg-white dark:bg-gray-800 dark:border-gray-700">
-      {/* タイトル: モードによって「ログイン」か「新規登録」か切り替わる */}
-      <h2 className="text-lg font-semibold mb-2 text-center">
-        {mode === "login" ? "ログイン" : "新規登録"}
-      </h2>
+    <div className="space-y-6">
+      <div className="text-center space-y-2">
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+          {mode === "login" ? "おかえりなさい！" : "アカウント作成"}
+        </h2>
+        <p className="text-slate-500 dark:text-slate-400">
+          {mode === "login" ? "詳細を入力してログインしてください" : "登録してタスク管理を始めましょう"}
+        </p>
+      </div>
       
-      {/* 入力フォームエリア */}
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <input
-          type="email"
-          className="border rounded p-2 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
-          placeholder="メールアドレス"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          className="border rounded p-2 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
-          placeholder="パスワード"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        {/* エラーメッセージの表示箇所 */}
-        {/* エラーメッセージがあればここに赤字で表示 */}
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
+          {/* メールアドレス入力 */}
+          <div className="relative group">
+            <input
+              type="email"
+              className="w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl p-3 pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white"
+              placeholder="メールアドレス"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+              </svg>
+            </div>
+          </div>
+
+          {/* パスワード入力 */}
+          <div className="relative group">
+            <input
+              type="password"
+              className="w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl p-3 pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white"
+              placeholder="パスワード"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* エラーエリア */}
+        {error && (
+          <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 text-sm">
+            {error}
+          </div>
+        )}
         
         {/* 送信ボタン */}
         <button
           type="submit"
-          className="bg-blue-500 hover:bg-blue-600 text-white rounded py-2 disabled:bg-gray-400 disabled:text-gray-200 dark:bg-blue-600 dark:hover:bg-blue-500 dark:disabled:bg-gray-700 dark:disabled:text-gray-400"
-          // 通信中(isLoading=true)のときはボタンを押せないようにする（連打防止）
+          className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg active:scale-95 disabled:bg-slate-300 dark:disabled:bg-slate-700"
           disabled={isLoading}
         >
           {isLoading
-            ? "処理中..." // 通信中の表示
+            ? "認証中..."
             : mode === "login"
-            ? "ログイン"
-            : "登録してログイン"}
+            ? "サインイン"
+            : "アカウント作成"}
         </button>
 
-        {/* モード切替ボタン (テキストリンク風) */}
+        {/* モード切替リンク */}
         <button
           type="button"
-          className="text-sm text-blue-600 underline dark:text-blue-300"
-          // クリックすると login <-> register が反転する
-          onClick={() => setMode(mode === "login" ? "register" : "login")}
+          className="w-full text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-500 transition-colors"
+          onClick={() => {
+            setMode(mode === "login" ? "register" : "login");
+            setError(null);
+          }}
         >
-          {mode === "login" ? "新規登録はこちら" : "ログインに切り替え"}
+          {mode === "login" ? (
+            <>アカウントをお持ちでないですか？ <span className="text-indigo-600 dark:text-indigo-400">新規登録</span></>
+          ) : (
+            <>既にアカウントをお持ちですか？ <span className="text-indigo-600 dark:text-indigo-400">ログイン</span></>
+          )}
         </button>
       </form>
     </div>
   );
 }
+

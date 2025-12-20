@@ -322,39 +322,29 @@ async def reorder_todos(db: AsyncSession, todo_ids: list[int], owner_id: int):
         todo_ids: 新しい順序でのTodoのIDリスト（例: [3, 1, 2]）
         owner_id: Todoの所有者（ユーザー）のID（権限チェック用）
     
-    戻り値:
-        なし（副作用として各Todoの order カラムを更新）
-    
-    処理の流れ:
-        1. todo_ids リストの順番通りに order カラムを更新
-        2. リストの最初の要素は order=0、2番目は order=1、... となる
-        3. owner_id をチェックして、他人のTodoを更新できないようにする
-        4. 全ての更新が完了したらコミット
-    
-    使用例:
-        ユーザーがドラッグ&ドロップでTodoを並び替えた場合、
-        フロントエンドから新しい順序のIDリストが送られてくる。
-        例: [3, 1, 2] → ID=3のTodoがorder=0、ID=1がorder=1、ID=2がorder=2になる
+    処理の改善:
+        1. ユーザーが所有する指定されたIDのTodoを一度に全件取得
+        2. メモリ上で順序を更新し、セッションに一括登録
+        3. これにより、ループ内での個別のSELECT発行を抑制し、パフォーマンスを向上
     """
-    # ユーザーのTodoだけ対象にするため、owner_id で所有権を確認
-    # 各Todoを個別に更新（効率化のためバルク更新も検討可能だが、ここでは単純なループ処理）
-    for index, t_id in enumerate(todo_ids):
-        # enumerate() により、index=0, 1, 2, ... と t_id を同時に取得
-        # SELECT * FROM todos WHERE id = ? AND owner_id = ?
-        stmt = (
-            select(models.Todo)
-            .where(models.Todo.id == t_id)
-            .where(models.Todo.owner_id == owner_id)  # 権限チェック
-        )
-        result = await db.execute(stmt)
-        todo = result.scalar_one_or_none()
-        
-        if todo:
-            # order カラムをリスト内の位置（index）に更新
-            # 例: リストの最初の要素は order=0、2番目は order=1
-            todo.order = index
-            # セッションに追加（UPDATE操作の準備）
-            db.add(todo)
+    # 1. 指定されたIDのうち、ユーザーが所有しているものだけをDBから一括取得
+    # SQL: SELECT * FROM todos WHERE id IN (...) AND owner_id = ?
+    stmt = (
+        select(models.Todo)
+        .where(models.Todo.id.in_(todo_ids))
+        .where(models.Todo.owner_id == owner_id)
+    )
+    result = await db.execute(stmt)
+    todos = {t.id: t for t in result.scalars().all()}
     
-    # 全ての更新をデータベースにコミット（一括保存）
+    # 2. 受取ったIDリストの順序に従って order カラムを更新
+    # 取得できた（＝所有権が確認できた）Todoのみ更新対象とする
+    for index, t_id in enumerate(todo_ids):
+        if t_id in todos:
+            todo = todos[t_id]
+            if todo.order != index:
+                todo.order = index
+                db.add(todo)
+    
+    # 3. 変更を一括コミット
     await db.commit()

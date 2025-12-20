@@ -3,42 +3,68 @@
 @tailwind utilities;
 
 /* 
-  === カスタムスタイルの定義 ===
-  Tailwindのユーティリティクラスだけでは表現しきれない場合や、
-  あえて意味のあるクラス名（セマンティックな名前）を付けたい場合にここに追記します。
+  === Modern Premium Design System ===
+  Vibrant colors, glassmorphism, and smooth transitions.
 */
 
-/* 
-  完了したTodoアイテムのスタイル 
-  @apply を使うと、CSSファイルの中でTailwindのクラスを適用できます。
-  line-through: 取り消し線
-  text-gray-500: 文字色をグレーにする
-*/
-.todo-completed {
-  @apply line-through text-gray-500;
+:root {
+  --primary: 99, 102, 241; /* Indigo 500 */
+  --primary-dark: 79, 70, 229;
+  --bg-gradient-light: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  --bg-gradient-dark: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
 }
 
-/* 
-  === グローバルスタイルの設定 ===
-  サイト全体に適用する基本設定です。
-*/
 body {
-  /* 
-     min-h-screen: 画面の高さいっぱいまで背景を広げる
-     bg-gray-100: 背景色を薄いグレーに
-     text-gray-900: 文字色を濃いグレー（ほぼ黒）に
-     antialiased: フォントを滑らかに表示（Macなどで特に有効）
-     transition-colors duration-200: ダークモード切り替え時の色変化を0.2秒かけてふわっとアニメーションさせる
-  */
-  @apply min-h-screen bg-gray-100 text-gray-900 antialiased transition-colors duration-200;
+  @apply min-h-screen antialiased transition-colors duration-500;
+  background: var(--bg-gradient-light);
+  background-attachment: fixed;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-/* 
-  === ダークモード対応 ===
-  htmlタグ（またはbodyの親要素）に "dark" クラスがついた時のスタイル
-  JavaScriptでテーマ切り替え時にこのクラスを付け外ししています。
-*/
 .dark body {
-  /* ダークモード時は背景を暗く、文字を白っぽくします */
-  @apply bg-gray-900 text-gray-100;
+  background: var(--bg-gradient-dark);
+  background-attachment: fixed;
+  @apply text-slate-100;
 }
+
+/* Glassmorphism Effect */
+.glass {
+  @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl;
+  transition: all 0.3s ease;
+}
+
+.dark .glass {
+  @apply bg-slate-800/50 border-slate-700/50 shadow-2xl;
+}
+
+/* Custom Checkbox */
+input[type="checkbox"] {
+  @apply appearance-none size-6 rounded-lg border-2 border-slate-300 transition-all cursor-pointer;
+  @apply dark:border-slate-600;
+}
+
+input[type="checkbox"]:checked {
+  @apply bg-indigo-500 border-indigo-500;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white' stroke-width='3'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M5 13l4 4L19 7' /%3E%3C/svg%3E");
+  background-size: 70%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Button Animations */
+.btn-primary {
+  @apply px-4 py-2 rounded-xl bg-indigo-600 text-white font-medium shadow-lg;
+  @apply hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all;
+}
+
+.btn-secondary {
+  @apply px-4 py-2 rounded-xl bg-white/20 border border-white/30 backdrop-blur-sm text-slate-900;
+  @apply dark:text-white hover:bg-white/30 transition-all;
+}
+
+/* Todo Item Styling */
+.todo-card {
+  @apply flex items-center gap-4 p-4 rounded-2xl mb-3 transition-all cursor-default;
+  @apply hover:scale-[1.01] hover:shadow-md;
+}
+

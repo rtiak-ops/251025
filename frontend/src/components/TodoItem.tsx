@@ -1,5 +1,7 @@
 import type { Todo } from "../types.ts";
 import { updateTodo, deleteTodo } from "../api";
+import { toast } from "react-hot-toast";
+
 
 /**
  * Propsインターフェース定義
@@ -29,94 +31,81 @@ interface Props {
 export default function TodoItem({ todo, onChange }: Props) {
   
   /**
-   * 完了状態をトグル（切り替え）する非同期関数
-   * 
-   * チェックボックスの変更イベント（onChange）でトリガーされます。
-   * APIを呼び出してサーバー側のデータを更新し、成功後に親コンポーネントに通知します。
+   * 完了状態の切り替え
    */
   const toggle = async () => {
     try {
-      // API呼び出し: 現在のcompleted状態を反転させて送信
-      // 成功するまで待機 (await)
       await updateTodo(todo.id, { completed: !todo.completed });
-      
-      // 更新成功後、親コンポーネントのリスト更新処理を呼び出す
       onChange();
     } catch (error) {
-      // エラーハンドリング
-      // エラーメッセージを生成してアラート表示
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "タスクの更新に失敗しました。時間をおいて再度お試しください。";
+      const errorMessage = error instanceof Error ? error.message : "更新に失敗しました";
       console.error("更新エラー:", errorMessage);
-      alert(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
   /**
-   * Todoを削除する非同期関数
-   * 
-   * 削除ボタンのクリックイベントでトリガーされます。
-   * APIを呼び出してデータを削除し、成功後に親コンポーネントに通知します。
+   * タスクの削除
    */
   const remove = async () => {
     try {
-      // API呼び出し: IDを指定してTodoを削除
       await deleteTodo(todo.id);
-      
-      // 削除成功後、親コンポーネントのリスト更新処理を呼び出す
       onChange();
+      toast.success("削除しました");
     } catch (error) {
-      // エラーハンドリング
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "タスクの削除に失敗しました。時間をおいて再度お試しください。";
+      const errorMessage = error instanceof Error ? error.message : "削除に失敗しました";
       console.error("削除エラー:", errorMessage);
-      alert(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
   return (
-    // リストアイテムのコンテナ: Flexboxで左右配置、下線付き
-    // 外側のdivにはパディングを設けず、内部のlabelやbuttonでパディングを確保することでクリック領域を最大化
-    <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+    // groupクラス: 子要素のhover状態を親から制御するため（削除ボタンの表示に利用）
+    <div className="flex justify-between items-center group">
       {/* 
-        左側: チェックボックスとタイトル 
-        flex-1を指定して残りの領域全体を埋めるようにし、labelタグで囲むことで
-        この領域内のどこをクリックしてもチェックボックスが反応するようにしています。
+        左側: チェックボックスとタイトル
+        クリック領域を広げるために全体をlabelで囲んでいます。
       */}
-      <label className="flex-1 flex items-center gap-3 p-3 cursor-pointer text-gray-900 dark:text-gray-100">
+      <label className="flex-1 flex items-center gap-4 p-4 cursor-pointer">
         <input 
           type="checkbox" 
           checked={todo.completed} 
           onChange={toggle} 
-          className="cursor-pointer size-5 text-blue-600 rounded focus:ring-blue-500" // サイズやスタイルを少し調整
+          // index.cssで定義したカスタムチェックボックススタイルが適用されます
+          className="focus:ring-offset-2 focus:ring-indigo-500"
         />
         
-        {/* タイトル表示: 完了時は取り消し線(line-through)とグレー色を適用 */}
-        <span
-          className={
-            todo.completed
-              ? "line-through text-gray-500 dark:text-gray-400"
-              : ""
-          }
-        >
-          {todo.title}
-        </span>
+        <div className="flex flex-col">
+          <span
+            className={`text-lg font-semibold transition-all duration-300 ${
+              todo.completed
+                ? "line-through text-slate-400 dark:text-slate-500" // 完了時は打ち消し線とグレーダウン
+                : "text-slate-700 dark:text-slate-200"
+            }`}
+          >
+            {todo.title}
+          </span>
+          {/* 説明文がある場合のみ表示（一考の余地あり） */}
+          {todo.description && (
+            <span className="text-xs text-slate-400 dark:text-slate-500 line-clamp-1">
+              {todo.description}
+            </span>
+          )}
+        </div>
       </label>
 
       {/* 
         右側: 削除ボタン
-        p-3を指定してクリック領域を確保
+        opacity-0 group-hover:opacity-100: 通常は隠しておき、マウスホバー時のみ表示してUIをスッキリさせます。
       */}
       <button
         onClick={remove}
-        className="p-3 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-        title="削除"
+        className="mr-4 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+        title="タスクを削除"
       >
-        削除
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.34 12m-4.72 0-.34-12M4.5 6.375h15m-15 0A2.25 2.25 0 0 1 6.75 4.125h10.5a2.25 2.25 0 0 1 2.25 2.25v.375m-15 0a2.25 2.25 0 0 0 1.5 2.126V19.5A2.25 2.25 0 0 0 8.25 21.75h7.5a2.25 2.25 0 0 0 2.25-2.25V8.501a2.25 2.25 0 0 0 1.5-2.126m-15 0a2.25 2.25 0 0 0 1.5-2.126" />
+        </svg>
       </button>
     </div>
   );

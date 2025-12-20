@@ -82,8 +82,9 @@ class Todo(Base):
     )
 
     # 外部キー: このTodoを所有するユーザーのID（usersテーブルのidを参照）
-    # nullable=True: 現在は任意だが、認証機能を追加する場合は必須（nullable=False）に変更することを推奨
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    # 認証機能が必須のため、すべてのTodoには必ず所有者（owner_id）が紐付いている必要があります。
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
     
     # リレーションシップ: このTodoを所有するユーザーへの参照
     # back_populates: Userモデルの"todos"属性と双方向にリンク

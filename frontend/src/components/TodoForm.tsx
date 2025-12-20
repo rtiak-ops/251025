@@ -1,105 +1,67 @@
 import { useState } from "react";
-// API関数は外部ファイル（../api）からインポート。
-// createTodo: 新しいToDoをサーバーに送信する関数
-// breakdownTask: AIを使ってタスクをサブタスクに分解する関数
 import { createTodo, breakdownTask } from "../api";
+import { toast } from "react-hot-toast";
 
-// 親コンポーネントから受け取るProps（プロパティ）の型定義
 interface Props {
-  // ToDoが正常に追加された後に呼び出されるコールバック関数。
-  // これを実行することで、親コンポーネントはリストを再取得（リフレッシュ）できます。
   onAdd: () => void;
 }
 
-/**
- * TodoFormコンポーネント
- * 
- * ユーザーが新しいToDoを入力し、追加するためのフォームです。
- * AIによるタスク分解機能も提供しています。
- */
 export default function TodoForm({ onAdd }: Props) {
-  // ToDoのタイトル（入力値）を保持するstate。初期値は空文字。
+  // --- 状態管理 (State) ---
   const [title, setTitle] = useState("");
-  
-  // 通常のタスク追加処理中かどうかを管理するstate（ローディング状態）。
-  // trueの間はボタンを無効化して連打を防ぎます。
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // AIによるタスク分解処理中かどうかを管理するstate。
-  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // 通常の追加処理中
+  const [isAiLoading, setIsAiLoading] = useState(false); // AI分解処理中
 
-  // 入力値が空（または空白のみ）かどうかをチェックする便利変数。
-  // ボタンの有効/無効の判定に使用します。
+  // 入力が空かどうか（空白のみも含む）
   const isInputEmpty = !title.trim();
 
   /**
-   * フォーム送信時（「追加」ボタン押下またはEnterキー）の処理
+   * 通常のタスク追加処理
    */
   const handleSubmit = async (e: React.FormEvent) => {
-    // フォームのデフォルトの送信動作（ページリロード）をキャンセルします。
     e.preventDefault();
+    if (isInputEmpty || isLoading || isAiLoading) return;
 
-    // 入力が空、または既に何らかの処理中であれば何もしません。
-    if (isInputEmpty || isLoading || isAiLoading) {
-      return;
-    }
-
-    // ローディング状態を開始します。
     setIsLoading(true);
-
+    // トースト通知の開始（読み込み中状態）
+    const toastId = toast.loading("タスクを追加中...");
     try {
-      // APIを呼び出して新しいToDoを作成します。
       await createTodo({ title });
-
-      // 成功した場合:
-      // 1. 入力フィールドをクリアします。
       setTitle(""); 
-      // 2. 親コンポーネントに通知して、ToDoリストを更新してもらいます。
       onAdd(); 
+      // 成功時にトーストを更新
+      toast.success("タスクを追加しました！", { id: toastId });
     } catch (error) {
-      // 失敗した場合:
-      // エラーメッセージを生成して表示します。
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "タスクの追加に失敗しました。サーバーを確認してください。";
-      console.error("ToDoの作成に失敗しました:", errorMessage);
-      alert(errorMessage);
+      const errorMessage = error instanceof Error ? error.message : "追加に失敗しました";
+      toast.error(errorMessage, { id: toastId });
     } finally {
-      // 成功・失敗に関わらず、処理が完了したらローディング状態を解除します。
       setIsLoading(false);
     }
   };
 
   /**
-   * AIタスク分解ボタンが押された時の処理
-   * 入力されたタスク名を元に、AIがサブタスクを提案・作成します。
+   * AIによるタスク分解処理
+   * 入力されたタスクを具体的なステップに分け、一括でTODOに追加します。
    */
   const handleAiBreakdown = async () => {
-    // 入力が空、または処理中なら何もしません。
     if (isInputEmpty || isAiLoading) return;
     
-    // AI処理中の状態にします。
     setIsAiLoading(true);
-    
+    const toastId = toast.loading("AIが思考中... 🧠");
     try {
-      // 1. APIを呼んで、タスクを分解したリスト（文字列の配列）を取得します。
+      // 1. AIからサブタスクのリストを取得
       const subtasks = await breakdownTask(title);
-      
-      // 2. 取得したサブタスクのリストをループし、1つずつToDoとして登録します。
-      // (注意: 本来は一括登録APIがあるのが望ましいですが、ここでは既存のcreateTodoを再利用しています)
+      // 2. 取得した各サブタスクを順次TODOとして作成
       for (const subtaskTitle of subtasks) {
         await createTodo({ title: subtaskTitle });
       }
-
-      // 3. 全て完了したら入力欄をクリアし、リストを更新します。
+      
       setTitle("");
       onAdd();
+      toast.success("AIがタスクを分解しました！", { id: toastId });
     } catch (error) {
-        console.error("AIタスク分解に失敗しました:", error);
-        alert("AI分解に失敗しました。");
+        toast.error("AIによる分解に失敗しました", { id: toastId });
     } finally {
-        // 処理完了後にAI処理中状態を解除します。
         setIsAiLoading(false);
     }
   };
@@ -107,58 +69,61 @@ export default function TodoForm({ onAdd }: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      // スタイリング（Tailwind CSS）:
-      // flex-col sm:flex-row -> スマホでは縦並び、画面が広いと横並び
-      // items-stretch -> 子要素の高さを揃える
-      className="flex flex-col sm:flex-row gap-2 p-2 bg-white border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700 items-stretch"
+      className="flex flex-col gap-4"
     >
-      <input
-        type="text"
-        // 入力フィールドのスタイルとプレースホルダーの設定
-        className="border rounded p-2 flex-grow bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
-        // 状態に応じてプレースホルダーのテキストを変更し、ユーザーに状況を伝えます。
-        placeholder={isLoading ? "追加中です..." : isAiLoading ? "AIが思考中...🧠" : "タスクを入力 (例: 旅行の計画)"} 
-        value={title}
-        // 入力内容が変更されたら state を更新
-        onChange={(e) => setTitle(e.target.value)}
-        // 処理中は入力を受け付けないようにします。
-        disabled={isLoading || isAiLoading}
-      />
+      {/* 入力エリア: アイコン付きのリッチなインポート */}
+      <div className="relative group">
+        <input
+          type="text"
+          className="w-full bg-white/50 dark:bg-slate-900/50 border-2 border-slate-200 dark:border-slate-700/50 rounded-2xl p-4 pl-12 text-lg focus:outline-none focus:border-indigo-500 transition-all placeholder:text-slate-400 dark:text-white"
+          placeholder={isAiLoading ? "AIがステップを生成しています..." : "何をしますか？"} 
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          disabled={isLoading || isAiLoading}
+        />
+        {/* 左側のプラスアイコン */}
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+        </div>
+      </div>
       
-      <div className="flex gap-2">
-        {/* AI分解ボタン */}
+      {/* ボタンエリア */}
+      <div className="flex gap-3">
+        {/* AI分解ボタン: グラデーション背景でアピール */}
         <button
-            type="button" // formのsubmitではなく、ただのボタンとして動作させる
+            type="button" 
             onClick={handleAiBreakdown}
-            // 条件付きスタイリング:
-            // 入力が空や処理中の場合はグレーアウトし、それ以外は紫色のアクセントカラーにします。
-            className={`flex-1 sm:flex-none rounded px-3 py-2 text-sm flex items-center justify-center transition-colors duration-150 border whitespace-nowrap ${
+            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all shadow-md ${
             isInputEmpty || isLoading || isAiLoading
-                ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600 dark:border-gray-700"
-                : "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800 dark:hover:bg-purple-900/50"
+                ? "bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600"
+                : "bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:shadow-lg hover:scale-[1.02] active:scale-95"
             }`}
             disabled={isInputEmpty || isLoading || isAiLoading}
-            title="AIでタスクを具体的ステップに分解します"
         >
-            {/* 処理中はテキストを変えてフィードバックを返します */}
-            {isAiLoading ? "✨生成中" : "✨AI分解"}
+            {isAiLoading ? (
+              <span className="animate-pulse">✨ 生成中...</span>
+            ) : (
+              <>✨ AI分解</>
+            )}
         </button>
 
         {/* 通常の追加ボタン */}
         <button
-            // 条件付きスタイリング: 
-            // 有効時は青色、無効時はグレー。
-            className={`flex-1 sm:flex-none rounded px-4 py-2 transition-colors duration-150 whitespace-nowrap ${
+            className={`px-8 py-3 rounded-2xl font-bold transition-all shadow-md ${
             isInputEmpty || isLoading || isAiLoading
-                ? "bg-gray-300 text-gray-600 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400"
-                : "bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-500"
+                ? "bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-slate-500"
+                : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg hover:scale-[1.02] active:scale-95"
             }`}
             disabled={isInputEmpty || isLoading || isAiLoading}
         >
-            {isLoading ? "処理中..." : "追加"}
+            {isLoading ? "追加中..." : "追加"}
         </button>
       </div>
     </form>
   );
 }
+
+
 

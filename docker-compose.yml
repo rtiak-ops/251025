@@ -30,44 +30,29 @@ services:
   # --- 知能の部分 (バックエンド層 / FastAPI) ---
   # データの処理や、データベースとのやり取りを担当します。
   backend:
-    # ./backendフォルダにあるDockerfileから、あなた専用のイメージを作ります。
     build: ./backend
     container_name: todo_backend_1025
-    # --reloadをつけることで、プログラムを書き換えると即座に反映されます（開発の味方！）。
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # 本番環境では自動リロードをオフにし、安定性を優先します。
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     restart: always
-    volumes:
-      # 自分のパソコン上のコード変更を、リアルタイムでコンテナに伝えます。
-      - ./backend:/app
     environment:
-      # DBへの接続先です。ホスト名にはサービス名の「db」を指定するだけで繋がります。
+      # DBへの接続先です。
       DATABASE_URL: postgresql+asyncpg://todo_user:todo_pass@db:5432/todo_db
     depends_on:
-      # 「DBがちゃんと動き出してから、バックエンドを起動する」という順番を守る設定です。
       db:
         condition: service_healthy
-    ports:
-      # ブラウザ等から http://localhost:8000 でAPIにアクセスできるようになります。
-      - "8000:8000"
 
-  # --- 見た目の部分 (フロントエンド層 / React/Vite) ---
-  # ユーザーが実際に操作する画面を表示します。
+  # --- 見た目と窓口の部分 (フロントエンド層 + Nginx) ---
+  # ビルド済みの画面を配信し、APIへのリクエストをバックエンドへ中継します。
   frontend:
     build: ./frontend
     container_name: todo_frontend_1025
     restart: always
     ports:
-      # ブラウザで http://localhost:5173 を開くと、あなたのアプリが見えます！
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      # 【工夫】コンテナ内のnode_modulesを保護し、動作を安定させています。
-      - /app/node_modules
-    # 開発サーバーとのやり取りをスムーズにするための、おまじないのような設定です。
-    stdin_open: true
-    tty: true
+      # ブラウザで http://localhost にアクセスするとアプリが見えます！
+      # 標準的なWebポート（80番）を使用します。
+      - "80:80"
     depends_on:
-      # まずは裏方のバックエンドが動いていることを確認します。
       - backend
 
 # --- 共通の道具箱 ---

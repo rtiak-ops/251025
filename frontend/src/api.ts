@@ -18,8 +18,8 @@ import type {
 // ----------------------------------------------------------------------------
 
 // 接続先のサーバーURL (ベースURL) を決定します
-// 環境変数 (VITE_API_BASE_URL) が設定されていればそれを使い、なければローカル開発用のURLを使います
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+// 環境変数 (VITE_API_BASE_URL) が設定されていればそれを使い、なければ相対パス（同じサーバー）を使います
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 // ブラウザのローカルストレージに保存する認証トークンのキー名
 // キーを使って保存・取得・削除を行います

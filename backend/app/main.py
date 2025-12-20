@@ -97,7 +97,8 @@ app.add_middleware(SlowAPIMiddleware)
 
 # 許可するオリジンのリストを設定（フロントエンドのURL）
 origins = [
-    "http://localhost:5173",  # よくあるフロントエンド開発サーバーポート
+    "http://localhost",       # 本番環境（Nginx経由）
+    "http://localhost:5173",  # 開発用サーバー（Vite）
     "http://localhost:3000"   # よくあるフロントエンド開発サーバーポート
     # "https://your-production-domain.com" # 本番環境のドメインも追加
 ]

@@ -1,7 +1,10 @@
 server {
     listen 80;
-    server_name localhost;
+    server_name ${DOMAIN_NAME};
 
+    # 【HTTPで動かす設定】
+    # HTTPS化しない場合は、ここにフロントエンドとバックエンドの設定をまとめます。
+    
     # フロントエンドの静的ファイル
     location / {
         root /usr/share/nginx/html;
@@ -10,34 +13,61 @@ server {
     }
 
     # バックエンドAPIへのプロキシ (認証)
-    location /auth/ {
-        proxy_pass ${BACKEND_URL}/auth/;
+    location /auth {
+        proxy_pass ${BACKEND_URL};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     # バックエンドAPIへのプロキシ (Todo操作)
-    location /todos/ {
-        proxy_pass ${BACKEND_URL}/todos/;
+    location /todos {
+        proxy_pass ${BACKEND_URL};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     # バックエンドAPIへのプロキシ (AI機能)
-    location /ai/ {
-        proxy_pass ${BACKEND_URL}/ai/;
+    location /ai {
+        proxy_pass ${BACKEND_URL};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     # APIドキュメント (Swagger UI) 用
     location /docs {
-        proxy_pass ${BACKEND_URL}/docs;
+        proxy_pass ${BACKEND_URL};
         proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     location /openapi.json {
-        proxy_pass ${BACKEND_URL}/openapi.json;
+        proxy_pass ${BACKEND_URL};
         proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
+
+# 【HTTPS設定 (将来用)】
+# 本番環境でドメインと証明書を用意した場合は、上の設定を消して下のコメントアウトを外します。
+#
+# server {
+#     listen 80;
+#     server_name ${DOMAIN_NAME};
+#     return 301 https://$host$request_uri;
+# }
+#
+# server {
+#     listen 443 ssl;
+#     server_name ${DOMAIN_NAME};
+#     ssl_certificate     /etc/nginx/ssl/live/${DOMAIN_NAME}/fullchain.pem;
+#     ssl_certificate_key /etc/nginx/ssl/live/${DOMAIN_NAME}/privkey.pem;
+#     ... (以下略)
+# }
+
+

@@ -32,8 +32,8 @@ services:
   backend:
     build: ./backend
     container_name: todo_backend_1025
-    # 本番環境では自動リロードをオフにし、安定性を優先します。
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    # --proxy-headers を追加して、NginxからのX-Forwarded-Protoヘッダーを解釈できるようにします
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers
     restart: always
     environment:
       # DBへの接続先です。
@@ -51,10 +51,17 @@ services:
     environment:
       # Nginx テンプレートがバックエンドを指すための URL です
       - BACKEND_URL=http://backend:8000
+      - DOMAIN_NAME=localhost
     ports:
       # ブラウザで http://localhost にアクセスするとアプリが見えます！
       # 標準的なWebポート（80番）を使用します。
       - "80:80"
+      - "443:443" # HTTPS用のポート
+    volumes:
+      # Certbotなどで取得した証明書をマウントするための設定を追加
+      # ローカル環境などでファイルがない場合はエラーになる可能性があるため、
+      # 実際の運用の際は適切な場所にパスを通してください。
+      - ./certbot/conf:/etc/nginx/ssl:ro
     depends_on:
       - backend
 

@@ -95,17 +95,31 @@ app.add_middleware(SlowAPIMiddleware)
 # 3. CORS (Cross-Origin Resource Sharing) の設定
 # ----------------------------------------------------------------------
 
+import os
+
 # 許可するオリジンのリストを設定（フロントエンドのURL）
-# 本番環境では特定のドメインを指定することを推奨しますが、
-# デプロイ直後やテストをスムーズにするため、現在はすべて ("*") を許可しています。
-origins = ["*"]
+# 環境変数 CORS_ORIGINS があればそれを使用し、なければデフォルト値を使用します。
+# カンマ区切りで複数指定可能です（例: "https://example.com,https://www.example.com"）
+cors_origins_env = os.getenv("CORS_ORIGINS", "")
+if cors_origins_env:
+    origins = [origin.strip() for origin in cors_origins_env.split(",")]
+else:
+    origins = [
+        "http://localhost",
+        "http://localhost:5173",  # Vite 開発サーバー
+        "https://localhost",
+        "http://127.0.0.1",
+        "http://127.0.0.1:5173",
+        "https://127.0.0.1",
+    ]
 
 # CORS ミドルウェアをアプリケーションに追加し、異なるオリジンからのアクセスを許可
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,       # 許可するオリジン
+    allow_origin_regex="https?://localhost:.*", # localhostの全ポートを許可（開発用）
     allow_credentials=True,      # クッキーなどの資格情報を許可
-    allow_methods=["*"],         # 全てのHTTPメソッド (GET, POST, etc.) を許可
+    allow_methods=["*"],         # 全てのHTTPメソッドを許可
     allow_headers=["*"],         # 全てのHTTPヘッダーを許可
 )
 

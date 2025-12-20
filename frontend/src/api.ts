@@ -128,23 +128,26 @@ export const loginUser = async (
  */
 export const getTodos = async (): Promise<Todo[]> => {
   try {
-    // GETリクエストで /todos からデータを取得
-    const res: AxiosResponse<Todo[]> = await api.get("/todos");
+    // GETリクエストで /todos/ からデータを取得
+    const res: AxiosResponse<Todo[]> = await api.get("/todos/");
     return res.data;
   } catch (error) {
-    // エラーハンドリング (エラー時の対応)
-    const axiosError = error as AxiosError<{ detail?: string }>;
+    const axiosError = error as AxiosError<{ detail?: any }>;
 
     // もし「401 Unauthorized (認証エラー)」なら、トークンが無効なので削除する
     if (axiosError.response?.status === 401) {
       clearToken();
     }
 
-    // エラーメッセージを決定する (サーバーからのメッセージがあればそれを使う)
-    const errorMessage =
-      axiosError.response?.data?.detail ||
-      axiosError.message ||
-      "ToDoリストの取得に失敗しました";
+    let errorMessage = "ToDoリストの取得に失敗しました";
+    if (axiosError.response?.data?.detail) {
+      const detail = axiosError.response.data.detail;
+      errorMessage = typeof detail === "string" 
+        ? detail 
+        : (Array.isArray(detail) ? detail[0].msg : JSON.stringify(detail));
+    } else if (axiosError.message) {
+      errorMessage = axiosError.message;
+    }
 
     console.error("Error fetching todos:", errorMessage);
     // 新しいエラーとして投げ直す (UI側でcatchして表示するため)
@@ -162,18 +165,23 @@ export const createTodo = async ({
   description,
 }: CreateTodoData): Promise<Todo> => {
   try {
-    const res: AxiosResponse<Todo> = await api.post("/todos", {
+    const res: AxiosResponse<Todo> = await api.post("/todos/", {
       title,
       description,
     });
     return res.data;
   } catch (error) {
-    const axiosError = error as AxiosError<{ detail?: string }>;
+    const axiosError = error as AxiosError<{ detail?: any }>;
+    let errorMessage = "ToDoの作成に失敗しました";
 
-    const errorMessage =
-      axiosError.response?.data?.detail ||
-      axiosError.message ||
-      "ToDoの作成に失敗しました";
+    if (axiosError.response?.data?.detail) {
+      const detail = axiosError.response.data.detail;
+      errorMessage = typeof detail === "string" 
+        ? detail 
+        : (Array.isArray(detail) ? detail[0].msg : JSON.stringify(detail));
+    } else if (axiosError.message) {
+      errorMessage = axiosError.message;
+    }
 
     console.error("Error creating todo:", errorMessage);
     throw new Error(errorMessage);

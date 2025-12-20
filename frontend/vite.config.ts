@@ -7,6 +7,11 @@ export default defineConfig({
     // 重要なのはこの行です！
     // これにより、Viteサーバーがコンテナ内のすべてのIP（0.0.0.0）でリッスンするようになります。
     host: true, 
+    proxy: {
+      '/auth': 'http://localhost:8000',
+      '/todos': 'http://localhost:8000',
+      '/ai': 'http://localhost:8000',
+    }
   },
   plugins: [react()]
 })

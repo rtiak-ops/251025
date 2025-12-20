@@ -96,12 +96,9 @@ app.add_middleware(SlowAPIMiddleware)
 # ----------------------------------------------------------------------
 
 # 許可するオリジンのリストを設定（フロントエンドのURL）
-origins = [
-    "http://localhost",       # 本番環境（Nginx経由）
-    "http://localhost:5173",  # 開発用サーバー（Vite）
-    "http://localhost:3000"   # よくあるフロントエンド開発サーバーポート
-    # "https://your-production-domain.com" # 本番環境のドメインも追加
-]
+# 本番環境では特定のドメインを指定することを推奨しますが、
+# デプロイ直後やテストをスムーズにするため、現在はすべて ("*") を許可しています。
+origins = ["*"]
 
 # CORS ミドルウェアをアプリケーションに追加し、異なるオリジンからのアクセスを許可
 app.add_middleware(

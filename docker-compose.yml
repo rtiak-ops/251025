@@ -48,6 +48,9 @@ services:
     build: ./frontend
     container_name: todo_frontend_1025
     restart: always
+    environment:
+      # Nginx テンプレートがバックエンドを指すための URL です
+      - BACKEND_URL=http://backend:8000
     ports:
       # ブラウザで http://localhost にアクセスするとアプリが見えます！
       # 標準的なWebポート（80番）を使用します。

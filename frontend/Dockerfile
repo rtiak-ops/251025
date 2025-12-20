@@ -11,8 +11,10 @@ RUN npm run build
 FROM nginx:alpine
 # ビルドステージで作られた「完成品」だけを、Nginxの公開フォルダにコピーします
 COPY --from=build-stage /app/dist /usr/share/nginx/html
-# Nginxの設定ファイルをコピー（ポート80でのリクエストをバックエンドへ流す設定など）
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Nginxのテンプレート機能を活用して、起動時に環境変数を注入できるようにします
+# デフォルト値として、ローカル環境用のURLを設定しておきます
+ENV BACKEND_URL=http://backend:8000
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

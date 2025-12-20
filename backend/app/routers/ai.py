@@ -47,32 +47,30 @@ class AIResponse(BaseModel):
     """
     subtasks: list[str]
 
+from ..auth import get_current_user
+from .. import schemas
+
 # ----------------------------------------------------------------------
 # エンドポイント: タスク分解API
 # ----------------------------------------------------------------------
 
 @router.post("/breakdown", response_model=AIResponse)
-async def breakdown_task(req: AIRequest):
+async def breakdown_task(
+    req: AIRequest,
+    current_user: schemas.UserOut = Depends(get_current_user) # 認証を必須にする
+):
     """
     タスク分解API:
     ユーザーが入力した「大きなタスク」を、AIが「3〜5個の具体的なサブタスク」に分解して返します。
-    
-    Args:
-        req (AIRequest): ユーザーが入力したタスクのタイトルを含むリクエスト
-    
-    Returns:
-        AIResponse: AIが生成したサブタスクのリスト
-    
-    Raises:
-        HTTPException: AIサービスの呼び出しに失敗した場合
-    
-    処理の流れ:
-        1. 環境変数からOpenAI APIキーを取得
-        2. APIキーがない場合はモックデータを返す(開発・テスト用)
-        3. OpenAI APIを呼び出してタスクを分解
-        4. AIからのレスポンスをJSON形式でパース
-        5. サブタスクのリストを返す
+    ※ 認証済みユーザーのみ利用可能です。
     """
+    
+    # セキュリティ: 入力文字数の制限
+    if len(req.title) > 200:
+         raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="タスクのタイトルが長すぎます(200文字以内)"
+        )
     
     # ステップ1: 環境変数からOpenAI APIキーを取得
     # .envファイルに OPENAI_API_KEY=sk-... の形式で設定されている必要があります

@@ -5,6 +5,12 @@ server {
     # 【HTTPで動かす設定】
     # HTTPS化しない場合は、ここにフロントエンドとバックエンドの設定をまとめます。
     
+    # セキュリティヘッダーの設定
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+
     # フロントエンドの静的ファイル
     location / {
         root /usr/share/nginx/html;

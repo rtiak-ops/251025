@@ -30,9 +30,28 @@ RUN pip install --default-timeout=1000 --no-cache-dir -r requirements.txt
 COPY ./app ./app
 
 # -----------------------------------------------------------
-# 5. いよいよアプリケーションを動かします！
+# 5. セキュリティ対策: 非特権ユーザーの作成
+# -----------------------------------------------------------
+# rootユーザーで実行すると、万が一アプリに脆弱性があった場合に
+# コンテナ全体やホストOSに被害が及ぶリスクがあります。
+# 専用のユーザー（appuser）を作成し、その権限で実行します。
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+RUN chown -R appuser:appgroup /app
+USER appuser
+
+# 環境変数の設定
+# Pythonがログをリアルタイムで出力するように設定（バッファリング無効）
+ENV PYTHONUNBUFFERED=1
+# .pycファイルの生成を抑制
+ENV PYTHONDONTWRITEBYTECODE=1
+# 本番環境フラグ (必要に応じて上書き)
+ENV ENV=production
+
+# -----------------------------------------------------------
+# 6. いよいよアプリケーションを動かします！
 # -----------------------------------------------------------
 # Uvicorn（サーバー）を使って、FastAPIなどのアプリを起動します。
 # --host 0.0.0.0：コンテナの外（ブラウザなど）からも見られるようにします。
 # --port 8000：8000番の窓口でリクエストを待ち受けます。
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# workers: 複数プロセスで並列処理（本番用）
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]

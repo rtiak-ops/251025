@@ -8,10 +8,10 @@ services:
     # 万が一コンテナが倒れても、Dockerが自動で起こしてくれるので安心です。
     restart: always
     environment:
-      # ここで設定した情報は、後でバックエンドから接続する時に使います。
-      POSTGRES_USER: todo_user
-      POSTGRES_PASSWORD: todo_pass
-      POSTGRES_DB: todo_db
+      # .env から自動的に読み込まれますが、明示的に指定することも可能です
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       # 【重要】これがないと、コンテナを消した時にデータも消えてしまいます。
       # データを「外出し」して、安全に永続化するための設定です。
@@ -32,12 +32,15 @@ services:
   backend:
     build: ./backend
     container_name: todo_backend_1025
+    # env_file を指定することで、ファイル内の変数がコンテナ内で利用可能になります
+    env_file:
+      - .env
     # --proxy-headers を追加して、NginxからのX-Forwarded-Protoヘッダーを解釈できるようにします
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips "*"
     restart: always
     environment:
-      # DBへの接続先です。
-      DATABASE_URL: postgresql+asyncpg://todo_user:todo_pass@db:5432/todo_db
+      # .env の内容を使用して接続文字列を構成します
+      DATABASE_URL: ${DATABASE_URL}
     depends_on:
       db:
         condition: service_healthy
@@ -48,10 +51,12 @@ services:
     build: ./frontend
     container_name: todo_frontend_1025
     restart: always
+    env_file:
+      - .env
     environment:
       # Nginx テンプレートがバックエンドを指すための URL です
       - BACKEND_URL=http://backend:8000
-      - DOMAIN_NAME=localhost
+      - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
     ports:
       # ブラウザで http://localhost にアクセスするとアプリが見えます！
       # 標準的なWebポート（80番）を使用します。

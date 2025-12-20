@@ -65,9 +65,17 @@ from .database import get_db
 # ⚠ ペイロードには機密情報を入れない（Base64エンコードは暗号化ではない）
 # ----------------------------------------------------------------------
 
-# JWTトークンを署名するための秘密鍵（環境変数から取得、デフォルトは"CHANGE_ME"）
-# 本番環境では必ず環境変数で設定すること（例: SECRET_KEY=your-very-secure-random-string）
+# JWTトークンを署名するための秘密鍵（環境変数から取得）
+# 重要: 本番環境では必ず環境変数 'SECRET_KEY' を設定してください。
+# 強力な鍵の生成例: `openssl rand -hex 32`
 SECRET_KEY = os.getenv("SECRET_KEY", "CHANGE_ME")
+
+# 本番環境（ENV=production）でデフォルト値が使用されている場合は警告またはエラーを出す
+if os.getenv("ENV") == "production" and SECRET_KEY == "CHANGE_ME":
+    # 実際の本番環境では例外を投げて起動させないのが最も安全です
+    # raise ValueError("SECRET_KEY must be set in production environment!")
+    import logging
+    logging.warning("SECURITY WARNING: Using default 'CHANGE_ME' as SECRET_KEY in production!")
 
 # JWTの署名アルゴリズム（HS256 = HMAC-SHA256）
 ALGORITHM = "HS256"

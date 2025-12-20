@@ -6,6 +6,10 @@ from collections.abc import AsyncGenerator  # Python 3.9+: typing.AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine  # 非同期エンジンと非同期セッションをインポート
 from sqlalchemy.orm import declarative_base, sessionmaker  # セッション作成関数と宣言的基底クラスをインポート
+from dotenv import load_dotenv
+
+# .env ファイルがあれば読み込む
+load_dotenv()
 
 
 # 環境変数からデータベース接続URLを取得
@@ -23,8 +27,14 @@ else:
 # データベース接続エンジンを作成
 # 1. create_async_engine: 非同期処理用のエンジンを作成
 # 2. DATABASE_URL: 接続文字列を指定
-# 3. echo=True: 実行されるSQL文をコンソールに出力（デバッグ用途。本番環境ではFalse推奨）
-engine = create_async_engine(DATABASE_URL, echo=True)
+# 3. echo: 実行されるSQL文をコンソールに出力（デバッグ用途）
+#    - セキュリティのため、本番環境では必ず False に設定します
+#    - ログに機密情報（パスワードのハッシュ等）が出力されるのを防ぎます
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+ENV = os.getenv("ENV", "development")
+is_echo = DEBUG and ENV != "production"
+
+engine = create_async_engine(DATABASE_URL, echo=is_echo)
 
 # ----------------- セッション管理 -----------------
 

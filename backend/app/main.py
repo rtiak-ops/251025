@@ -3,7 +3,12 @@ from __future__ import annotations  # Python 3.10+: 型ヒントの前方参照�
 
 import logging
 import sys
+import os
 from contextlib import asynccontextmanager  # ライフサイクル管理のための Context Manager をインポート
+from dotenv import load_dotenv
+
+# .env ファイルがあれば読み込む（ローカル開発用）
+load_dotenv()
 
 from fastapi import FastAPI  # FastAPI のメインクラスをインポート
 from fastapi.middleware.cors import CORSMiddleware  # CORSミドルウェアをインポート
@@ -92,10 +97,28 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 # ----------------------------------------------------------------------
-# 3. CORS (Cross-Origin Resource Sharing) の設定
+# 3. Middleware: Security Headers & CORS
 # ----------------------------------------------------------------------
 
 import os
+from starlette.middleware.base import BaseHTTPMiddleware
+
+# セキュリティヘッダーを追加するカスタムミドルウェア
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        # クリックジャッキング対策
+        response.headers["X-Frame-Options"] = "DENY"
+        # MIMEタイプのスニッフィング防止
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        # XSSフィルタの有効化
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        # HSTS (HTTPS強制) - 本番環境のみ推奨
+        if os.getenv("ENV") == "production":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 # 許可するオリジンのリストを設定（フロントエンドのURL）
 # 環境変数 CORS_ORIGINS があればそれを使用し、なければデフォルト値を使用します。
@@ -117,9 +140,9 @@ else:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,       # 許可するオリジン
-    allow_origin_regex="https?://localhost:.*", # localhostの全ポートを許可（開発用）
+    # allow_origin_regex="https?://localhost:.*", # 開発用でも必要以上に広げない
     allow_credentials=True,      # クッキーなどの資格情報を許可
-    allow_methods=["*"],         # 全てのHTTPメソッドを許可
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"], # 必要なメソッドのみ許可
     allow_headers=["*"],         # 全てのHTTPヘッダーを許可
 )
 

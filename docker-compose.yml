@@ -41,6 +41,8 @@ services:
     environment:
       # .env の内容を使用して接続文字列を構成します
       DATABASE_URL: ${DATABASE_URL}
+    ports:
+      - "8000:8000"
     depends_on:
       db:
         condition: service_healthy

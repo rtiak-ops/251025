@@ -57,7 +57,11 @@ api.interceptors.request.use((config) => {
 export const getStoredToken = () => localStorage.getItem(TOKEN_KEY);
 
 // トークンを削除する関数 (ログアウト時などに使用)
-export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
+export const clearToken = () => {
+    localStorage.removeItem(TOKEN_KEY);
+    // 401エラーなどで強制ログアウトが必要な場合にイベントを発火
+    window.dispatchEvent(new Event("auth:unauthorized"));
+}
 
 // トークンを保存する関数 (ログイン成功時に使用)
 export const saveToken = (token: string) =>
@@ -151,7 +155,9 @@ export const getTodos = async (): Promise<Todo[]> => {
 
     console.error("Error fetching todos:", errorMessage);
     // 新しいエラーとして投げ直す (UI側でcatchして表示するため)
-    throw new Error(errorMessage);
+    const err = new Error(errorMessage);
+    (err as any).status = axiosError.response?.status;
+    throw err;
   }
 };
 
@@ -184,7 +190,9 @@ export const createTodo = async ({
     }
 
     console.error("Error creating todo:", errorMessage);
-    throw new Error(errorMessage);
+    const err = new Error(errorMessage);
+    (err as any).status = axiosError.response?.status;
+    throw err;
   }
 };
 
@@ -210,8 +218,14 @@ export const updateTodo = async (
       axiosError.message ||
       `ToDo(ID: ${id})の更新に失敗しました`;
 
+    if (axiosError.response?.status === 401) {
+      clearToken();
+    }
+
     console.error(`Error updating todo with ID ${id}:`, errorMessage);
-    throw new Error(errorMessage);
+    const err = new Error(errorMessage);
+    (err as any).status = axiosError.response?.status;
+    throw err;
   }
 };
 
@@ -231,8 +245,14 @@ export const deleteTodo = async (id: number): Promise<void> => {
       axiosError.message ||
       `ToDo(ID: ${id})の削除に失敗しました`;
 
+    if (axiosError.response?.status === 401) {
+      clearToken();
+    }
+
     console.error(`Error deleting todo with ID ${id}:`, errorMessage);
-    throw new Error(errorMessage);
+    const err = new Error(errorMessage);
+    (err as any).status = axiosError.response?.status;
+    throw err;
   }
 };
 

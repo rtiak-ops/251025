@@ -52,7 +52,14 @@ export default function App() {
   useEffect(() => {
     if (isError) {
       console.error("ToDoリストの取得エラー:", error);
-      toast.error("データの取得に失敗しました");
+      
+      // 401エラー（認証切れ）の場合はログアウト扱いにする
+      if ((error as any)?.status === 401) {
+        setToken(null);
+        toast.error("セッションが切れました。再度ログインしてください。");
+      } else {
+        toast.error("データの取得に失敗しました");
+      }
     }
   }, [isError, error]);
 

@@ -1,34 +1,55 @@
+/* ==========================================
+   Tailwind CSS 基本ディレクティブ
+   ========================================== */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* 
-  === Modern Premium Design System ===
-  Vibrant colors, glassmorphism, and smooth transitions.
+/* === Modern Premium Design System ===
+   特徴: 鮮やかな色彩、グラスモーフィズム（半透明）、スムーズな遷移アニメーション
 */
 
+/* ==========================================
+   1. 変数定義（カラーパレット & グラデーション）
+   ========================================== */
 :root {
+  /* RGB形式で定義（Tailwindのopacity操作に対応しやすくするため） */
   --primary: 99, 102, 241; /* Indigo 500 */
   --primary-dark: 79, 70, 229;
+  
+  /* 背景用グラデーション設定 */
   --bg-gradient-light: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   --bg-gradient-dark: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
 }
 
+/* ==========================================
+   2. ベーススタイル（Body）
+   ========================================== */
 body {
+  /* 最小の高さを確保し、フォントの可読性を向上（アンチエイリアス） */
   @apply min-h-screen antialiased transition-colors duration-500;
   background: var(--bg-gradient-light);
-  background-attachment: fixed;
+  background-attachment: fixed; /* スクロールしても背景を固定 */
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
+/* ダークモード時の背景切り替え */
 .dark body {
   background: var(--bg-gradient-dark);
   background-attachment: fixed;
   @apply text-slate-100;
 }
 
-/* Glassmorphism Effect */
+/* ==========================================
+   3. デザインコンポーネント
+   ========================================== */
+
+/**
+ * グラスモーフィズム (Glassmorphism)
+ * 背景をぼかし、半透明の境界線を引くことで「すりガラス」のような質感を演出
+ */
 .glass {
+  /* 背景の不透明度を下げ、backdrop-blurで背後をぼかす */
   @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl;
   transition: all 0.3s ease;
 }
@@ -37,12 +58,17 @@ body {
   @apply bg-slate-800/50 border-slate-700/50 shadow-2xl;
 }
 
-/* Custom Checkbox */
+/**
+ * カスタムチェックボックス
+ * ブラウザ標準のスタイルをリセットし、モダンな外観に変更
+ */
 input[type="checkbox"] {
+  /* appearance-noneで標準のチェックボックスを非表示にする */
   @apply appearance-none size-6 rounded-lg border-2 border-slate-300 transition-all cursor-pointer;
   @apply dark:border-slate-600;
 }
 
+/* チェック時のスタイル：インディゴの背景にSVGのチェックマークを表示 */
 input[type="checkbox"]:checked {
   @apply bg-indigo-500 border-indigo-500;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white' stroke-width='3'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M5 13l4 4L19 7' /%3E%3C/svg%3E");
@@ -51,9 +77,13 @@ input[type="checkbox"]:checked {
   background-repeat: no-repeat;
 }
 
-/* Button Animations */
+/**
+ * ボタンアニメーション
+ * ホバー時の拡大とクリック時の縮小でクリック感を演出
+ */
 .btn-primary {
   @apply px-4 py-2 rounded-xl bg-indigo-600 text-white font-medium shadow-lg;
+  /* ホバーで少し大きく、アクティブ(クリック)で少し小さく */
   @apply hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all;
 }
 
@@ -62,9 +92,12 @@ input[type="checkbox"]:checked {
   @apply dark:text-white hover:bg-white/30 transition-all;
 }
 
-/* Todo Item Styling */
+/**
+ * Todoアイテムカード
+ * リスト表示用のスタイル。ホバー時に浮き上がるエフェクトを追加
+ */
 .todo-card {
   @apply flex items-center gap-4 p-4 rounded-2xl mb-3 transition-all cursor-default;
+  /* わずかに拡大させ、影を強調することで選択感を出す */
   @apply hover:scale-[1.01] hover:shadow-md;
 }
-

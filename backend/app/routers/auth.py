@@ -9,7 +9,7 @@ from fastapi import Request
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register", response_model=schemas.UserOut, status_code=status.HTTP_201_CREATED)
-@limiter.limit("5/minute") # 新規登録は制限を厳しく
+@limiter.limit("10/minute") # 新規登録は制限を厳しく
 async def register(
     request: Request, # limiter用に必要
     user: schemas.UserCreate = Body(...),
@@ -21,7 +21,7 @@ async def register(
     return await crud.create_user(db=db, user=user)
 
 @router.post("/login", response_model=schemas.Token)
-@limiter.limit("10/minute") # ブルートフォース攻撃対策
+@limiter.limit("20/minute") # ブルートフォース攻撃対策
 async def login(
     request: Request, # limiter用に必要
     # UserLogin がないので UserCreate を使用。Body(...) でJSON入力を強制。

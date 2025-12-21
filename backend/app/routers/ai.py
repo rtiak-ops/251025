@@ -8,7 +8,7 @@ import logging  # エラーや警告をログに記録するために使用
 import os  # 環境変数(OPENAI_API_KEY)を取得するために使用
 
 import openai  # OpenAI APIを呼び出すための公式ライブラリ
-from fastapi import APIRouter, HTTPException, status  # FastAPIのルーティングとエラーハンドリング
+from fastapi import APIRouter, Depends, HTTPException, status  # FastAPIのルーティングとエラーハンドリング
 from pydantic import BaseModel  # リクエスト/レスポンスのデータ構造を定義するために使用
 
 # ----------------------------------------------------------------------

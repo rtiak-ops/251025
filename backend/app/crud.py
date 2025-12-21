@@ -55,7 +55,7 @@ async def get_user_by_email(db: AsyncSession, email: str) -> models.User | None:
 
 async def create_user(db: AsyncSession, user: schemas.UserCreate) -> models.User:
     """
-    新しいユーザーを作成する関数
+    新しいユーザーを作成する関数（登録処理）
     
     引数:
         db: データベースセッション（非同期）

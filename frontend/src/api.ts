@@ -113,7 +113,7 @@ export const loginUser = async (
       password,
     });
 
-    // ログインに成功したら、受け取ったアクセストークンを保存する
+    // ログインに成功したら、受け取ったアクセストークンをブラウザのローカルストレージに保存する
     saveToken(res.data.access_token);
     return res.data;
   } catch (error) {

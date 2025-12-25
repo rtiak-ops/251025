@@ -1,0 +1,47 @@
+# Alembic Database Migrations
+
+このディレクトリには、データベーススキーマのバージョン管理とマイグレーションファイルが含まれています。
+
+## 使い方
+
+### 新しいマイグレーションを作成
+
+```bash
+# 自動生成（推奨）
+docker compose exec backend alembic revision --autogenerate -m "マイグレーションの説明"
+
+# 手動作成
+docker compose exec backend alembic revision -m "マイグレーションの説明"
+```
+
+### マイグレーションを適用
+
+```bash
+# 最新バージョンまでアップグレード
+docker compose exec backend alembic upgrade head
+
+# 特定のリビジョンまでアップグレード
+docker compose exec backend alembic upgrade <revision_id>
+
+# 1つ前のバージョンにダウングレード
+docker compose exec backend alembic downgrade -1
+```
+
+### マイグレーション履歴を確認
+
+```bash
+# 現在のリビジョンを確認
+docker compose exec backend alembic current
+
+# マイグレーション履歴を表示
+docker compose exec backend alembic history
+
+# 詳細な履歴を表示
+docker compose exec backend alembic history --verbose
+```
+
+## 注意事項
+
+- 本番環境では必ずバックアップを取ってからマイグレーションを実行してください
+- `autogenerate`は完璧ではないため、生成されたマイグレーションファイルを必ず確認してください
+- ダウングレードスクリプトも適切に実装してください

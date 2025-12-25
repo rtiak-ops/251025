@@ -38,8 +38,22 @@ ENV BACKEND_URL=http://backend:8000
 # 起動時に環境変数が適用された設定ファイルが自動生成されます（Nginx公式の仕組み）
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
+# 4. セキュリティ対策: 非rootユーザーでの実行
+# Nginxをnginxユーザーで実行（alpineイメージには既にnginxユーザーが存在）
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    touch /var/run/nginx.pid && \
+    chown -R nginx:nginx /var/run/nginx.pid
+
+USER nginx
+
 # コンテナが80番ポートで待機することを明示
 EXPOSE 80
+
+# ヘルスチェック設定
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:80/ || exit 1
 
 # Nginxをフォアグラウンドで実行（コンテナが終了しないようにするため）
 CMD ["nginx", "-g", "daemon off;"]

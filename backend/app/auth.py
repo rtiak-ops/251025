@@ -70,12 +70,23 @@ from .database import get_db
 # 強力な鍵の生成例: `openssl rand -hex 32`
 SECRET_KEY = os.getenv("SECRET_KEY", "CHANGE_ME")
 
-# 本番環境（ENV=production）でデフォルト値が使用されている場合は警告またはエラーを出す
-if os.getenv("ENV") == "production" and SECRET_KEY == "CHANGE_ME":
-    # 実際の本番環境では例外を投げて起動させないのが最も安全です
-    # raise ValueError("SECRET_KEY must be set in production environment!")
+# 本番環境（ENV=production）でデフォルト値が使用されている場合はエラーを出す
+ENV = os.getenv("ENV", "development")
+if ENV == "production":
+    if SECRET_KEY == "CHANGE_ME" or len(SECRET_KEY) < 32:
+        raise ValueError(
+            "本番環境では安全なSECRET_KEYが必須です。\n"
+            "以下のコマンドで生成してください: openssl rand -hex 32\n"
+            "生成した値を環境変数 SECRET_KEY に設定してください。"
+        )
     import logging
-    logging.warning("SECURITY WARNING: Using default 'CHANGE_ME' as SECRET_KEY in production!")
+    logging.info("SECRET_KEY検証: 本番環境用の安全な鍵が設定されています。")
+elif SECRET_KEY == "CHANGE_ME":
+    import logging
+    logging.warning(
+        "開発環境でデフォルトのSECRET_KEYを使用しています。"
+        "本番環境では必ず変更してください。"
+    )
 
 # JWTの署名アルゴリズム（HS256 = HMAC-SHA256）
 ALGORITHM = "HS256"

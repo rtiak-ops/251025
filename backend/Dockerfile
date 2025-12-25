@@ -48,6 +48,16 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV ENV=production
 
 # -----------------------------------------------------------
+# ヘルスチェック設定
+# -----------------------------------------------------------
+# コンテナが正常に動作しているかを定期的に確認します
+# interval: 30秒ごとにチェック
+# timeout: 10秒以内に応答がなければ失敗
+# retries: 3回連続で失敗したら unhealthy と判定
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()" || exit 1
+
+# -----------------------------------------------------------
 # 6. いよいよアプリケーションを動かします！
 # -----------------------------------------------------------
 # Uvicorn（サーバー）を使って、FastAPIなどのアプリを起動します。

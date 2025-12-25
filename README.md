@@ -61,8 +61,11 @@
 | **Backend** | Python, FastAPI | 非同期ASGIフレームワーク |
 | **Database** | PostgreSQL | 本番用データ永続化 |
 | **ORM** | SQLAlchemy (Async) | 非同期DBアクセス |
-| **Testing** | pytest, httpx | インメモリSQLiteを用いた高速テスト |
+| **Migration** | Alembic | データベーススキーマのバージョン管理 |
+| **Testing (BE)** | pytest, httpx | インメモリSQLiteを用いた高速テスト |
+| **Testing (FE)** | Vitest, React Testing Library | フロントエンドユニットテスト |
 | **Security** | slowapi | レート制限 (Rate Limiting) |
+| **CI/CD** | GitHub Actions | 自動テスト・ビルド・セキュリティスキャン |
 | **Infra** | Docker Compose | フルスタック環境のコード化 |
 
 ---
@@ -107,10 +110,57 @@ services:
 
 ## 🧪 開発・テスト
 
+### バックエンドテスト
+
 ```bash
-# バックエンドのテスト実行
+# テスト実行
 docker compose exec backend pytest -v
+
+# カバレッジ付きテスト
+docker compose exec backend pytest --cov=app --cov-report=html
+
+# カバレッジレポートは backend/htmlcov/index.html で確認可能
 ```
+
+### フロントエンドテスト
+
+```bash
+# フロントエンドディレクトリに移動
+cd frontend
+
+# 依存関係のインストール（初回のみ）
+npm install
+
+# テスト実行
+npm run test
+
+# UIモードでテスト実行
+npm run test:ui
+
+# カバレッジレポート生成
+npm run test:coverage
+```
+
+### データベースマイグレーション
+
+```bash
+# 新しいマイグレーションを作成（自動生成）
+docker compose exec backend alembic revision --autogenerate -m "マイグレーションの説明"
+
+# マイグレーションを適用
+docker compose exec backend alembic upgrade head
+
+# 現在のマイグレーションバージョンを確認
+docker compose exec backend alembic current
+
+# マイグレーション履歴を表示
+docker compose exec backend alembic history
+
+# 1つ前のバージョンにロールバック
+docker compose exec backend alembic downgrade -1
+```
+
+**注意:** 本番環境では必ずバックアップを取ってからマイグレーションを実行してください。
 
 ---
 

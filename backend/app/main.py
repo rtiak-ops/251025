@@ -5,6 +5,7 @@ import logging
 import sys
 import os
 from contextlib import asynccontextmanager  # ライフサイクル管理のための Context Manager をインポート
+from datetime import datetime, timezone  # ヘルスチェック用のタイムスタンプ生成
 from dotenv import load_dotenv
 
 # .env ファイルがあれば読み込む（ローカル開発用）
@@ -68,11 +69,19 @@ async def lifespan(app: FastAPI):
         # データベースエンジンを使用して非同期セッションを開始
         async with engine.begin() as conn:
             # データベースのスキーマ (テーブル) を作成 (存在しない場合のみ作成されます)
+            # 注意: 本番環境ではAlembicマイグレーションを使用することを推奨
             await conn.run_sync(Base.metadata.create_all)
         logger.info("データベース初期化が完了しました。")
     except Exception as e:
-        logger.error(f"データベース初期化中にエラーが発生しました: {e}", exc_info=True)
-        # 実際にはここで適切なエラーハンドリングを行うべきです
+        logger.critical(
+            f"データベース初期化中に致命的なエラーが発生しました: {e}",
+            exc_info=True,
+            extra={"error_type": type(e).__name__}
+        )
+        # データベース接続に失敗した場合、アプリケーションを起動させない
+        raise RuntimeError(
+            "データベース初期化に失敗しました。DATABASE_URLと接続設定を確認してください。"
+        ) from e
 
     # ここでアプリケーション本体が起動し、リクエストの処理が可能になります
     yield
@@ -80,9 +89,14 @@ async def lifespan(app: FastAPI):
     # ------------------------------------
     # アプリケーション終了時の処理 (shutdown)
     # ------------------------------------
-    logger.info("アプリケーション終了処理を実行します。")
-    # ここにクリーンアップ処理 (例: データベース接続プールを閉じるなど) を記述できます
-    # await engine.dispose()  # 必要に応じて
+    logger.info("アプリケーション終了処理を開始します。")
+    try:
+        # データベース接続プールを適切に閉じる
+        await engine.dispose()
+        logger.info("データベース接続プールを正常にクローズしました。")
+    except Exception as e:
+        logger.error(f"シャットダウン処理中にエラーが発生しました: {e}", exc_info=True)
+    logger.info("アプリケーション終了処理が完了しました。")
 
 # ----------------------------------------------------------------------
 # 2. FastAPI アプリケーションインスタンスの作成
@@ -95,6 +109,46 @@ app = FastAPI(title="Async FastAPI ToDo App", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+# ----------------------------------------------------------------------
+# ヘルスチェックエンドポイント
+# ----------------------------------------------------------------------
+
+@app.get("/health", tags=["Health"])
+async def health_check():
+    """
+    ヘルスチェックエンドポイント
+    
+    Dockerコンテナやロードバランサーがアプリケーションの稼働状態を確認するために使用します。
+    データベース接続の確認も行い、システム全体の健全性を報告します。
+    """
+    from sqlalchemy import text
+    from .database import get_db
+    
+    try:
+        # データベース接続の確認
+        async for db in get_db():
+            await db.execute(text("SELECT 1"))
+            break
+        
+        return {
+            "status": "healthy",
+            "database": "connected",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        logger.error(f"ヘルスチェック失敗: {e}")
+        from fastapi import status as http_status
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "status": "unhealthy",
+                "database": "disconnected",
+                "error": str(e),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        )
 
 # ----------------------------------------------------------------------
 # 3. Middleware: Security Headers & CORS

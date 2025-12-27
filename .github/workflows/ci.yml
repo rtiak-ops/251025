@@ -1,16 +1,21 @@
+# ワークフローの名前。GitHubのActionsタブに表示されます。
 name: CI/CD Pipeline
 
+# 実行タイミング（トリガー）の設定
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop] # mainとdevelopへのpush時に実行
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop] # PR作成時にも実行して、マージ前に安全性を確認
 
 jobs:
-  # バックエンドのテストとリント
+  # ==========================================
+  # 1. バックエンドのテストとリント
+  # ==========================================
   backend-test:
     runs-on: ubuntu-latest
     
+    # テストに必要なデータベース(PostgreSQL)を立ち上げる
     services:
       postgres:
         image: postgres:17
@@ -18,6 +23,7 @@ jobs:
           POSTGRES_USER: test_user
           POSTGRES_PASSWORD: test_password
           POSTGRES_DB: test_db
+        # DBが起動してリクエストを受け付けられるか確認（ヘルスチェック）
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -34,7 +40,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-          cache: 'pip'
+          cache: 'pip' # 依存関係をキャッシュして2回目以降を高速化
 
       - name: 依存関係のインストール
         working-directory: ./backend
@@ -42,24 +48,28 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: テストの実行
+      - name: テストの実行 (pytest)
         working-directory: ./backend
         env:
+          # テスト用の接続URL。asyncpgを使用
           DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/test_db
           SECRET_KEY: test_secret_key_for_ci_only_min_32_chars_long
           ENV: development
         run: |
+          # テスト実行とカバレッジ（コード網羅率）の計測
           pytest -v --cov=app --cov-report=xml --cov-report=term
 
       - name: カバレッジレポートのアップロード
         uses: codecov/codecov-action@v4
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' # push時のみレポートを送信
         with:
           file: ./backend/coverage.xml
           flags: backend
           fail_ci_if_error: false
 
-  # フロントエンドのテストとビルド
+  # ==========================================
+  # 2. フロントエンドのテストとビルド
+  # ==========================================
   frontend-test:
     runs-on: ubuntu-latest
 
@@ -78,15 +88,15 @@ jobs:
         working-directory: ./frontend
         run: npm ci
 
-      - name: リントの実行
+      - name: リントの実行 (コード規約チェック)
         working-directory: ./frontend
         run: npm run lint
 
-      - name: テストの実行
+      - name: テストの実行 (Vitest/Jest等)
         working-directory: ./frontend
         run: npm run test:coverage
 
-      - name: ビルドの実行
+      - name: ビルドの実行 (本番用ファイルの生成)
         working-directory: ./frontend
         run: npm run build
 
@@ -98,26 +108,28 @@ jobs:
           flags: frontend
           fail_ci_if_error: false
 
-  # Dockerイメージのビルドテスト
+  # ==========================================
+  # 3. Dockerイメージのビルドテスト
+  # ==========================================
   docker-build:
     runs-on: ubuntu-latest
-    needs: [backend-test, frontend-test]
-    if: github.event_name == 'push'
+    needs: [backend-test, frontend-test] # テスト合格後に実行
+    if: github.event_name == 'push'      # push時のみ実行
 
     steps:
       - name: チェックアウト
         uses: actions/checkout@v4
 
-      - name: Docker Buildxのセットアップ
+      - name: Docker Buildxのセットアップ (高度なビルド機能)
         uses: docker/setup-buildx-action@v3
 
-      - name: バックエンドイメージのビルド
+      - name: バックエンドイメージのビルド (保存はせずテストのみ)
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           push: false
           tags: todo-backend:latest
-          cache-from: type=gha
+          cache-from: type=gha # GitHub Actionsのキャッシュを利用
           cache-to: type=gha,mode=max
 
       - name: フロントエンドイメージのビルド
@@ -129,13 +141,15 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # セキュリティスキャン
+  # ==========================================
+  # 4. セキュリティスキャン (脆弱性チェック)
+  # ==========================================
   security-scan:
     runs-on: ubuntu-latest
     needs: [backend-test, frontend-test]
     permissions:
-      security-events: write # SARIFのアップロードに必須
-      contents: read         # チェックアウトに必要
+      security-events: write # GitHub Securityタブへの表示に必要
+      contents: read
 
     steps:
       - name: チェックアウト
@@ -144,7 +158,7 @@ jobs:
       - name: Trivyによる脆弱性スキャン（バックエンド）
         uses: aquasecurity/trivy-action@master
         with:
-          scan-type: 'fs'
+          scan-type: 'fs' # ファイルシステムをスキャン
           scan-ref: './backend'
           format: 'sarif'
           output: 'trivy-backend-results.sarif'
@@ -157,12 +171,12 @@ jobs:
           format: 'sarif'
           output: 'trivy-frontend-results.sarif'
 
-      - name: バックエンドのスキャン結果をアップロード
-        uses: github/codeql-action/upload-sarif@v3 # v3の非推奨警告はあるが、一旦設定を修正
-        if: always()
+      - name: スキャン結果をGitHub Securityタブにアップロード
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() # 前のステップが失敗しても(脆弱性が見つかっても)必ず実行
         with:
           sarif_file: 'trivy-backend-results.sarif'
-          category: 'backend' # カテゴリを分けることで重複エラーを回避
+          category: 'backend'
 
       - name: フロントエンドのスキャン結果をアップロード
         uses: github/codeql-action/upload-sarif@v3

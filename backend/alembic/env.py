@@ -1,73 +1,57 @@
 """
-Alembic環境設定ファイル
+Alembic環境設定ファイル (env.py)
 
-このファイルはAlembicがデータベースマイグレーションを実行する際に使用されます。
-環境変数からデータベースURLを読み込み、非同期エンジンを使用してマイグレーションを実行します。
+このファイルは、SQLAlchemyのモデル定義からデータベースのテーブルを
+自動生成（マイグレーション）するための設定ファイルです。
 """
-from logging.config import fileConfig
-import os
 import asyncio
+import os
+import sys
+from logging.config import fileConfig
+from pathlib import Path
+
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
-
-from alembic import context
 from dotenv import load_dotenv
+from alembic import context
 
-# .envファイルを読み込む
-load_dotenv()
+# --- 1. 環境設定の読み込み ---
+load_dotenv()  # .envファイルから環境変数をロード
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
+# Alembic設定オブジェクト（alembic.iniの内容にアクセス可能）
 config = context.config
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
+# logging.config（alembic.ini内の[loggers]などの設定を適用）
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-
-# アプリケーションのモデルをインポート
-import sys
-from pathlib import Path
-
-# プロジェクトルートをPythonパスに追加
+# --- 2. プロジェクトのモデルをAlembicに認識させる ---
+# プロジェクトのルートディレクトリをPythonの検索パスに追加
+# これにより 'from app.models import ...' が正常に動作するようになります
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# マイグレーション対象となるモデルをインポート
 from app.database import Base
-from app.models import User, Todo  # 全てのモデルをインポート
+from app.models import User, Todo  
 
+# autogenerate（モデル変更の自動検知）のためにBaseのメタデータを指定
 target_metadata = Base.metadata
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
-
-# 環境変数からデータベースURLを取得
+# --- 3. データベース接続情報の設定 ---
+# 環境変数 DATABASE_URL を優先的に使用する（セキュリティと柔軟性のため）
 DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL is None:
-    raise ValueError("DATABASE_URL環境変数が設定されていません")
+    raise ValueError("DATABASE_URLが設定されていません。.envファイルを確認してください。")
 
-# alembic.iniのsqlalchemy.urlを上書き
+# alembic.iniの接続文字列を環境変数の値で上書き
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
+    """
+    オフラインモードでの実行
+    DBに直接接続せず、SQLスクリプトを出力する場合などに使用されます。
     """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
@@ -82,7 +66,10 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    """実際のマイグレーション実行関数"""
+    """
+    実際のマイグレーションを実行する（同期処理）
+    後述の run_async_migrations から内部的に呼び出されます。
+    """
     context.configure(connection=connection, target_metadata=target_metadata)
 
     with context.begin_transaction():
@@ -90,34 +77,37 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
-    """非同期モードでマイグレーションを実行"""
-    # 非同期エンジンの設定を作成
+    """
+    非同期エンジンを作成し、マイグレーションを実行する
+    """
+    # .iniファイルの設定をベースに、プログラムでURLを動的に書き換える
     configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = DATABASE_URL
     
+    # 非同期用の接続エンジンを作成
     connectable = async_engine_from_config(
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
 
+    # 非同期接続を開始
     async with connectable.connect() as connection:
+        # マイグレーション自体は内部的に同期処理が必要なため run_sync を使用
         await connection.run_sync(do_run_migrations)
 
     await connectable.dispose()
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode.
-
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
     """
-    # 非同期マイグレーションを実行
+    通常（オンライン）モードでの実行
+    非同期イベントループを作成し、マイグレーションを開始します。
+    """
     asyncio.run(run_async_migrations())
 
 
+# Alembic実行時のメイン処理（オフラインかオンラインかを自動判定）
 if context.is_offline_mode():
     run_migrations_offline()
 else:

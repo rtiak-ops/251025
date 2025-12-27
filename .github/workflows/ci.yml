@@ -133,6 +133,9 @@ jobs:
   security-scan:
     runs-on: ubuntu-latest
     needs: [backend-test, frontend-test]
+    permissions:
+      security-events: write # SARIFのアップロードに必須
+      contents: read         # チェックアウトに必要
 
     steps:
       - name: チェックアウト
@@ -154,8 +157,16 @@ jobs:
           format: 'sarif'
           output: 'trivy-frontend-results.sarif'
 
-      - name: スキャン結果のアップロード
+      - name: バックエンドのスキャン結果をアップロード
+        uses: github/codeql-action/upload-sarif@v3 # v3の非推奨警告はあるが、一旦設定を修正
+        if: always()
+        with:
+          sarif_file: 'trivy-backend-results.sarif'
+          category: 'backend' # カテゴリを分けることで重複エラーを回避
+
+      - name: フロントエンドのスキャン結果をアップロード
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: '.'
+          sarif_file: 'trivy-frontend-results.sarif'
+          category: 'frontend'

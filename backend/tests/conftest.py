@@ -186,3 +186,20 @@ async def client(override_get_db):
     # clear() で、すべてのオーバーライドを削除します
     app.dependency_overrides.clear()
 
+
+# ============================================================
+# テスト終了後の後片付け（エンジンを閉じる）
+# ============================================================
+@pytest.fixture(scope="session", autouse=True)
+async def close_db_engine():
+    """
+    【このfixtureの役割】
+    テストセッション全体の最後に、DBエンジンを閉じて接続を完全に終了させます。
+    
+    【autouse=True とは？】
+    個別のテスト関数で呼び出さなくても、自動的に実行される設定です。
+    """
+    yield  # ここで全テストが実行されるのを待ちます
+    
+    # 全テスト終了後、接続プールを破棄して終了する
+    await engine.dispose()

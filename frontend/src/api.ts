@@ -136,7 +136,7 @@ export const getTodos = async (): Promise<Todo[]> => {
     const res: AxiosResponse<Todo[]> = await api.get("/todos/");
     return res.data;
   } catch (error) {
-    const axiosError = error as AxiosError<{ detail?: any }>;
+    const axiosError = error as AxiosError<{ detail?: string | { msg: string }[] }>;
 
     // もし「401 Unauthorized (認証エラー)」なら、トークンが無効なので削除する
     if (axiosError.response?.status === 401) {
@@ -155,8 +155,8 @@ export const getTodos = async (): Promise<Todo[]> => {
 
     console.error("Error fetching todos:", errorMessage);
     // 新しいエラーとして投げ直す (UI側でcatchして表示するため)
-    const err = new Error(errorMessage);
-    (err as any).status = axiosError.response?.status;
+    const err = new Error(errorMessage) as Error & { status?: number };
+    err.status = axiosError.response?.status;
     throw err;
   }
 };
@@ -177,7 +177,7 @@ export const createTodo = async ({
     });
     return res.data;
   } catch (error) {
-    const axiosError = error as AxiosError<{ detail?: any }>;
+    const axiosError = error as AxiosError<{ detail?: string | { msg: string }[] }>;
     let errorMessage = "ToDoの作成に失敗しました";
 
     if (axiosError.response?.data?.detail) {
@@ -190,8 +190,8 @@ export const createTodo = async ({
     }
 
     console.error("Error creating todo:", errorMessage);
-    const err = new Error(errorMessage);
-    (err as any).status = axiosError.response?.status;
+    const err = new Error(errorMessage) as Error & { status?: number };
+    err.status = axiosError.response?.status;
     throw err;
   }
 };
@@ -223,8 +223,8 @@ export const updateTodo = async (
     }
 
     console.error(`Error updating todo with ID ${id}:`, errorMessage);
-    const err = new Error(errorMessage);
-    (err as any).status = axiosError.response?.status;
+    const err = new Error(errorMessage) as Error & { status?: number };
+    err.status = axiosError.response?.status;
     throw err;
   }
 };
@@ -250,8 +250,8 @@ export const deleteTodo = async (id: number): Promise<void> => {
     }
 
     console.error(`Error deleting todo with ID ${id}:`, errorMessage);
-    const err = new Error(errorMessage);
-    (err as any).status = axiosError.response?.status;
+    const err = new Error(errorMessage) as Error & { status?: number };
+    err.status = axiosError.response?.status;
     throw err;
   }
 };

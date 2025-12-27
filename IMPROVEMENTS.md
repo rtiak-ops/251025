@@ -66,13 +66,17 @@ docker compose exec backend alembic current
 
 **実装内容:**
 - ✅ バックエンドのヘルスチェックエンドポイント追加（`/health`）
-- ✅ フロントエンドDockerfileに非rootユーザー設定
+- ✅ フロントエンドDockerfileに非rootユーザー（nginx）設定
+- ✅ **[重要]** 非rootユーザーでも環境変数テンプレートが機能するよう `/etc/nginx/conf.d` の権限を変更
+- ✅ Nginx経由での `/health` プロキシ設定を追加
 - ✅ 両コンテナにHEALTHCHECK設定を追加
+- ✅ バックエンドへの Alembic 設定ファイルとマイグレーションファイルのコピーを追加
 
 **変更ファイル:**
-- `backend/Dockerfile` - ヘルスチェック追加
-- `backend/app/main.py` - `/health`エンドポイント実装
-- `frontend/Dockerfile` - 非rootユーザーとヘルスチェック
+- `backend/Dockerfile` - ヘルスチェックと Alembic 関連ファイルの追加
+- `backend/app/main.py` - `/health`エンドポイント実装（DB接続確認含む）
+- `frontend/Dockerfile` - 非rootユーザーとディレクトリ権限の修正
+- `frontend/nginx.conf.template` - プロキシ設定の拡充（/health, /docs 等）
 
 **効果:**
 - コンテナの稼働状態を自動監視

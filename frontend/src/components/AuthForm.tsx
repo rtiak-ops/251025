@@ -47,15 +47,16 @@ export default function AuthForm({ onAuthenticated }: Props) {
       // 3. 親コンポーネントにトークンを渡してログイン状態へ
       onAuthenticated(token.access_token);
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("認証エラー:", err);
       let displayMessage = "認証に失敗しました。";
 
       // Pydanticバリデーションエラーやカスタムエラーの詳細を取得
-      if (err.response?.data?.detail) {
-        const detail = err.response.data.detail;
+      const axiosError = err as { response?: { data?: { detail?: string | { msg: string }[] } } };
+      if (axiosError.response?.data?.detail) {
+        const detail = axiosError.response.data.detail;
         displayMessage = Array.isArray(detail) 
-          ? detail.map((d: any) => d.msg).join(", ") 
+          ? detail.map((d: { msg: string }) => d.msg).join(", ") 
           : detail;
       }
       setError(displayMessage);

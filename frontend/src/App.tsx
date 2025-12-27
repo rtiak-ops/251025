@@ -47,19 +47,20 @@ export default function App() {
     enabled: !!token,    // tokenが存在するときだけ実行する（ログインしていないときは実行しない）
   });
 
-  // エラー発生時の処理（副作用）
-  // isErrorがtrueになった瞬間に実行されます。
+  // 認証切れエラーのグローバル検知
   useEffect(() => {
-    if (isError) {
-      console.error("ToDoリストの取得エラー:", error);
-      
-      // 401エラー（認証切れ）の場合はログアウト扱いにする
-      if ((error as any)?.status === 401) {
-        setToken(null);
-        toast.error("セッションが切れました。再度ログインしてください。");
-      } else {
-        toast.error("データの取得に失敗しました");
-      }
+    const handleUnauthorized = () => {
+      setToken(null);
+      queryClient.clear();
+    };
+    window.addEventListener("auth:unauthorized", handleUnauthorized);
+    return () => window.removeEventListener("auth:unauthorized", handleUnauthorized);
+  }, [queryClient]);
+
+  // 一般的なエラー通知
+  useEffect(() => {
+    if (isError && (error as { status?: number })?.status !== 401) {
+      toast.error("データの取得に失敗しました");
     }
   }, [isError, error]);
 
@@ -131,7 +132,7 @@ export default function App() {
         reorderMutation.mutate(newOrderIds); // 非同期で送信開始
     } catch (e) {
         // mutation自体のエラーはonErrorで処理される
-        console.error(e);
+        console.error("並び替え中の予期せぬエラー:", e);
     }
   };
 

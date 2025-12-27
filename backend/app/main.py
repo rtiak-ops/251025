@@ -60,30 +60,17 @@ from .limiter import limiter # Rate Limiter Instance
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    FastAPI の起動時と終了時に実行される処理を定義します。
-    yield までの処理が起動時 (startup)、yield 以降の処理が終了時 (shutdown) に実行されます。
-    """
-    logger.info("アプリケーション起動: データベース初期化を開始します。")
-    try:
-        # データベースエンジンを使用して非同期セッションを開始
-        async with engine.begin() as conn:
-            # データベースのスキーマ (テーブル) を作成 (存在しない場合のみ作成されます)
-            # 注意: 本番環境ではAlembicマイグレーションを使用することを推奨
-            await conn.run_sync(Base.metadata.create_all)
-        logger.info("データベース初期化が完了しました。")
-    except Exception as e:
-        logger.critical(
-            f"データベース初期化中に致命的なエラーが発生しました: {e}",
-            exc_info=True,
-            extra={"error_type": type(e).__name__}
-        )
-        # データベース接続に失敗した場合、アプリケーションを起動させない
-        raise RuntimeError(
-            "データベース初期化に失敗しました。DATABASE_URLと接続設定を確認してください。"
-        ) from e
+    # ------------------------------------
+    # アプリケーション起動時の処理 (startup)
+    # ------------------------------------
+    # logger.info("アプリケーション起動: データベース初期化（create_all）をスキップします。")
+    # logger.info("注意: 本番環境では Alembic を使用してマイグレーションを適用してください。")
+    # try:
+    #     async with engine.begin() as conn:
+    #         await conn.run_sync(Base.metadata.create_all)
+    # except Exception as e:
+    #     logger.error(f"初期化中にエラーが発生しました（無視して続行）: {e}")
 
-    # ここでアプリケーション本体が起動し、リクエストの処理が可能になります
     yield
 
     # ------------------------------------

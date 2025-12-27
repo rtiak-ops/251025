@@ -9,6 +9,7 @@ python-jose[cryptography]
 python-dotenv
 pytest
 pytest-asyncio
+pytest-cov
 httpx
 slowapi
 python-json-logger

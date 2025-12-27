@@ -20,6 +20,7 @@ export interface Todo {
   created_at: string;   // 作成日時 (ISO 8601形式の文字列例: "2023-01-01T12:00:00Z")
   updated_at: string;   // 更新日時
   owner_id?: number;    // 作成者のユーザーID (オプション)
+  order: number;        // 並び順
 }
 
 /**

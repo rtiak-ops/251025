@@ -27,7 +27,8 @@ const TOKEN_KEY = "auth_token";
 
 // Axiosのインスタンス（通信するための道具）を作成します
 // これを使うことで、毎回URLの最初 (http://localhost:8000) を書かなくて済みます
-const api = axios.create({ baseURL: API_BASE });
+export const api = axios.create({ baseURL: API_BASE });
+export default api;
 
 // ----------------------------------------------------------------------------
 // 2. リクエストの前処理 (Interceptors)

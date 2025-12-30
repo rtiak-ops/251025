@@ -184,3 +184,66 @@ jobs:
         with:
           sarif_file: 'trivy-frontend-results.sarif'
           category: 'frontend'
+
+  # ==========================================
+  # 5. デプロイ (本番環境への反映)
+  # ==========================================
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [docker-build, security-scan] # テストとリントが成功した後に実行
+    # main または develop ブランチへのプッシュ時のみ実行
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    
+    # OIDC認証のために必要な権限
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+
+      # --- AWS 認証 (OIDC) ---
+      - name: AWS 認証設定
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # IAMロールのARNを指定（GitHub Secretsに登録）
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      # --- フロントエンドのデプロイ (S3 & CloudFront) ---
+      - name: Node.js セットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: '23'
+          cache: 'npm'
+          cache-dependency-path: ./frontend/package-lock.json
+
+      - name: フロントエンドのビルド
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: S3へ同期
+        run: |
+          aws s3 sync ./frontend/dist s3://${{ secrets.S3_BUCKET_NAME }} --delete
+
+      - name: CloudFrontキャッシュクリア (Invalidation)
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+
+      # --- バックエンドのデプロイ (EC2) ---
+      - name: EC2へデプロイ
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/251025
+            git pull origin ${{ github.ref_name }}
+            # Docker イメージのビルドと起動
+            docker compose up -d --build
+            # DBマイグレーションの実行 (Alembic)
+            docker compose exec -T backend alembic upgrade head

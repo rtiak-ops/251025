@@ -63,13 +63,13 @@ async def lifespan(app: FastAPI):
     # ------------------------------------
     # アプリケーション起動時の処理 (startup)
     # ------------------------------------
-    # logger.info("アプリケーション起動: データベース初期化（create_all）をスキップします。")
-    # logger.info("注意: 本番環境では Alembic を使用してマイグレーションを適用してください。")
-    # try:
-    #     async with engine.begin() as conn:
-    #         await conn.run_sync(Base.metadata.create_all)
-    # except Exception as e:
-    #     logger.error(f"初期化中にエラーが発生しました（無視して続行）: {e}")
+    logger.info("アプリケーション起動: データベース初期化（create_all）を実行します。")
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("データベースの初期化が完了しました。")
+    except Exception as e:
+        logger.error(f"初期化中にエラーが発生しました: {e}")
 
     yield
 

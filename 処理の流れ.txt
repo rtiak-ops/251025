@@ -1,5 +1,0 @@
-バックエンド
- main → router → crud
-
-フロントエンド
- App → component → api

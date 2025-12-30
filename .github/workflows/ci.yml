@@ -242,7 +242,9 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~/251025
-            git pull origin ${{ github.ref_name }}
+            # サーバー上の変更を破棄してGitHubの最新状態に強制的に合わせる
+            git fetch origin ${{ github.ref_name }}
+            git reset --hard origin/${{ github.ref_name }}
             # Docker イメージのビルドと起動
             docker compose up -d --build
             # DBマイグレーションの実行 (Alembic)

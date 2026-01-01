@@ -118,6 +118,25 @@ resource "aws_cloudfront_distribution" "main" {
     max_ttl                = 0
   }
 
+  ordered_cache_behavior {
+    path_pattern     = "/health"
+    allowed_methods  = ["GET", "HEAD"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "EC2-${aws_instance.app.id}"
+
+    forwarded_values {
+      query_string = true
+      cookies {
+        forward = "none"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+    min_ttl                = 0
+    default_ttl            = 0
+    max_ttl                = 0
+  }
+
   # シングルページアプリケーション(SPA)のためのエラー応答設定
   # 存在しないパスにアクセスが来ても index.html を返し、フロントエンド側でルーティングを行えるようにします
   custom_error_response {

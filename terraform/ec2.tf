@@ -68,7 +68,8 @@ resource "aws_instance" "app" {
               POSTGRES_DB=todo_db
               SECRET_KEY=cc45304918e7e237303f23497d5a5706
               ENV=production
-              CORS_ORIGINS=https://${aws_cloudfront_distribution.main.domain_name}
+              # 循環参照回避のため、CORS ORIGINS は一旦全て許可、またはデプロイ時に設定
+              CORS_ORIGINS=*
               EOT
               chown ec2-user:ec2-user /home/ec2-user/251025/.env
 

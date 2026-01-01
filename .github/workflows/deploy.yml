@@ -89,7 +89,6 @@ jobs:
             # 1. プロジェクトディレクトリの準備
             PROJECT_DIR="$HOME/251025"
             if [ ! -d "$PROJECT_DIR" ]; then
-              echo "Creating project directory..."
               git clone https://github.com/${{ github.repository }}.git "$PROJECT_DIR"
             fi
             cd "$PROJECT_DIR"
@@ -98,26 +97,32 @@ jobs:
             git fetch origin ${{ github.ref_name }}
             git reset --hard origin/${{ github.ref_name }}
             
-            # 3. Docker Compose の確認とインストール
-            # 'docker compose' が使えない場合に備えてインストールを試みる
-            if ! docker compose version > /dev/null 2>&1; then
-              echo "Docker Compose plugin not found. Attempting to install..."
-              sudo dnf update -y && sudo dnf install -y docker-compose-plugin
-            fi
-            
-            # 4. Docker サービスの起動確認
+            # 3. Docker のセットアップ
+            sudo dnf install -y docker
             sudo systemctl start docker
             sudo systemctl enable docker
+            sudo usermod -aG docker ec2-user
+            
+            # 4. Docker Compose (V2) の手動インストール
+            # 標準リポジトリにないため、GitHubから直接最新版をダウンロードします
+            if ! command -v docker-compose &> /dev/null; then
+              echo "Installing Docker Compose..."
+              DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
+              mkdir -p $DOCKER_CONFIG/cli-plugins
+              curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
+              chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
+              # システム全体で使えるようにリンクを作成
+              sudo ln -s $DOCKER_CONFIG/cli-plugins/docker-compose /usr/local/bin/docker-compose || true
+            fi
             
             # 5. コンテナの起動
-            # --build でイメージを再構築し、-d でバックグラウンド実行
+            # 'docker compose' (プラグイン形式) を使用します
             echo "Starting containers..."
-            sudo docker compose up -d --build
+            docker compose up -d --build
             
             # 6. データベースのマイグレーション
             echo "Waiting for backend to be ready..."
             sleep 20
             
-            # alembic upgrade を実行（エラー回避のため TTY 指定なしから試行）
-            sudo docker compose exec -T backend alembic upgrade head || \
-            sudo docker compose exec backend alembic upgrade head
+            # 権限問題を避けるため、docker compose exec を実行
+            docker compose exec -T backend alembic upgrade head

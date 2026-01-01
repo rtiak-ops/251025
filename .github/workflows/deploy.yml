@@ -86,46 +86,44 @@ jobs:
           timeout: 60s
           command_timeout: 10m
           script: |
-            # 1. プロジェクトディレクトリの準備
             PROJECT_DIR="$HOME/251025"
+            # 1. フォルダの準備
             if [ ! -d "$PROJECT_DIR" ]; then
               git clone https://github.com/${{ github.repository }}.git "$PROJECT_DIR"
             fi
             cd "$PROJECT_DIR"
             
-            # 2. 最新コードの取得（環境ファイルを消さないよう注意）
+            # 2. .env ファイルの避難 (reset で消えないようにする)
+            if [ -f ".env" ]; then
+              cp .env ../.env.bak
+            fi
+            
+            # 3. コードの更新
             git fetch origin ${{ github.ref_name }}
             git reset --hard origin/${{ github.ref_name }}
             
-            # 3. Docker の起動確認
+            # 4. .env ファイルの復元
+            if [ -f "../.env.bak" ]; then
+              mv ../.env.bak .env
+            else
+              echo "CRITICAL WARNING: .env file is missing! Please run terraform apply again or create it manually."
+            fi
+            
+            # 5. Docker Compose (V2) の確実なインストール
+            if ! command -v docker-compose &> /dev/null; then
+              echo "Installing Docker Compose standalone..."
+              sudo curl -SL https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-x86_64 -o /usr/bin/docker-compose
+              sudo chmod +x /usr/bin/docker-compose
+            fi
+            
+            # 6. Docker の状態確認
             sudo systemctl start docker
-            sudo systemctl enable docker
             
-            # 4. Docker Compose (V2) の確実なセットアップ
-            # システム全体のプラグインディレクトリに配置します
-            if ! docker compose version > /dev/null 2>&1; then
-              echo "Setting up Docker Compose plugin..."
-              sudo mkdir -p /usr/local/lib/docker/cli-plugins
-              sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
-              sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-              # 旧バージョンの互換性のためにリンクも作成
-              sudo ln -s /usr/local/lib/docker/cli-plugins/docker-compose /usr/bin/docker-compose || true
-            fi
-            
-            # 5. .env ファイルの復旧（もし消えていた場合）
-            # 本来はTerraformが作成しますが、消失時のために最小限のダミーを作成
-            if [ ! -f ".env" ]; then
-              echo "WARNING: .env file missing. Attempting to restore from .env.example..."
-              cp .env.example .env
-              # ここで本当のデータベース接続先などをSecretsから流し込むのが理想ですが、
-              # まずはファイルが存在しないことによる起動エラーを回避します
-            fi
-            
-            # 6. コンテナの起動
+            # 7. コンテナの起動 (絶対パスでハイフン形式を使用)
             echo "Starting containers..."
-            sudo docker compose up -d --build
+            sudo /usr/bin/docker-compose up -d --build
             
-            # 7. データベースのマイグレーション
-            echo "Waiting for backend to be ready..."
+            # 8. データベース更新
+            echo "Waiting for app to start..."
             sleep 20
-            sudo docker compose exec -T backend alembic upgrade head
+            sudo /usr/bin/docker-compose exec -T backend alembic upgrade head

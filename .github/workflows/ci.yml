@@ -1,74 +1,84 @@
 # ワークフローの名前。GitHubのActionsタブに表示されます。
 name: CI/CD Pipeline
 
-# 実行タイミング（トリガー）の設定
+# 実行タイミング（トリガー）の設定。
+# どんな時にこの自動化処理（ワークフロー）を動かすかを決めます。
 on:
   push:
-    branches: [main, develop] # mainとdevelopへのpush時に実行
+    branches: [main, develop] # main または develop ブランチにコードが保存(push)された時に実行
   pull_request:
-    branches: [main, develop] # PR作成時にも実行して、マージ前に安全性を確認
+    branches: [main, develop] # プルリクエスト（コードの取り込み依頼）が作られた時にも実行
 
+# 実行される一連の処理（ジョブ）を定義します。
 jobs:
   # ==========================================
-  # 1. バックエンドのテストとリント
+  # 1. バックエンドのテスト
   # ==========================================
   backend-test:
+    # 実行環境として Ubuntu（Linuxの一種）の最新版を使用します。
     runs-on: ubuntu-latest
     
-    # テストに必要なデータベース(PostgreSQL)を立ち上げる
+    # テストの実行に付随して必要な「サービス」を定義します。
+    # ここでは、バックエンドのテストで使うデータベース(PostgreSQL)を準備します。
     services:
       postgres:
-        image: postgres:17
+        image: postgres:17 # PostgreSQL 17 の公式イメージを使用
         env:
           POSTGRES_USER: test_user
           POSTGRES_PASSWORD: test_password
           POSTGRES_DB: test_db
-        # DBが起動してリクエストを受け付けられるか確認（ヘルスチェック）
+        # データベースが正常に起動したか確認するための設定（ヘルスチェック）
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 5432:5432
+          - 5432:5432 # 5432ポートを開放して、ジョブからアクセスできるようにします
 
+    # 実際の作業手順（ステップ）を記述します。
     steps:
+      # GitHub上のコードを、この実行環境の中にコピーします。
       - name: チェックアウト
         uses: actions/checkout@v4
 
+      # Python を使えるようにセットアップします。
       - name: Python環境のセットアップ
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-          cache: 'pip' # 依存関係をキャッシュして2回目以降を高速化
+          cache: 'pip' # 以前ダウンロードしたライブラリを再利用して高速化します
 
+      # バックエンドに必要なライブラリ（FastAPIなど）をインストールします。
       - name: 依存関係のインストール
-        working-directory: ./backend
+        working-directory: ./backend # backendディレクトリに移動して実行
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # 自動テスト(pytest)を実行します。
       - name: テストの実行 (pytest)
         working-directory: ./backend
         env:
-          # テスト用の接続URL。asyncpgを使用
+          # テスト用の設定（データベース接続先や秘密鍵など）を環境変数として渡します
           DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/test_db
           SECRET_KEY: test_secret_key_for_ci_only_min_32_chars_long
           ENV: development
         run: |
-          # テスト実行とカバレッジ（コード網羅率）の計測
+          # pytestを実行し、同時に「コードの何％をテストしたか（カバレッジ）」も計測します
           pytest -v --cov=app --cov-report=xml --cov-report=term
 
+      # テストの結果（カバレッジ）を Codecov という外部サービスに送り、グラフ化します。
       - name: カバレッジレポートのアップロード
         uses: codecov/codecov-action@v4
-        if: github.event_name == 'push' # push時のみレポートを送信
+        if: github.event_name == 'push' # 本番用コードが更新された時のみレポートを送る
         with:
           file: ./backend/coverage.xml
           flags: backend
           fail_ci_if_error: false
 
   # ==========================================
-  # 2. フロントエンドのテストとビルド
+  # 2. フロントエンドのテストとビルド確認
   # ==========================================
   frontend-test:
     runs-on: ubuntu-latest
@@ -77,6 +87,7 @@ jobs:
       - name: チェックアウト
         uses: actions/checkout@v4
 
+      # JavaScript/TypeScript の実行環境である Node.js をセットアップします。
       - name: Node.js環境のセットアップ
         uses: actions/setup-node@v4
         with:
@@ -84,18 +95,22 @@ jobs:
           cache: 'npm'
           cache-dependency-path: ./frontend/package-lock.json
 
+      # フロントエンドに必要なライブラリ（React, Viteなど）をインストールします。
       - name: 依存関係のインストール
         working-directory: ./frontend
-        run: npm ci
+        run: npm ci # package-lock.jsonの内容に忠実にインストールするコマンド
 
+      # コードの書き方に問題がないかチェック（リント）します。
       - name: リントの実行 (コード規約チェック)
         working-directory: ./frontend
         run: npm run lint
 
+      # フロントエンドの自動テストを実行します。
       - name: テストの実行 (Vitest/Jest等)
         working-directory: ./frontend
         run: npm run test:coverage
 
+      # 本番公開用のファイルが正しく作れるか（ビルド）を確認します。
       - name: ビルドの実行 (本番用ファイルの生成)
         working-directory: ./frontend
         run: npm run build
@@ -111,28 +126,32 @@ jobs:
   # ==========================================
   # 3. Dockerイメージのビルドテスト
   # ==========================================
+  # デプロイで使用する Docker イメージが壊れていないか、事前に組み立てて確認します。
   docker-build:
     runs-on: ubuntu-latest
-    needs: [backend-test, frontend-test] # テスト合格後に実行
-    if: github.event_name == 'push'      # push時のみ実行
+    needs: [backend-test, frontend-test] # テストに合格した後にのみ実行します
+    if: github.event_name == 'push'      # push時のみ実行（無駄な実行を避けるため）
 
     steps:
       - name: チェックアウト
         uses: actions/checkout@v4
 
-      - name: Docker Buildxのセットアップ (高度なビルド機能)
+      # 高機能な Docker ビルドツールを準備します。
+      - name: Docker Buildxのセットアップ
         uses: docker/setup-buildx-action@v3
 
-      - name: バックエンドイメージのビルド (保存はせずテストのみ)
+      # バックエンドの Docker イメージを組み立ててみます。
+      - name: バックエンドイメージのビルド (テストのみ)
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          push: false
+          push: false # ここでは保存場所（レジストリ）に送らず、ビルドが通るかだけ確認
           tags: todo-backend:latest
-          cache-from: type=gha # GitHub Actionsのキャッシュを利用
+          cache-from: type=gha # GitHubの機能を使ってビルドを速くします
           cache-to: type=gha,mode=max
 
-      - name: フロントエンドイメージのビルド
+      # フロントエンドの Docker イメージを組み立ててみます。
+      - name: フロントエンドイメージのビルド (テストのみ)
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
@@ -144,25 +163,29 @@ jobs:
   # ==========================================
   # 4. セキュリティスキャン (脆弱性チェック)
   # ==========================================
+  # プログラムや使っているライブラリに、有名なセキュリティの弱点（脆弱性）がないか調べます。
   security-scan:
     runs-on: ubuntu-latest
     needs: [backend-test, frontend-test]
+    # スキャン結果を GitHub のページに書き込むための権限設定
     permissions:
-      security-events: write # GitHub Securityタブへの表示に必要
+      security-events: write
       contents: read
 
     steps:
       - name: チェックアウト
         uses: actions/checkout@v4
 
+      # Trivy というツールを使ってバックエンドのファイルをスキャンします。
       - name: Trivyによる脆弱性スキャン（バックエンド）
         uses: aquasecurity/trivy-action@master
         with:
-          scan-type: 'fs' # ファイルシステムをスキャン
+          scan-type: 'fs'
           scan-ref: './backend'
-          format: 'sarif'
+          format: 'sarif' # GitHubと連携しやすい形式
           output: 'trivy-backend-results.sarif'
 
+      # フロントエンドのファイルもスキャンします。
       - name: Trivyによる脆弱性スキャン（フロントエンド）
         uses: aquasecurity/trivy-action@master
         with:
@@ -171,9 +194,10 @@ jobs:
           format: 'sarif'
           output: 'trivy-frontend-results.sarif'
 
+      # 見つかった問題点を、GitHub の「Security」タブに表示されるようにアップロードします。
       - name: スキャン結果をGitHub Securityタブにアップロード
         uses: github/codeql-action/upload-sarif@v3
-        if: always() # 前のステップが失敗しても(脆弱性が見つかっても)必ず実行
+        if: always() # 脆弱性が見つかってエラーになっても、必ず結果をアップロードする
         with:
           sarif_file: 'trivy-backend-results.sarif'
           category: 'backend'
@@ -186,32 +210,34 @@ jobs:
           category: 'frontend'
 
   # ==========================================
-  # 5. デプロイ (本番環境への反映)
+  # 5. デプロイ (本番/開発環境への反映)
   # ==========================================
+  # すべてのチェックに合格したら、実際にサーバーに最新版を送り込みます。
   deploy:
     runs-on: ubuntu-latest
-    needs: [docker-build, security-scan] # テストとリントが成功した後に実行
-    # main または develop ブランチへのプッシュ時のみ実行
+    needs: [docker-build, security-scan]
+    # main または develop ブランチへの反映時のみ実行します
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     
-    # OIDC認証のために必要な権限
+    # 安全に AWS と通信（認証）するための権限設定
     permissions:
-      id-token: write
+      id-token: write # GitHub IDトークンを発行して AWS とのやり取りに使います
       contents: read
 
     steps:
       - name: チェックアウト
         uses: actions/checkout@v4
 
-      # --- AWS 認証 (OIDC) ---
+      # --- AWS 認証 ---
+      # ログイン情報（アクセスキーなど）を GitHub Secrets から読み込み、AWSを使えるようにします。
       - name: AWS 認証設定
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # IAMロールのARNを指定（GitHub Secretsに登録）
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ap-northeast-1
 
       # --- フロントエンドのデプロイ (S3 & CloudFront) ---
+      # フロントエンドは静記的ファイルとして、高速配信サーバー(S3)に配置します。
       - name: Node.js セットアップ
         uses: actions/setup-node@v4
         with:
@@ -225,15 +251,18 @@ jobs:
           npm ci
           npm run build
 
+      # ビルドされたファイルを S3 バケットにコピーします。
       - name: S3へ同期
         run: |
           aws s3 sync ./frontend/dist s3://${{ secrets.S3_BUCKET_NAME }} --delete
 
+      # 世界中のキャッシュサーバー(CloudFront)に残っている古いデータを消去し、最新版が表示されるようにします。
       - name: CloudFrontキャッシュクリア (Invalidation)
         run: |
           aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
 
       # --- バックエンドのデプロイ (EC2) ---
+      # バックエンドサーバー(EC2)に直接ログイン(SSH)して操作します。
       - name: EC2へデプロイ
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -241,11 +270,12 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            # サーバー上のプロジェクトディレクトリに移動
             cd ~/251025
-            # サーバー上の変更を破棄してGitHubの最新状態に強制的に合わせる
+            # GitHub の最新のソースコードを取り込む
             git fetch origin ${{ github.ref_name }}
             git reset --hard origin/${{ github.ref_name }}
-            # Docker イメージのビルドと起動
+            # Docker イメージを再構築して、コンテナを再起動する
             docker compose up -d --build
-            # DBマイグレーションの実行 (Alembic)
+            # データベースの構造（テーブルなど）を最新の状態に更新する
             docker compose exec -T backend alembic upgrade head

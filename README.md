@@ -1,50 +1,62 @@
 # 🚀 Modern AI-Powered ToDo App
 
+[![CI/CD](https://github.com/rtiak-ops/251025/actions/workflows/ci.yml/badge.svg)](https://github.com/rtiak-ops/251025/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react)](https://reactjs.org/)
+[![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=flat&logo=terraform)](https://www.terraform.io/)
+
 **「AIアシスタント搭載 × 実務レベルのエンジニアリング」**
 
 最新のLLM（大規模言語モデル）機能を統合しつつ、運用・保守・セキュリティといったプロフェッショナルな品質基準を満たすように設計された、次世代のWebアプリケーションです。
 
-単なるタスク管理ではなく、**AIが「タスク分解」をサポート**することで、ユーザーの生産性を劇的に向上させます。
+---
+
+## 📋 目次
+- [✨ 主な機能](#-主な機能)
+- [🏗️ アーキテクチャ](#-アーキテクチャ)
+- [🛠️ 技術スタック](#️-技術スタック)
+- [🚀 クイックスタート](#-クイックスタート)
+- [⚙️ 設定 (Environment Variables)](#️-設定-environment-variables)
+- [🧪 開発・テスト](#-開発テスト)
+- [🌐 デプロイ (Infrastructure as Code)](#-デプロイ-infrastructure-as-code)
+- [📂 ディレクトリ構成](#-ディレクトリ構成)
 
 ---
 
-## ✨ AI機能: Magic Breakdown (New!)
+## ✨ 主な機能
 
-### 🧠 AIタスク分解
+### 🧠 Magic Breakdown (AIタスク分解)
 「旅行の計画」「プレゼンの準備」といった漠然としたタスクを入力し、**「✨AI分解」ボタン**を押すだけで、AIが実行可能な具体的なサブタスクを生成・追加します。
 
-- **安心のデフォルト設計**: OpenAI APIキーが設定されていない場合は、**自動的にモックモード（無料）**で動作します。課金の心配なく、AI機能のUX（ユーザー体験）を試すことができます。
-- **実戦モード**: APIキーを設定すれば、GPT-3.5/4 がリアルタイムで思考し、高精度な提案を行います。
+- **モックモード搭載**: OpenAI APIキー未設定でも、自動的にモックモードで動作するため、コストを気にせずUXを体験可能。
+- **インテリジェント提案**: APIキー設定時は GPT-3.5/4 がリアルタイムでタスクを構造化。
+
+### 💎 リッチなUI/UX
+- **直感的なドラッグ＆ドロップ**: `React Beautiful DnD` によるスムーズな並び替え。
+- **楽観的UI更新 (Optimistic Updates)**: `TanStack Query` により、通信完了を待たずにUIが反応。
+- **モダンなフィードバック**: スケルトンローディングと `react-hot-toast` による洗練された通知。
+
+### 🛡️ 生産準備完了 (Production Ready)
+- **セキュリティ**: レート制限 (`slowapi`)、セキュリティヘッダー、CORSの適切な設定。
+- **可観測性**: `python-json-logger` による構造化ログ。
+- **堅牢性**: SQLAlchemy (Async) による非同期DBアクセスと、疎結合なレイヤー設計。
 
 ---
 
-## 💎 リッチなUI/UX (Enhanced Users Experience)
+## 🏗️ アーキテクチャ
 
-### 🖱️ 直感的なドラッグ＆ドロップ
-- **React Beautiful DnD** (`@hello-pangea/dnd`) を採用。
-- タスクの優先順位を、マウスやタッチ操作で直感的に並び替えることができます。
-- **楽観的UI更新 (Optimistic updates)** により、サーバー通信を待たずに瞬時に画面が反映され、ストレスフリーな操作感を実現。
-
-### ⚡ 高速でスムーズな動作
-- **TanStack Query (React Query)** を導入し、データ取得とキャッシュ管理を高度化。
-- **スケルトンローディング**: データ読み込み中は「くるくる」ではなく、コンテンツの骨組みを表示し、体感待ち時間を短縮。
-- **トースト通知**: アクションの結果（成功・失敗）を `react-hot-toast` でさりげなく、かつ明確にフィードバック。
-
----
-
-## 🛡️ エンジニアリング品質 (Production Ready)
-
-### 1. 堅牢なバックエンド & セキュリティ
-- **Rate Limiting**: `slowapi` により、APIへの過剰なアクセス（DoS/ブルートフォース）をIP単位で自動遮断。
-- **可観測性 (Observability)**: `python-json-logger` による構造化ログ（JSON）で、Datadog/CloudWatch等での解析に対応。
-- **非同期設計**: FastAPI (`async/await`) を全面採用し、高負荷に強いアーキテクチャ。
-
-### 2. 品質保証 (QA)
-- **自動テスト**: `pytest` + `sqlite(:memory:)` による高速かつクリーンなテスト環境。
-
-### 3. モダンなフロントエンド設計
-- **React + TypeScript + Vite**: 型安全かつ高速な開発体験。
-- **状態管理**: TanStack Query によるサーバー状態の管理とキャッシュ戦略。
+```mermaid
+graph TD
+    User([User's Browser]) <-->|HTTPS/CDN| CF[CloudFront]
+    CF <-->|Static Files| S3[S3 Bucket]
+    CF <-->|API Request| EC2[EC2 Instance]
+    
+    subgraph "AWS Cloud (VPC)"
+        EC2 <-->|Async| RDS[(RDS PostgreSQL)]
+        EC2 -.->|API Call| OpenAI[OpenAI API]
+    end
+```
 
 ---
 
@@ -52,115 +64,87 @@
 
 | Category | Technology | Usage |
 |---|---|---|
+| **Frontend** | React, TypeScript, Vite | 型安全な高速ビルド・開発環境 |
+| **State Mgmt** | TanStack Query | サーバー状態管理・キャッシュ・楽観的更新 |
+| **Backend** | Python 3.12+, FastAPI | 非同期ASGIフレームワーク |
+| **Database** | PostgreSQL 17 | 本番用データ永続化 |
 | **AI / LLM** | OpenAI API | タスク分解エンジン (gpt-3.5-turbo) |
-| **Frontend** | React, TypeScript | Vite採用で高速ビルド |
-| **State Mgmt** | **TanStack Query** | サーバー状態管理・キャッシュ・楽観的更新 |
-| **UI Libs** | **@hello-pangea/dnd** | ドラッグ＆ドロップ |
-| **UI Libs** | **react-hot-toast** | トースト通知 |
 | **Styling** | Tailwind CSS | ユーティリティファーストなCSS |
-| **Backend** | Python, FastAPI | 非同期ASGIフレームワーク |
-| **Database** | PostgreSQL | 本番用データ永続化 |
-| **ORM** | SQLAlchemy (Async) | 非同期DBアクセス |
-| **Migration** | Alembic | データベーススキーマのバージョン管理 |
-| **Testing (BE)** | pytest, httpx | インメモリSQLiteを用いた高速テスト |
-| **Testing (FE)** | Vitest, React Testing Library | フロントエンドユニットテスト |
-| **Security** | slowapi | レート制限 (Rate Limiting) |
+| **Infra (IaC)** | Terraform | VPC, EC2, RDS, S3, CloudFrontのコード化 |
 | **CI/CD** | GitHub Actions | 自動テスト・ビルド・セキュリティスキャン |
-| **Infra** | Docker Compose | フルスタック環境のコード化 |
 
 ---
 
 ## 🚀 クイックスタート
 
-Docker があれば、コマンド1つですぐに立ち上がります。
+Dockerがあれば、最小限の手順でフルスタック環境が立ち上がります。
 
 ```bash
-# クローン
-git clone https://github.com/rtiak-ops/251025
+# 1. クローン
+git clone https://github.com/rtiak-ops/251025.git
 cd 251025
 
-# 起動（ビルド含む）
+# 2. 設定ファイルの準備
+cp .env.example .env
+
+# 3. 起動
 docker compose up --build
 ```
 
-- **アプリ**: [http://localhost:5173](http://localhost:5173)
-- **API仕様書**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Webアプリ**: [http://localhost:5173](http://localhost:5173)
+- **APIドキュメント**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
 
-## ⚙️ 設定 (Configuration)
+## ⚙️ 設定 (Environment Variables)
 
-`docker-compose.yml` または `.env` ファイルで設定を変更できます。
+`.env` ファイルで以下の主要な項目を設定可能です。
 
-| 変数名 | 説明 | デフォルト値 |
+| 変数名 | 説明 | デフォルト値 / 例 |
 |---|---|---|
-| `OPENAI_API_KEY` | 本物のAIを使用する場合に設定。("sk-...") | 設定なし (モックモードで動作) |
-| `DATABASE_URL` | DB接続文字列 | postgresql+asyncpg://... |
-
-**本物のAIを使う場合の設定例:**
-```yaml
-# docker-compose.yml
-services:
-  backend:
-    environment:
-      OPENAI_API_KEY: "sk-your-openai-api-key-here"
-```
+| `OPENAI_API_KEY` | OpenAI APIキー (未設定時はモック動作) | `sk-...` |
+| `DATABASE_URL` | DB接続用URL (SQLAlchemy形式) | `postgresql+asyncpg://...` |
+| `SECRET_KEY` | JWT署名用の秘密鍵 | (ランダムな文字列を推奨) |
+| `ENV` | 実行環境モード | `development` / `production` |
+| `CORS_ORIGINS` | 接続を許可するオリジン | `http://localhost:5173` |
 
 ---
 
 ## 🧪 開発・テスト
 
-### バックエンドテスト
-
+### ✅ バックエンド (pytest)
 ```bash
-# テスト実行
-docker compose exec backend pytest -v
-
-# カバレッジ付きテスト
-docker compose exec backend pytest --cov=app --cov-report=html
-
-# カバレッジレポートは backend/htmlcov/index.html で確認可能
+docker compose exec backend pytest -v --cov=app
 ```
 
-### フロントエンドテスト
-
+### ✅ フロントエンド (Vitest)
 ```bash
-# フロントエンドディレクトリに移動
-cd frontend
-
-# 依存関係のインストール（初回のみ）
-npm install
-
-# テスト実行
-npm run test
-
-# UIモードでテスト実行
-npm run test:ui
-
-# カバレッジレポート生成
-npm run test:coverage
+cd frontend && npm install && npm run test
 ```
 
-### データベースマイグレーション
-
+### 🔄 マイグレーション (Alembic)
 ```bash
-# 新しいマイグレーションを作成（自動生成）
-docker compose exec backend alembic revision --autogenerate -m "マイグレーションの説明"
-
-# マイグレーションを適用
 docker compose exec backend alembic upgrade head
-
-# 現在のマイグレーションバージョンを確認
-docker compose exec backend alembic current
-
-# マイグレーション履歴を表示
-docker compose exec backend alembic history
-
-# 1つ前のバージョンにロールバック
-docker compose exec backend alembic downgrade -1
 ```
 
-**注意:** 本番環境では必ずバックアップを取ってからマイグレーションを実行してください。
+---
+
+## 🌐 デプロイ (Infrastructure as Code)
+
+本プロジェクトは AWS へのデプロイを Terraform で自動化しています。
+
+1. **ディレクトリ移動**: `cd terraform`
+2. **要件**: AWS CLI, Terraform がインストールされていること。
+3. **実行**: 
+   ```bash
+   terraform init
+   terraform apply
+   ```
+
+手動のデプロイ手順は以下のガイドを参照してください：
+- [📖 AWS デプロイ全体像](memo/EC2_DEPLOAY_PLAN.md)
+- [📖 S3/CloudFront フロントエンドデプロイ](memo/S3_CLOUDFRONT_GUIDE.md)
+- [📖 RDS 移行・管理ガイド](memo/RDS_MIGRATION_GUIDE.md)
 
 ---
 
@@ -168,20 +152,21 @@ docker compose exec backend alembic downgrade -1
 
 ```text
 .
-├── backend/
-│   ├── app/
-│   │   ├── routers/
-│   │   │   ├── ai.py    # AI連携ロジック
-│   │   │   ├── auth.py  # 認証・レート制限
-│   │   │   └── ...
-│   │   ├── limiter.py  # セキュリティ設定
-│   │   └── main.py
-│   ├── tests/           # 自動テスト
-│   └── ...
-├── frontend/            # Reactアプリ (Vite + TanStack Query)
-└── docker-compose.yml
+├── backend/             # FastAPI アプリケーション
+│   ├── app/             # アプリ本体 (Routers, Models, Schemas)
+│   ├── tests/           # バックエンドテストコード
+│   └── alembic/         # DBマイグレーション履歴
+├── frontend/            # React + Vite アプリケーション
+│   ├── src/             # ソースコード (Components, Hooks, API)
+│   └── public/          # 静的アセット
+├── terraform/           # AWS インフラ定義 (IaC)
+├── .github/workflows/   # GitHub Actions (CI/CD)
+├── memo/                # 設計ドキュメント・各種ガイド
+└── docker-compose.yml   # 開発環境コンテナ定義
 ```
 
 ---
 
-**Developed by rtiak-ops**
+**Developed by rtiak-ops**  
+*Quality and Speed, combined with AI potential.*
+

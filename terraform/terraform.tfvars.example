@@ -1,0 +1,16 @@
+# プロジェクトの識別名
+project_name = "todo-app"
+
+# 環境名（production/staging など）
+environment  = "production"
+
+# VPCのネットワーク範囲
+vpc_cidr     = "10.0.0.0/16"
+
+# データベースのマスターパスワード
+# 【重要】本番環境では必ず複雑なパスワードに変更してください
+db_password  = "your-secure-password"
+
+# AWSに登録済みのSSHキーペアの名前
+# インスタンスへのログインに使用します
+key_name     = "app-key"

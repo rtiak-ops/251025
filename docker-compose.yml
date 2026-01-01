@@ -1,79 +1,128 @@
+# サービスの定義を開始します。
 services:
   # --- データの保管庫 (データベース層) ---
   # 大切なデータを守る、システムの心臓部です。
+  # データベースサービスの名前を「db」と定義します。
   db:
     # 安定感抜群のPostgreSQL 17を採用しています。
+    # 使用するベースイメージとバージョンを指定。
     image: postgres:17
+    # コンテナに個別の名前を付けます。
     container_name: todo_db_1025
     # 万が一コンテナが倒れても、Dockerが自動で起こしてくれるので安心です。
+    # エラーや再起動時にも自動的にコンテナを立ち上げます。
     restart: always
+    # 環境変数の設定セクション。
     environment:
       # .env から自動的に読み込まれますが、明示的に指定することも可能です
+      # データベースの管理者ユーザー名
       POSTGRES_USER: ${POSTGRES_USER}
+      # 管理者ユーザーのパスワード
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # 最初に作成されるデータベース名
       POSTGRES_DB: ${POSTGRES_DB}
+    # データの永続化設定。
     volumes:
       # 【重要】これがないと、コンテナを消した時にデータも消えてしまいます。
       # データを「外出し」して、安全に永続化するための設定です。
+      # 「postgres_data」という領域をDB保存先に紐付けます。
       - postgres_data:/var/lib/postgresql/data
     # 外部からDBを直接覗きたい時は、下のコメントアウトを外すと5432番で繋がります。
     # ports:
     #   - "5432:5432"
     # DBが「準備完了」になったかを確認する仕組みです。
     # 次のbackendサービスが「DBまだ？」と待てるようになります。
+    # コンテナの健康状態（正常動作）をチェックする仕組み。
     healthcheck:
+      # DBが受付可能か確認するコマンド。
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      # 5秒ごとにチェックを実行。
       interval: 5s
+      # 5秒以内に反応がなければ失敗とみなす。
       timeout: 5s
+      # 5回連続で失敗したら「不健康（unhealthy）」と判断。
       retries: 5
 
   # --- 知能の部分 (バックエンド層 / FastAPI) ---
   # データの処理や、データベースとのやり取りを担当します。
+  # バックエンドプログラムのサービス名を「backend」と定義。
   backend:
+    # バックエンドフォルダ内のDockerfileを使ってビルド。
     build: ./backend
+    # コンテナに名前を付けます。
     container_name: todo_backend_1025
     # env_file を指定することで、ファイル内の変数がコンテナ内で利用可能になります
+    # 設定ファイルを指定。
     env_file:
+      # .envファイルに書かれた設定を読み込む。
       - .env
     # --proxy-headers を追加して、NginxからのX-Forwarded-Protoヘッダーを解釈できるようにします
+    # サーバーを起動するコマンド。
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips "*"
+    # 常に再起動を試みる。
     restart: always
+    # 環境変数の追加設定。
     environment:
       # .env の内容を使用して接続文字列を構成します
+      # データベースへの接続先URL。
       DATABASE_URL: ${DATABASE_URL}
+    # ポート開放の設定。
     ports:
+      # ホストの8000番をコンテナ内の8000番に繋ぐ。
       - "8000:8000"
+    # 依存関係の定義。
     depends_on:
+      # dbサービスに依存。
       db:
+        # dbが「健康（準備完了）」になってから起動する。
         condition: service_healthy
 
-  # --- 見た目と窓口の部分 (フロントエンド層 + Nginx) ---
+  # --- 見見た目と窓口の部分 (フロントエンド層 + Nginx) ---
   # ビルド済みの画面を配信し、APIへのリクエストをバックエンドへ中継します。
+  # フロントエンド（画面）のサービス名を「frontend」と定義。
   frontend:
+    # フロントエンドフォルダ内のDockerfileを使ってビルド。
     build: ./frontend
+    # コンテナに名前を付けます。
     container_name: todo_frontend_1025
+    # 常に再起動を試みる。
     restart: always
+    # 設定ファイルを指定。
     env_file:
+      # .envファイルから設定を読み込む。
       - .env
+    # 環境変数の設定。
     environment:
       # Nginx テンプレートがバックエンドを指すための URL です
+      # フロントエンドがバックエンドを探すためのアドレス。
       - BACKEND_URL=http://backend:8000
+      # ドメイン名（なければlocalhost）。
       - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
+    # ポート開放設定。
     ports:
       # ブラウザで http://localhost にアクセスするとアプリが見えます！
       # 標準的なWebポート（80番）を使用します。
+      # Web標準の80番（HTTP）を接続。
       - "80:80"
-      - "443:443" # HTTPS用のポート
+      # セキュアな443番（HTTPS）を接続。
+      - "443:443"
+    # 外部ファイルの共有設定。
     volumes:
       # Certbotなどで取得した証明書をマウントするための設定を追加
       # ローカル環境などでファイルがない場合はエラーになる可能性があるため、
       # 実際の運用の際は適切な場所にパスを通してください。
+      # SSL証明書のファイルをコンテナに読み込み専用でマウント。
       - ./certbot/conf:/etc/nginx/ssl:ro
+    # 依存関係の定義。
     depends_on:
+      # バックエンドが起動してからフロントエンドを起動。
       - backend
 
 # --- 共通の道具箱 ---
+# 共有ボリュームの定義セクション。
 volumes:
   # ここで名前を付けたボリュームは、コンテナを作り直しても残り続けます。
+  # DB用の保存領域「postgres_data」を定義。
   postgres_data:
+    # ローカルマシンのディスクを使用する設定。
     driver: local

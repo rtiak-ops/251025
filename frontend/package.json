@@ -11,7 +11,8 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npm run build && aws s3 sync dist s3://todo-app-frontend-838873470633 --delete && aws cloudfront create-invalidation --distribution-id E3JIAVZ6OK2YQC --paths \"/*\""
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",

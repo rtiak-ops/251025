@@ -27,3 +27,10 @@ Thumbs.db
 # other 
 memo/
 certbot/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+.terraform.lock.hcl

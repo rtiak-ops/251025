@@ -1,73 +1,72 @@
-# React + TypeScript + Vite
+# 🌐 Modern AI-Powered ToDo - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+このディレクトリには、Modern AI-Powered ToDo App のユーザーインターフェースが含まれています。  
+React と TypeScript をベースに、高速で直感的な操作感を実現するモダンなフロントエンドスタックを採用しています。
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ✨ 主な特徴
 
-## React Compiler
+- **AI連携 UI**: ボタン一つでタスクをAIが分解。結果をリアルタイムでリストに反映。
+- **ドラッグ＆ドロップ**: `React Beautiful DnD` によるシームレスなタスク並び替え。
+- **楽観的更新 (Optimistic Updates)**: `TanStack Query` により、API通信の完了を待たずにUIが即座に反応し、オフラインに近い軽快な操作感を提供。
+- **完全レスポンシブ**: `Tailwind CSS` による、モバイル・デスクトップ両対応のデザイン。
+- **リッチなフィードバック**: `react-hot-toast` による通知と、スケルトンローディングによるスムーズな画面遷移。
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 🛠️ 技術スタック
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Core**: `React 18`, `TypeScript`
+- **Build Tool**: `Vite`
+- **State Management**: `TanStack Query (React Query) v5`
+- **Styling**: `Tailwind CSS`, `Lucide React` (Icons)
+- **Forms**: `React Hook Form`, `Zod`
+- **Testing**: `Vitest`, `React Testing Library`
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## 🚀 開発ガイド
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 1. セットアップ
+
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. 開発サーバーの起動
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# .env の VITE_API_BASE_URL がバックエンドを向いていることを確認
+npm run dev
 ```
+
+### 3. ビルド
+
+```bash
+npm run build
+```
+
+### 4. テストの実行
+
+```bash
+# 単発実行
+npm run test
+
+# UIモードでの実行
+npm run test:ui
+```
+
+---
+
+## 📂 ディレクトリ構成
+
+- `src/components`: 再利用可能な UI コンポーネント
+- `src/hooks`: カスタムフック (データフェッチ、認証ロジック等)
+- `src/api.ts`: API クライアント定義 (axios)
+- `src/types`: TypeScript の型定義
+- `src/App.tsx`: アプリケーションのエントリポイント・ルーティング
+
+---
+
+**Crafted with Interface Excellence by rtiak-ops**

@@ -140,51 +140,56 @@ async def health_check():
 # ----------------------------------------------------------------------
 # 3. Middleware: Security Headers & CORS
 # ----------------------------------------------------------------------
+# ミドルウェアは、リクエストが本来の処理（関数）に届く前、
+# またはレスポンスが返される直前に共通で実行したい処理を記述します。
 
 import os
 from starlette.middleware.base import BaseHTTPMiddleware
 
-# セキュリティヘッダーを追加するカスタムミドルウェア
+# 【セキュリティヘッダーミドルウェア】
+# ブラウザのセキュリティ機能を強制的にONにするための設定です。
+# 悪いWEBサイトがあなたのサイトを勝手に iframe で読み込んで操作を盗む（クリックジャッキング）などを防ぎます。
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)
-        # クリックジャッキング対策
+        # クリックジャッキング対策: 自分のサイト以外で iframe 表示を禁止
         response.headers["X-Frame-Options"] = "DENY"
-        # MIMEタイプのスニッフィング防止
+        # MIMEタイプのスニッフィング防止: ブラウザが勝手にファイル形式を推測して実行するのを防ぐ
         response.headers["X-Content-Type-Options"] = "nosniff"
-        # XSSフィルタの有効化
+        # XSSフィルタの有効化: ブラウザの組み込みXSS対策を強制
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        # HSTS (HTTPS強制) - 本番環境のみ推奨
+        # HSTS (HTTPS強制): 1年間、このドメインへはHTTPSのみで接続するようにブラウザに指示（本番のみ）
         if os.getenv("ENV") == "production":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
 app.add_middleware(SecurityHeadersMiddleware)
 
-# 許可するオリジンのリストを設定（フロントエンドのURL）
-# 環境変数 CORS_ORIGINS があればそれを使用し、なければデフォルト値を使用します。
-# カンマ区切りで複数指定可能です（例: "https://example.com,https://www.example.com"）
+# 【CORS (Cross-Origin Resource Sharing) の設定】
+# 「違うドメインのフロントエンド」から「このバックエンドAPI」を叩くことを許可するための設定です。
+# これがないと、ブラウザのセキュリティ制限でフロントエンドからのAPI呼び出しがブロックされます。
 cors_origins_env = os.getenv("CORS_ORIGINS", "")
 if cors_origins_env:
+    # 環境変数がある場合（本番など）、そのドメインだけを許可
     origins = [origin.strip() for origin in cors_origins_env.split(",")]
 else:
+    # 開発環境用のデフォルト許可リスト
     origins = [
         "http://localhost",
-        "http://localhost:5173",  # Vite 開発サーバー
+        "http://localhost:5173",  # Vite のデフォルトポート
         "https://localhost",
         "http://127.0.0.1",
         "http://127.0.0.1:5173",
         "https://127.0.0.1",
     ]
 
-# CORS ミドルウェアをアプリケーションに追加し、異なるオリジンからのアクセスを許可
+# CORS ミドルウェアをアプリケーションに追加
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,       # 許可するオリジン
-    # allow_origin_regex="https?://localhost:.*", # 開発用でも必要以上に広げない
-    allow_credentials=True,      # クッキーなどの資格情報を許可
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"], # 必要なメソッドのみ許可
-    allow_headers=["*"],         # 全てのHTTPヘッダーを許可
+    allow_origins=origins,       # 許可するサイトのURL
+    allow_credentials=True,      # クッキーなどを使った認証を許可するか
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"], # 許可するHTTPメソッド
+    allow_headers=["*"],         # 全てのヘッダーを許可（認証トークンなどを送るため）
 )
 
 # ----------------------------------------------------------------------

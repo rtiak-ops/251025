@@ -31,12 +31,11 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ap-northeast-1
 
-      # --- 最新のEC2 IPを取得 ---
-      # 固定IP(Elastic IP)を使わない場合、再作成のたびにIPが変わるため、タグを元に最新のIPをAWSから聞き出します。
-      - name: 最新のEC2 IPを取得
-        id: get-ip
+      # --- 最新のインフラ情報を取得 ---
+      - name: 最新のインフラ情報を取得
+        id: infra-info
         run: |
-          # タグ Name=todo-app-ec2 (project_nameによって変わります) かつ 実行中(running)のインスタンスを探します
+          # 1. EC2のIP取得 (タグ: Name=todo-app-ec2)
           IP=$(aws ec2 describe-instances \
             --filters "Name=tag:Name,Values=todo-app-ec2" "Name=instance-state-name,Values=running" \
             --query "Reservations[0].Instances[0].PublicIpAddress" \
@@ -46,20 +45,51 @@ jobs:
             echo "エラー: 起動中のEC2インスタンスが見つかりませんでした。"
             exit 1
           fi
-          
-          echo "取得したIP: $IP"
-          echo "ip=$IP" >> $GITHUB_OUTPUT
+          echo "EC2 IP: $IP"
+          echo "ec2_ip=$IP" >> $GITHUB_OUTPUT
 
-      # --- 最新のCloudFront情報を取得 ---
-      # アプリのCORS制限に使用するため、作成されたCloudFrontのドメイン名を取得します。
-      - name: 最新のCloudFront情報を取得
-        id: get-cf
-        run: |
+          # 2. S3バケット名取得 (タグ: Name=todo-app-frontend-bucket)
+          # resourcegroupstaggingapi を使うとタグからARNを引けます
+          S3_ARN=$(aws resourcegroupstaggingapi get-resources \
+            --tag-filters Key=Name,Values=todo-app-frontend-bucket \
+            --query "ResourceTagMappingList[0].ResourceARN" \
+            --output text)
+          
+          if [ "$S3_ARN" == "None" ] || [ -z "$S3_ARN" ]; then
+            echo "エラー: S3バケットが見つかりませんでした。"
+            exit 1
+          fi
+          S3_BUCKET_NAME=${S3_ARN##*:} # arn:aws:s3:::bucket-name から名前だけ抽出
+          echo "S3 Bucket: $S3_BUCKET_NAME"
+          echo "s3_bucket=$S3_BUCKET_NAME" >> $GITHUB_OUTPUT
+
+          # 3. CloudFront情報の取得
+          # まずドメイン名を取得し、そのドメインを持つディストリビューションのIDを特定します
           CF_DOMAIN=$(aws cloudfront list-distributions \
             --query "DistributionList.Items[0].DomainName" \
             --output text)
+          
+          if [ "$CF_DOMAIN" == "None" ] || [ -z "$CF_DOMAIN" ]; then
+            echo "エラー: CloudFrontが見つかりませんでした。"
+            exit 1
+          fi
+          
+          CF_ID=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?DomainName=='$CF_DOMAIN'].Id" \
+            --output text)
+          
           echo "CloudFront Domain: $CF_DOMAIN"
+          echo "CloudFront ID: $CF_ID"
           echo "cf_domain=$CF_DOMAIN" >> $GITHUB_OUTPUT
+          echo "cf_id=$CF_ID" >> $GITHUB_OUTPUT
+
+          # 4. RDS エンドポイントの取得 (タグ: Name=todo-app-rds)
+          RDS_ENDPOINT=$(aws rds describe-db-instances \
+            --filters "Name=db-instance-id,Values=todo-app-db" \
+            --query "DBInstances[0].Endpoint.Address" \
+            --output text)
+          echo "RDS Endpoint: $RDS_ENDPOINT"
+          echo "rds_endpoint=$RDS_ENDPOINT" >> $GITHUB_OUTPUT
 
       # --- フロントエンドのデプロイ (S3 & CloudFront) ---
       - name: Node.js セットアップ
@@ -71,6 +101,8 @@ jobs:
 
       - name: フロントエンドのビルド
         working-directory: ./frontend
+        env:
+          VITE_API_BASE_URL: https://${{ steps.infra-info.outputs.cf_domain }}
         run: |
           npm ci
           npm run build
@@ -78,30 +110,32 @@ jobs:
       # ビルドされたファイルを S3 バケットにコピーします。
       - name: S3へ同期
         run: |
-          aws s3 sync ./frontend/dist s3://${{ secrets.S3_BUCKET_NAME }} --delete
+          aws s3 sync ./frontend/dist s3://${{ steps.infra-info.outputs.s3_bucket }} --delete
 
       # 世界中のキャッシュサーバー(CloudFront)に残っている古いデータを消去します。
       - name: CloudFrontキャッシュクリア (Invalidation)
         run: |
-          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+          aws cloudfront create-invalidation --distribution-id ${{ steps.infra-info.outputs.cf_id }} --paths "/*"
 
       # --- バックエンドのデプロイ (EC2) ---
       # バックエンドサーバー(EC2)に直接ログイン(SSH)して操作します。
       - name: EC2へデプロイ
         uses: appleboy/ssh-action@v1.0.3
-        # シークレットや動的な値を env ブロックで定義（これで警告が消えます）
+        # シークレットや動的な値を env ブロックで定義
         env:
           APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}
-          CF_DOMAIN: ${{ steps.get-cf.outputs.cf_domain }}
+          CF_DOMAIN: ${{ steps.infra-info.outputs.cf_domain }}
+          RDS_ENDPOINT: ${{ steps.infra-info.outputs.rds_endpoint }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         with:
-          host: ${{ steps.get-ip.outputs.ip }}
+          host: ${{ steps.infra-info.outputs.ec2_ip }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           timeout: 60s
           command_timeout: 10m
           # SSH先に渡す環境変数を指定
-          envs: APP_SECRET_KEY,CF_DOMAIN
+          envs: APP_SECRET_KEY,CF_DOMAIN,RDS_ENDPOINT,DB_PASSWORD
           script: |
             PROJECT_DIR="$HOME/251025"
             # 1. フォルダの準備
@@ -123,18 +157,25 @@ jobs:
             if [ -f "../.env.bak" ]; then
               mv ../.env.bak .env
             else
-              echo "CRITICAL WARNING: .env file is missing!"
+              # 初めて、または作り直しの場合に初期.envを作成
+              echo "Creating initial .env file..."
+              cat <<EOT > .env
+              DATABASE_URL=postgresql+asyncpg://postgresMaster:\${DB_PASSWORD}@\${RDS_ENDPOINT}/todo_db
+              POSTGRES_USER=postgresMaster
+              POSTGRES_PASSWORD=\${DB_PASSWORD}
+              POSTGRES_DB=todo_db
+              SECRET_KEY=\${APP_SECRET_KEY}
+              ENV=production
+              CORS_ORIGINS=https://\${CF_DOMAIN}
+              EOT
             fi
 
-            # 5. セキュリティ設定の上書き (.env)
-            # SSH経由で渡された環境変数 ($APP_SECRET_KEY, $CF_DOMAIN) を使用
-            echo "Updating .env with secure values..."
-            if [ ! -z "$APP_SECRET_KEY" ]; then
-              sed -i "s|^SECRET_KEY=.*|SECRET_KEY=$APP_SECRET_KEY|" .env
-            fi
-            if [ ! -z "$CF_DOMAIN" ]; then
-              sed -i "s|^CORS_ORIGINS=.*|CORS_ORIGINS=https://$CF_DOMAIN|" .env
-            fi
+            # 5. 最新情報での上書き
+            echo "Updating .env with latest infrastructure values..."
+            sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql+asyncpg://postgresMaster:\${DB_PASSWORD}@\${RDS_ENDPOINT}/todo_db|" .env
+            sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=\${DB_PASSWORD}|" .env
+            sed -i "s|^SECRET_KEY=.*|SECRET_KEY=\${APP_SECRET_KEY}|" .env
+            sed -i "s|^CORS_ORIGINS=.*|CORS_ORIGINS=https://\${CF_DOMAIN}|" .env
             
             # 6. Docker Compose (V2) の確実なインストール
             if ! command -v docker-compose &> /dev/null; then

@@ -3,6 +3,9 @@
 resource "aws_s3_bucket" "frontend" {
   bucket = "${var.project_name}-frontend-${data.aws_caller_identity.current.account_id}"
 
+  # デプロイされたファイルが残っていても強制的に削除できるようにします
+  force_destroy = true
+
   tags = {
     Name = "${var.project_name}-frontend-bucket"
   }

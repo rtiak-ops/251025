@@ -1,0 +1,86 @@
+# ワークフローの名前。
+name: CD Pipeline (Deploy)
+
+# 実行タイミング（トリガー）の設定。
+on:
+  workflow_dispatch: # GitHubのブラウザ画面から手動で実行できるようにします。
+  push:
+    branches: [main, develop] # main または develop ブランチにコードが保存(push)された時に実行
+
+jobs:
+  # ==========================================
+  # デプロイ (本番/開発環境への反映)
+  # ==========================================
+  deploy:
+    runs-on: ubuntu-latest
+    
+    # 安全に AWS と通信（認証）するための権限設定
+    permissions:
+      id-token: write # GitHub IDトークンを発行して AWS とのやり取りに使います
+      contents: read
+
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+
+      # --- AWS 認証 ---
+      # ログイン情報（IAMロール）を GitHub Secrets から読み込み、AWSを使えるようにします。
+      - name: AWS 認証設定
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      # --- フロントエンドのデプロイ (S3 & CloudFront) ---
+      - name: Node.js セットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: '23'
+          cache: 'npm'
+          cache-dependency-path: ./frontend/package-lock.json
+
+      - name: フロントエンドのビルド
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run build
+
+      # ビルドされたファイルを S3 バケットにコピーします。
+      - name: S3へ同期
+        run: |
+          aws s3 sync ./frontend/dist s3://${{ secrets.S3_BUCKET_NAME }} --delete
+
+      # 世界中のキャッシュサーバー(CloudFront)に残っている古いデータを消去します。
+      - name: CloudFrontキャッシュクリア (Invalidation)
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+
+      # --- バックエンドのデプロイ (EC2) ---
+      # バックエンドサーバー(EC2)に直接ログイン(SSH)して操作します。
+      - name: EC2へデプロイ
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          command_timeout: 10m
+          script: |
+            # サーバー上のプロジェクトディレクトリに移動（なければ作成してGit clone）
+            if [ ! -d "~/251025" ]; then
+              git clone https://github.com/${{ github.repository }}.git ~/251025
+            fi
+            cd ~/251025
+            
+            # GitHub の最新のソースコードを取り込む
+            git fetch origin ${{ github.ref_name }}
+            git reset --hard origin/${{ github.ref_name }}
+            
+            # Docker イメージを再構築して、コンテナを再起動する
+            docker compose up -d --build
+            
+            # データベースの構造（テーブルなど）を最新の状態に更新する
+            # コンテナが立ち上がるまで少し待機してから実行
+            sleep 10
+            docker compose exec -T backend alembic upgrade head

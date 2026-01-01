@@ -86,20 +86,29 @@ jobs:
           timeout: 60s
           command_timeout: 10m
           script: |
-            # サーバー上のプロジェクトディレクトリに移動（なければ作成してGit clone）
-            if [ ! -d "~/251025" ]; then
-              git clone https://github.com/${{ github.repository }}.git ~/251025
+            # サーバー上のプロジェクトディレクトリを定義
+            PROJECT_DIR="$HOME/251025"
+            
+            # ディレクトリがなければ作成して初回クローン
+            if [ ! -d "$PROJECT_DIR" ]; then
+              git clone https://github.com/${{ github.repository }}.git "$PROJECT_DIR"
             fi
-            cd ~/251025
+            
+            cd "$PROJECT_DIR"
             
             # GitHub の最新のソースコードを取り込む
             git fetch origin ${{ github.ref_name }}
             git reset --hard origin/${{ github.ref_name }}
             
             # Docker イメージを再構築して、コンテナを再起動する
-            docker compose up -d --build
+            # 'docker compose' または 'docker-compose' を試行
+            docker compose up -d --build || docker-compose up -d --build
             
-            # データベースの構造（テーブルなど）を最新の状態に更新する
-            # コンテナが立ち上がるまで少し待機してから実行
-            sleep 10
-            docker compose exec -T backend alembic upgrade head
+            # データベースの構造（テーブルなど）を最新の状態に更新
+            echo "Waiting for containers to start..."
+            sleep 15
+            
+            # alembic upgrade を実行（-Tフラグが原因で落ちるケースを考慮）
+            docker compose exec -T backend alembic upgrade head || \
+            docker-compose exec -T backend alembic upgrade head || \
+            docker compose exec backend alembic upgrade head

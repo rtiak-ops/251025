@@ -60,15 +60,15 @@ resource "aws_instance" "app" {
               # 5. ソースコードの取得
               sudo -u ec2-user git clone https://github.com/rtiak-ops/251025.git /home/ec2-user/251025 || (cd /home/ec2-user/251025 && sudo -u ec2-user git pull)
 
-              # 6. .env ファイルの自動生成 (ルートディレクトリ)
+              # 6. .env ファイルの自動生成 (最小構成)
+              # SECRET_KEY と CORS_ORIGINS は GitHub Actions のデプロイ時に最新・安全な値に上書きされます
               cat <<EOT > /home/ec2-user/251025/.env
               DATABASE_URL=postgresql+asyncpg://postgresMaster:${var.db_password}@${aws_db_instance.main.endpoint}/todo_db
               POSTGRES_USER=postgresMaster
               POSTGRES_PASSWORD=${var.db_password}
               POSTGRES_DB=todo_db
-              SECRET_KEY=cc45304918e7e237303f23497d5a5706
+              SECRET_KEY=REPLACE_ME_DURING_DEPLOY
               ENV=production
-              # 循環参照回避のため、CORS ORIGINS は一旦全て許可、またはデプロイ時に設定
               CORS_ORIGINS=*
               EOT
               chown ec2-user:ec2-user /home/ec2-user/251025/.env

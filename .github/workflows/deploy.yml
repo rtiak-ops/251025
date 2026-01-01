@@ -50,6 +50,17 @@ jobs:
           echo "取得したIP: $IP"
           echo "ip=$IP" >> $GITHUB_OUTPUT
 
+      # --- 最新のCloudFront情報を取得 ---
+      # アプリのCORS制限に使用するため、作成されたCloudFrontのドメイン名を取得します。
+      - name: 最新のCloudFront情報を取得
+        id: get-cf
+        run: |
+          CF_DOMAIN=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[0].DomainName" \
+            --output text)
+          echo "CloudFront Domain: $CF_DOMAIN"
+          echo "cf_domain=$CF_DOMAIN" >> $GITHUB_OUTPUT
+
       # --- フロントエンドのデプロイ (S3 & CloudFront) ---
       - name: Node.js セットアップ
         uses: actions/setup-node@v4
@@ -78,6 +89,10 @@ jobs:
       # バックエンドサーバー(EC2)に直接ログイン(SSH)して操作します。
       - name: EC2へデプロイ
         uses: appleboy/ssh-action@v1.0.3
+        # シークレットや動的な値を env ブロックで定義（これで警告が消えます）
+        env:
+          APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}
+          CF_DOMAIN: ${{ steps.get-cf.outputs.cf_domain }}
         with:
           host: ${{ steps.get-ip.outputs.ip }}
           username: ${{ secrets.EC2_USER }}
@@ -85,6 +100,8 @@ jobs:
           port: 22
           timeout: 60s
           command_timeout: 10m
+          # SSH先に渡す環境変数を指定
+          envs: APP_SECRET_KEY,CF_DOMAIN
           script: |
             PROJECT_DIR="$HOME/251025"
             # 1. フォルダの準備
@@ -93,7 +110,7 @@ jobs:
             fi
             cd "$PROJECT_DIR"
             
-            # 2. .env ファイルの避難 (reset で消えないようにする)
+            # 2. .env ファイルの避難
             if [ -f ".env" ]; then
               cp .env ../.env.bak
             fi
@@ -106,24 +123,34 @@ jobs:
             if [ -f "../.env.bak" ]; then
               mv ../.env.bak .env
             else
-              echo "CRITICAL WARNING: .env file is missing! Please run terraform apply again or create it manually."
+              echo "CRITICAL WARNING: .env file is missing!"
+            fi
+
+            # 5. セキュリティ設定の上書き (.env)
+            # SSH経由で渡された環境変数 ($APP_SECRET_KEY, $CF_DOMAIN) を使用
+            echo "Updating .env with secure values..."
+            if [ ! -z "$APP_SECRET_KEY" ]; then
+              sed -i "s|^SECRET_KEY=.*|SECRET_KEY=$APP_SECRET_KEY|" .env
+            fi
+            if [ ! -z "$CF_DOMAIN" ]; then
+              sed -i "s|^CORS_ORIGINS=.*|CORS_ORIGINS=https://$CF_DOMAIN|" .env
             fi
             
-            # 5. Docker Compose (V2) の確実なインストール
+            # 6. Docker Compose (V2) の確実なインストール
             if ! command -v docker-compose &> /dev/null; then
               echo "Installing Docker Compose standalone..."
               sudo curl -SL https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-x86_64 -o /usr/bin/docker-compose
               sudo chmod +x /usr/bin/docker-compose
             fi
             
-            # 6. Docker の状態確認
+            # 7. Docker の状態確認
             sudo systemctl start docker
             
-            # 7. コンテナの起動 (絶対パスでハイフン形式を使用)
+            # 8. コンテナの起動
             echo "Starting containers..."
             sudo /usr/bin/docker-compose up -d --build
             
-            # 8. データベース更新
+            # 9. データベース更新
             echo "Waiting for app to start..."
             sleep 20
             sudo /usr/bin/docker-compose exec -T backend alembic upgrade head

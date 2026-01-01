@@ -160,22 +160,22 @@ jobs:
               # 初めて、または作り直しの場合に初期.envを作成
               echo "Creating initial .env file..."
               cat <<EOT > .env
-              DATABASE_URL=postgresql+asyncpg://postgresMaster:\${DB_PASSWORD}@\${RDS_ENDPOINT}/todo_db
+              DATABASE_URL=postgresql+asyncpg://postgresMaster://${DB_PASSWORD}@${RDS_ENDPOINT}/todo_db
               POSTGRES_USER=postgresMaster
-              POSTGRES_PASSWORD=\${DB_PASSWORD}
+              POSTGRES_PASSWORD=${DB_PASSWORD}
               POSTGRES_DB=todo_db
-              SECRET_KEY=\${APP_SECRET_KEY}
+              SECRET_KEY=${APP_SECRET_KEY}
               ENV=production
-              CORS_ORIGINS=https://\${CF_DOMAIN}
+              CORS_ORIGINS=https://${CF_DOMAIN}
               EOT
             fi
 
             # 5. 最新情報での上書き
             echo "Updating .env with latest infrastructure values..."
-            sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql+asyncpg://postgresMaster:\${DB_PASSWORD}@\${RDS_ENDPOINT}/todo_db|" .env
-            sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=\${DB_PASSWORD}|" .env
-            sed -i "s|^SECRET_KEY=.*|SECRET_KEY=\${APP_SECRET_KEY}|" .env
-            sed -i "s|^CORS_ORIGINS=.*|CORS_ORIGINS=https://\${CF_DOMAIN}|" .env
+            sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql+asyncpg://postgresMaster://${DB_PASSWORD}@${RDS_ENDPOINT}/todo_db|" .env
+            sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=${DB_PASSWORD}|" .env
+            sed -i "s|^SECRET_KEY=.*|SECRET_KEY=${APP_SECRET_KEY}|" .env
+            sed -i "s|^CORS_ORIGINS=.*|CORS_ORIGINS=https://${CF_DOMAIN}|" .env
             
             # 6. Docker Compose (V2) の確実なインストール
             if ! command -v docker-compose &> /dev/null; then

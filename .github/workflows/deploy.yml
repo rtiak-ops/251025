@@ -93,36 +93,39 @@ jobs:
             fi
             cd "$PROJECT_DIR"
             
-            # 2. 最新コードの取得
+            # 2. 最新コードの取得（環境ファイルを消さないよう注意）
             git fetch origin ${{ github.ref_name }}
             git reset --hard origin/${{ github.ref_name }}
             
-            # 3. Docker のセットアップ
-            sudo dnf install -y docker
+            # 3. Docker の起動確認
             sudo systemctl start docker
             sudo systemctl enable docker
-            sudo usermod -aG docker ec2-user
             
-            # 4. Docker Compose (V2) の手動インストール
-            # 標準リポジトリにないため、GitHubから直接最新版をダウンロードします
-            if ! command -v docker-compose &> /dev/null; then
-              echo "Installing Docker Compose..."
-              DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
-              mkdir -p $DOCKER_CONFIG/cli-plugins
-              curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
-              chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
-              # システム全体で使えるようにリンクを作成
-              sudo ln -s $DOCKER_CONFIG/cli-plugins/docker-compose /usr/local/bin/docker-compose || true
+            # 4. Docker Compose (V2) の確実なセットアップ
+            # システム全体のプラグインディレクトリに配置します
+            if ! docker compose version > /dev/null 2>&1; then
+              echo "Setting up Docker Compose plugin..."
+              sudo mkdir -p /usr/local/lib/docker/cli-plugins
+              sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+              sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+              # 旧バージョンの互換性のためにリンクも作成
+              sudo ln -s /usr/local/lib/docker/cli-plugins/docker-compose /usr/bin/docker-compose || true
             fi
             
-            # 5. コンテナの起動
-            # 'docker compose' (プラグイン形式) を使用します
-            echo "Starting containers..."
-            docker compose up -d --build
+            # 5. .env ファイルの復旧（もし消えていた場合）
+            # 本来はTerraformが作成しますが、消失時のために最小限のダミーを作成
+            if [ ! -f ".env" ]; then
+              echo "WARNING: .env file missing. Attempting to restore from .env.example..."
+              cp .env.example .env
+              # ここで本当のデータベース接続先などをSecretsから流し込むのが理想ですが、
+              # まずはファイルが存在しないことによる起動エラーを回避します
+            fi
             
-            # 6. データベースのマイグレーション
+            # 6. コンテナの起動
+            echo "Starting containers..."
+            sudo docker compose up -d --build
+            
+            # 7. データベースのマイグレーション
             echo "Waiting for backend to be ready..."
             sleep 20
-            
-            # 権限問題を避けるため、docker compose exec を実行
-            docker compose exec -T backend alembic upgrade head
+            sudo docker compose exec -T backend alembic upgrade head

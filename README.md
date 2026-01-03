@@ -6,6 +6,9 @@
 [![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react)](https://reactjs.org/)
 [![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=flat&logo=terraform)](https://www.terraform.io/)
 
+![alt text](image.png)
+
+
 **「AIアシスタント搭載 × 実務レベルのエンジニアリング」**
 
 最新のLLM（大規模言語モデル）機能を統合しつつ、運用・保守・セキュリティといったプロフェッショナルな品質基準を満たすように設計された、次世代のWebアプリケーションです。

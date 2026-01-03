@@ -8,7 +8,7 @@
 [![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=flat&logo=terraform)](https://www.terraform.io/)
 
 <div align="center">
-  <img src="docs/images/todo-auth.png" width="80%" alt="Application Preview">
+  <img src="docs/images/todo-auth.png" width="40%" alt="Application Preview">
   <p><em>「AIアシスタント搭載 × 本格的なエンジニアリング・プラクティスの実践」</em></p>
 </div>
 
@@ -134,6 +134,36 @@ sequenceDiagram
     end
 
     Front->>User: サブタスクをUIに反映
+```
+
+### 3. CI/CD パイプライン
+GitHub Actions を活用した、テスト・ビルド・セキュリティチェックの自動化フローです。
+
+```mermaid
+graph LR
+    Push([Code Push / PR]) --> Trigger{GitHub Actions}
+    
+    subgraph "Quality Gate (Parallel)"
+        Trigger --> BE[Backend Test / Lint]
+        Trigger --> FE[Frontend Test / Lint]
+    end
+    
+    BE --> Scan
+    FE --> Scan
+    
+    subgraph "Security & Reliability"
+        Scan[Trivy Security Scan]
+        Build[Docker Build Test]
+    end
+    
+    BE --> Build
+    FE --> Build
+    
+    Scan --> Result{Success?}
+    Build --> Result
+    
+    Result -->|Yes| Merge([Merge / Deploy Ready])
+    Result -->|No| Fail([Fix Required])
 ```
 
 ---

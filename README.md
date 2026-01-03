@@ -7,12 +7,18 @@
 [![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react)](https://reactjs.org/)
 [![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=flat&logo=terraform)](https://www.terraform.io/)
 
-<div align="center">
-  <img src="docs/images/todo-auth.png" width="40%" alt="Application Preview">
-  <p><em>認証ページ</em></p>
-  <img src="docs/images/todo-todos.png" width="40%" alt="Application Preview">
-  <p><em>「10時に会議」と入力後、AIがタスクを構造化して提案する</em></p>
-</div>
+<table align="center">
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/images/todo-auth.png" alt="認証ページ" style="max-width:100%;"><br>
+      <sub>認証ページ</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/images/todo-todos.png" alt="AIタスク分解" style="max-width:100%;"><br>
+      <sub>「10時に会議」と入力後、AIがタスクを構造化して提案する</sub>
+    </td>
+  </tr>
+</table>
 
 ## 🌟 プロジェクト概要
 

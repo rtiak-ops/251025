@@ -9,14 +9,16 @@
 
 <div align="center">
   <img src="docs/images/todo-auth.png" width="40%" alt="Application Preview">
-  <p><em>「AIアシスタント搭載 × 本格的なエンジニアリング・プラクティスの実践」</em></p>
+  <p><em>認証ページ</em></p>
+  <img src="docs/images/todo-todos.png" width="40%" alt="Application Preview">
+  <p><em>「10時に会議」と入力後、AIがタスクを構造化して提案する</em></p>
 </div>
 
 ## 🌟 プロジェクト概要
 
 このプロジェクトは、単なるToDo管理アプリではありません。**「実務で通用する品質のWebアプリケーションを、最新のAI技術とDevOps環境で提供する」**ことを目的としたポートフォリオ作品です。
 
-React (Frontend) + FastAPI (Backend) のモダンな構成に加え、Terraform によるインフラのコード化 (IaC)、GitHub Actions による高度な CI/CD パイプライン、そして LLM を活用した独自の「Magic Breakdown」機能を統合しています。
+React (Frontend) + FastAPI (Backend) のモダンな構成に加え、Terraform によるインフラのコード化 (IaC)、GitHub Actions による高度な CI/CD パイプライン、そして LLM を活用した独自の「AI分解」機能を統合しています。
 
 ## 📋 目次
 - [🏗️ システムアーキテクチャ](#️-システムアーキテクチャ)
@@ -111,7 +113,7 @@ sequenceDiagram
     Back-->>Front: JSONデータを返却
 ```
 
-### 2. Magic Breakdown (AIタスク分解)
+### 2. AIタスク分解
 ユーザーの入力に基づき、LLMがタスクを構造化して提案するフローです。
 
 ```mermaid
@@ -119,7 +121,7 @@ sequenceDiagram
     participant User as ユーザー
     participant Front as Frontend (React)
     participant Back as Backend (FastAPI)
-    participant AI as AI Service (Gemini / OpenAI)
+    participant AI as AI Service (Gemini)
 
     User->>Front: 「旅行の計画」を入力 & ✨AI分解をクリック
     Front->>Back: POST /ai/breakdown {title: "旅行的計画"}
@@ -127,11 +129,7 @@ sequenceDiagram
     alt APIキー未設定 (Mock Mode)
         Back-->>Front: モックのサブタスクを即座に返却
     else Gemini APIキー設定済み (推奨)
-        Back->>AI: Gemini-1.5-Flash を呼び出し
-        AI-->>Back: 分解結果 (JSON形式)
-        Back-->>Front: 構造化されたサブタスクを返却
-    else OpenAI APIキー設定済み
-        Back->>AI: GPT-3.5-Turbo を呼び出し
+        Back->>AI: Geminiを呼び出し
         AI-->>Back: 分解結果 (JSON形式)
         Back-->>Front: 構造化されたサブタスクを返却
     end
@@ -173,9 +171,9 @@ graph LR
 
 ## 🔥 独自のエンジニアリング・ポイント
 
-### 1. 🧠 Magic Breakdown (AIタスク分解)
+### 1. 🧠 AIタスク分解
 「何をすべきか分からない」という課題をLLMが解決します。
-- **マルチプルAIサポート**: Google Gemini API (1.5 Flash) と OpenAI API (GPT-3.5) の両方に対応。環境変数に基づいて動的に切り替わります。
+- **マルチプルAIサポート**: Google Gemini API (2.5 Flash/3.0 Flash) に対応。環境変数に基づいて動的に切り替わります。
 - **効率的なプロンプト設計**: コンテキストを絞り込み、実行可能なサブタスクを構造化して返却。
 - **フォールバック設計**: APIキー未設定時は自動でモックモードへ移行し、UXを損なわない設計。
 
@@ -199,7 +197,7 @@ graph LR
 ## 💡 解決した技術的課題 (Technical Challenges)
 
 ### 1. AIレスポンスの遅延とユーザー体験の不一致
-- **課題**: OpenAI APIのレスポンスには数秒〜10秒程度の時間を要し、その間ユーザーが「操作不能」と感じる懸念があった。
+- **課題**: Gemini APIのレスポンスには数秒〜10秒程度の時間を要し、その間ユーザーが「操作不能」と感じる懸念があった。
 - **解決策**:
     - **楽観的更新 (Optimistic Updates)**: タスク追加時にサーバーの応答を待たずにUI側で仮のアイテムを表示。
     - **非同期ストリーミング/スケルトン表示**: AI分解中であることを示す専用のスケルトンUIを導入し、心理的な待ち時間を軽減。

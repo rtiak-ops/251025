@@ -8,7 +8,7 @@
 [![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=flat&logo=terraform)](https://www.terraform.io/)
 
 <div align="center">
-  <img src="docs/images/todo-auth.png" width="80%" alt="Application Preview">
+  <img src="docs/images/todo-auth.png" width="40%" alt="Application Preview">
   <p><em>「AIアシスタント搭載 × 本格的なエンジニアリング・プラクティスの実践」</em></p>
 </div>
 

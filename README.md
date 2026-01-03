@@ -41,9 +41,9 @@ graph TD
     CF <-->|API Request| EC2[EC2 Instance / FastAPI]
     
     subgraph "AWS Cloud (Managed VPC)"
-        EC2 <-->|Async Connection| RDS[(RDS PostgreSQL)]
+        EC2 <-->|RDS Connection| RDS[(RDS PostgreSQL)]
         EC2 -.->|JSON Logs| CW[CloudWatch]
-        EC2 -.->|External API| OpenAI[OpenAI API]
+        EC2 -.->|External API| AI[OpenAI / Gemini API]
     end
 
     subgraph "DevOps Ecosystem"
@@ -119,17 +119,20 @@ sequenceDiagram
     participant User as ユーザー
     participant Front as Frontend (React)
     participant Back as Backend (FastAPI)
-    participant AI as OpenAI API (GPT-3.5)
+    participant AI as AI Service (Gemini / OpenAI)
 
     User->>Front: 「旅行の計画」を入力 & ✨AI分解をクリック
     Front->>Back: POST /ai/breakdown {title: "旅行的計画"}
     
     alt APIキー未設定 (Mock Mode)
         Back-->>Front: モックのサブタスクを即座に返却
-    else APIキー設定済み
-        Back->>AI: 高精度なプロンプトを送信
+    else Gemini APIキー設定済み (推奨)
+        Back->>AI: Gemini-1.5-Flash を呼び出し
         AI-->>Back: 分解結果 (JSON形式)
-        Back->>Back: 文字列をパース & バリデーション
+        Back-->>Front: 構造化されたサブタスクを返却
+    else OpenAI APIキー設定済み
+        Back->>AI: GPT-3.5-Turbo を呼び出し
+        AI-->>Back: 分解結果 (JSON形式)
         Back-->>Front: 構造化されたサブタスクを返却
     end
 
@@ -172,6 +175,7 @@ graph LR
 
 ### 1. 🧠 Magic Breakdown (AIタスク分解)
 「何をすべきか分からない」という課題をLLMが解決します。
+- **マルチプルAIサポート**: Google Gemini API (1.5 Flash) と OpenAI API (GPT-3.5) の両方に対応。環境変数に基づいて動的に切り替わります。
 - **効率的なプロンプト設計**: コンテキストを絞り込み、実行可能なサブタスクを構造化して返却。
 - **フォールバック設計**: APIキー未設定時は自動でモックモードへ移行し、UXを損なわない設計。
 

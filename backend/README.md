@@ -8,7 +8,7 @@ FastAPI を採用し、非同期処理と型安全性を重視した設計とな
 ## ✨ 主な特徴
 
 - **高速な非同期 API**: `FastAPI` と `uvicorn` による高パフォーマンスなリクエスト処理。
-- **AI タスク分解エンジン**: OpenAI API を利用した、インテリジェントなサブタスク生成機能。
+- **AI タスク分解エンジン**: OpenAI API および Google Gemini API を利用した、インテリジェントなサブタスク生成機能。
 - **堅牢なデータ永続化**: `PostgreSQL 17` と `SQLAlchemy 2.0 (Async)` による非同期 DB アクセス。
 - **モダンな認証**: `JWT (JSON Web Token)` を使用した、セキュアなユーザー認証と認可。
 - **自動マイグレーション**: `Alembic` による DB スキーマのバージョン管理。
@@ -23,7 +23,7 @@ FastAPI を採用し、非同期処理と型安全性を重視した設計とな
 - **DB Migration**: `Alembic`
 - **Validation**: `Pydantic v2`
 - **Security**: `Passlib` (argon2), `PyJWT`
-- **AI**: `OpenAI SDK`
+- **AI**: `OpenAI SDK`, `Google Generative AI SDK`
 - **Logging**: `python-json-logger`
 - **Testing**: `pytest`, `httpx`
 
@@ -49,6 +49,7 @@ pip install -r requirements.txt
 ```bash
 DATABASE_URL=postgresql+asyncpg://user:password@localhost/dbname
 OPENAI_API_KEY=sk-...
+GOOGLE_API_KEY=AIza...
 SECRET_KEY=your-super-secret-key
 ```
 

@@ -8,6 +8,7 @@ import logging  # エラーや警告をログに記録するために使用
 import os  # 環境変数(OPENAI_API_KEY)を取得するために使用
 
 import openai  # OpenAI APIを呼び出すための公式ライブラリ
+import google.generativeai as genai  # Google Gemini APIを呼び出すためのライブラリ
 from fastapi import APIRouter, Depends, HTTPException, status  # FastAPIのルーティングとエラーハンドリング
 from pydantic import BaseModel  # リクエスト/レスポンスのデータ構造を定義するために使用
 
@@ -72,29 +73,13 @@ async def breakdown_task(
             detail="タスクのタイトルが長すぎます(200文字以内)"
         )
     
-    # ステップ1: 環境変数からOpenAI APIキーを取得
-    # .envファイルに OPENAI_API_KEY=sk-... の形式で設定されている必要があります
-    api_key = os.getenv("OPENAI_API_KEY")
+    # ステップ1: 環境変数からAPIキーを取得
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    google_api_key = os.getenv("GOOGLE_API_KEY")
     
-    # ステップ2: APIキーが設定されていない場合の処理
-    # APIキーが設定されていない場合、またはテスト用のダミー値の場合はモックデータを返す
-    # これにより、OpenAI APIキーがなくても開発やテストを進めることができます
-    if not api_key or api_key == "dummy":
-        logger.warning("OPENAI_API_KEYが設定されていないため、モックデータを返します。")
-        # 0.5秒程度の擬似的な遅延を入れると本物っぽくなりますが、ここでは省略
-        return AIResponse(subtasks=[
-            f"【AI提案】{req.title} の詳細を調査する",
-            f"【AI提案】{req.title} の計画を立てる",
-            f"【AI提案】{req.title} に必要なものを準備する",
-        ])
+    logger.info(f"API Keys: OpenAI={'Found' if openai_api_key else 'Missing'}, Google={'Found' if google_api_key else 'Missing'}")
 
-    # ステップ3: OpenAI APIクライアントの作成
-    # AsyncOpenAIを使うことで、非同期処理が可能になり、他のリクエストをブロックしません
-    client = openai.AsyncOpenAI(api_key=api_key)
-    
-    # ステップ4: プロンプトエンジニアリング
-    # AIに対して、どのような形式で回答してほしいかを明確に指示します
-    # 具体的なJSON配列のみを返すように強く指示することで、パースエラーを減らします
+    # 共通のプロンプト
     prompt = f"""
     あなたは優秀なタスク管理アシスタントです。
     以下のタスクを達成するための、具体的で実行可能な3〜5個のサブタスクに分解してください。
@@ -104,52 +89,89 @@ async def breakdown_task(
     タスク: "{req.title}"
     """
 
+    content = ""
+    success = False
+
+    # 1. Google Gemini APIを試行 (無料枠があるため優先)
+    if not success and google_api_key and google_api_key != "dummy":
+        try:
+            logger.info("Gemini APIを使用してタスクを分解します。")
+            genai.configure(api_key=google_api_key)
+            
+            # 利用可能なモデルを動的に取得
+            available_models = []
+            try:
+                for m in genai.list_models():
+                    if 'generateContent' in m.supported_generation_methods:
+                        available_models.append(m.name)
+            except Exception:
+                # 取得失敗時は、最新の標準モデルをフォールバックとして設定
+                available_models = ["models/gemini-2.5-flash", "models/gemini-3.0-flash"]
+
+            last_error = ""
+            for model_name in available_models:
+                # flash または pro 系モデルを優先して試す
+                if "flash" in model_name or "pro" in model_name:
+                    try:
+                        logger.info(f"モデル {model_name} を試行中...")
+                        model = genai.GenerativeModel(model_name)
+                        response = await model.generate_content_async(prompt)
+                        content = response.text
+                        success = True
+                        logger.info(f"モデル {model_name} での生成に成功しました。")
+                        break
+                    except Exception as e:
+                        last_error = str(e)
+                        continue
+
+            if not success:
+                logger.error(f"Geminiの全候補モデルで失敗しました。最後のエラー: {last_error}")
+
+        except Exception as e:
+            logger.warning(f"Gemini API実行中にエラーが発生しました: {e}")
+
+    # 2. OpenAI APIを試行 (Geminiが失敗、またはキーがない場合)
+    if not success and openai_api_key and openai_api_key != "dummy":
+        try:
+            logger.info("OpenAI APIを使用してタスクを分解します。")
+            client = openai.AsyncOpenAI(api_key=openai_api_key)
+            response = await client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+            )
+            content = response.choices[0].message.content
+            success = True
+        except Exception as e:
+            logger.error(f"OpenAI APIでの生成にも失敗しました: {e}")
+
+    # 3. いずれも失敗した場合は最終手段としてモックデータを返す (UX維持のため)
+    if not success:
+        logger.warning("すべてのAIサービスが利用できないため、モックデータを返します。")
+        return AIResponse(subtasks=[
+            f"【AI提案】{req.title} の重要ポイントを書き出す",
+            f"【AI提案】{req.title} を進めるための時間を作る",
+            f"【AI提案】{req.title} の完了を確認する",
+        ])
+
     try:
-        # ステップ5: OpenAI APIの呼び出し
-        # gpt-3.5-turboはコストパフォーマンスが良く、タスク分解には十分な性能です
-        # temperature=0.7は、ある程度の創造性を持たせつつ、安定した結果を得るための設定です
-        response = await client.chat.completions.create(
-            model="gpt-3.5-turbo",  # コストパフォーマンスの良いモデル
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,  # 0.0〜2.0の範囲で、高いほど創造的(ランダム)になります
-        )
-        
-        # ステップ6: AIからのレスポンスを取得
-        # response.choices[0].message.contentにAIの回答が入っています
-        content = response.choices[0].message.content
-        
-        # ステップ7: JSONパース前の前処理
-        # AIが ```json ... ``` のようなMarkdownのコードブロックで囲んで返すことがあるため、
-        # それらを除去してから、JSON.parseを行います
+        # レスポンスの前処理
         if "```json" in content:
-            # ```json と ``` を削除
             content = content.replace("```json", "").replace("```", "")
         elif "```" in content:
-            # ``` のみを削除
             content = content.replace("```", "")
             
-        # ステップ8: JSON文字列をPythonのリストに変換
-        # strip()で前後の空白や改行を削除してからパースします
         subtasks = json.loads(content.strip())
         
-        # ステップ9: 配列であることを確認
-        # AIが配列以外の形式(例: 辞書やテキスト)を返した場合はエラーにします
         if not isinstance(subtasks, list):
             raise ValueError("AIが配列形式を返しませんでした")
             
-        # ステップ10: 正常なレスポンスを返す
         return AIResponse(subtasks=subtasks)
 
     except Exception as e:
-        # エラーハンドリング
-        # AIの呼び出しやJSONパースで何らかのエラーが発生した場合の処理
-        logger.error(f"AI生成中にエラーが発生しました: {e}", exc_info=True)
-        
-        # 失敗時は500エラーではなく、空のリストなどを返す実装も考えられますが、
-        # ここではユーザーに通知するためにエラーを上げます
-        # 502 Bad Gatewayは、外部サービス(OpenAI)との通信に問題があったことを示します
+        logger.error(f"JSONパース中にエラーが発生しました: {e}\nContent: {content}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="AIサービスの呼び出しに失敗しました。"
+            detail=f"AIレスポンスの解析に失敗しました。({type(e).__name__})"
         )
 

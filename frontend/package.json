@@ -18,8 +18,8 @@
     "@hello-pangea/dnd": "^18.0.1",
     "@tanstack/react-query": "^5.90.12",
     "axios": "^1.7.0",
-    "react": "^18.3.0",
-    "react-dom": "^18.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "react-hot-toast": "^2.6.0"
   },
   "devDependencies": {
@@ -28,9 +28,9 @@
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.5.2",
     "@types/node": "^25.0.0",
-    "@types/react": "^18.3.3",
+    "@types/react": "^19.0.0",
     "@types/react-beautiful-dnd": "^13.1.8",
-    "@types/react-dom": "^18.3.3",
+    "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.0.4",
     "@vitest/coverage-v8": "^2.1.9",
     "@vitest/ui": "^2.1.8",

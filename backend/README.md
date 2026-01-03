@@ -18,7 +18,7 @@ FastAPI を採用し、非同期処理と型安全性を重視した設計とな
 
 ## 🛠️ 技術スタック
 
-- **Core**: `Python 3.12`, `FastAPI`
+- **Core**: `Python 3.13`, `FastAPI`
 - **ORM**: `SQLAlchemy 2.0` (Async mode)
 - **DB Migration**: `Alembic`
 - **Validation**: `Pydantic v2`

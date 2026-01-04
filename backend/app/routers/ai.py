@@ -106,7 +106,11 @@ async def breakdown_task(
                         available_models.append(m.name)
                 
                 # 特定のモデル（2.5 -> 3.0）を最優先にするように並び替え
-                priority_order = ["models/gemini-2.5-flash", "models/gemini-3.0-flash"]
+                priority_order = [
+                    "models/gemini-2.5-flash-lite",
+                    "models/gemini-2.5-flash",
+                    "models/gemini-3.0-flash"
+                ]
                 # 優先リストにあるものを抽出し、残りを後ろに結合
                 sorted_models = [m for m in priority_order if m in available_models]
                 sorted_models += [m for m in available_models if m not in priority_order]
@@ -114,7 +118,11 @@ async def breakdown_task(
                 
             except Exception:
                 # 取得失敗時は、指定された優先順位で設定
-                available_models = ["models/gemini-2.5-flash", "models/gemini-3.0-flash"]
+                available_models = [
+                    "models/gemini-2.5-flash-lite",
+                    "models/gemini-2.5-flash",
+                    "models/gemini-3.0-flash"
+                ]
 
             last_error = ""
             for model_name in available_models:

@@ -64,20 +64,15 @@ jobs:
           echo "s3_bucket=$S3_BUCKET_NAME" >> $GITHUB_OUTPUT
 
           # 3. CloudFront情報の取得
-          # タグ (Name=todo-app-cloudfront) を使用してディストリビューションを特定します
-          CF_ARN=$(aws resourcegroupstaggingapi get-resources \
-            --resource-type-filters cloudfront:distribution \
-            --tag-filters Key=Name,Values=todo-app-cloudfront \
-            --query "ResourceTagMappingList[0].ResourceARN" \
-            --output text)
+          # S3バケット名をオリジンに持つディストリビューションを検索します
+          CF_ID=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?Origins.Items[?contains(DomainName, '$S3_BUCKET_NAME')]].Id" \
+            --output text | awk '{print $1}')
           
-          if [ "$CF_ARN" == "None" ] || [ -z "$CF_ARN" ]; then
-            echo "エラー: CloudFrontが見つかりませんでした (Tag: Name=todo-app-cloudfront)。"
+          if [ "$CF_ID" == "None" ] || [ -z "$CF_ID" ]; then
+            echo "エラー: S3バケット ($S3_BUCKET_NAME) をオリジンに持つCloudFrontが見つかりませんでした。"
             exit 1
           fi
-          
-          # ARNからIDを抽出 (arn:aws:cloudfront::123456789012:distribution/EDFDVBD632BHDS -> EDFDVBD632BHDS)
-          CF_ID=${CF_ARN##*/}
           
           # IDを使用してドメイン名を取得
           CF_DOMAIN=$(aws cloudfront get-distribution --id "$CF_ID" --query "Distribution.DomainName" --output text)

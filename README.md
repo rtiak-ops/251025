@@ -314,8 +314,30 @@ terraform apply
 ```
 ※ 構築完了後、CloudFrontのURLが出力されます。
 
+#### **⚠️ インフラを再構築（destroy & apply）する場合の注意点**
+`terraform destroy` を実行して環境を一度削除し、再度 `apply` する場合は、以下の点に注意してください。
+
+1.  **データの喪失**: 
+データベース（RDS）やファイル（S3）の内容はすべて削除されます。
+
+2.  **GitHub Secrets の更新**: 
+インフラが新しくなると、IPアドレス（`EC2_HOST`）や CloudFront ID、S3バケット名が変わる可能性があります。
+必ず GitHub の設定画面で新しい値に更新してください。
+terraform output　で値を確認可能。
+
+・EC2_HOST: インスタンスが新しくなるため、パブリックIPアドレスが変わります。
+・CLOUDFRONT_DISTRIBUTION_ID: ディストリビューションが再作成されるとIDが新しくなります。
+・S3_BUCKET_NAME: バケット名にランダムな要素を含ませている場合、名前が変わる可能性があります。
+
+3.  **アプリの再デプロイ**: 
+再構築直後の S3 は空の状態です。
+GitHub に適当な空コミットなどをプッシュして自動デプロイを走らせるか、
+手動でビルド・アップロードを行うまで画面は表示されません。
+
 #### **CI/CD (GitHub Actions) の有効化**
-GitHubリポジトリの `Settings > Secrets and variables > Actions` に以下の環境変数を登録してください。これにより、**mainブランチへのPush時にビルド・テスト・デプロイがすべて自動完結**します。
+GitHubリポジトリの `Settings > Secrets and variables > Actions` に以下の環境変数を登録してください。
+これにより、**mainブランチへのPush時にビルド・テスト・デプロイがすべて自動完結**します。
+
 
 | Secret名 | 説明 |
 |---|---|

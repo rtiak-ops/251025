@@ -208,3 +208,61 @@ jobs:
         with:
           sarif_file: 'trivy-frontend-results.sarif'
           category: 'frontend'
+
+  # ==========================================
+  # 5. 自動デプロイ (CD)
+  # ==========================================
+  # 全てのテストとセキュリティスキャンをパスし、かつ main ブランチへのプッシュの場合に実行します。
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test, docker-build, security-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # OIDC認証のために必要な権限
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+
+      # AWS認証情報の設定（OIDCを使用）
+      - name: AWS認証情報の設定
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      # --- フロントエンドのデプロイ ---
+      - name: Node.jsのセットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: '23'
+          cache: 'npm'
+          cache-dependency-path: ./frontend/package-lock.json
+
+      - name: フロントエンドのビルド
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: S3へのファイル同期
+        working-directory: ./frontend
+        run: aws s3 sync dist s3://${{ secrets.S3_BUCKET_NAME }} --delete
+
+      - name: CloudFrontのキャッシュクリア
+        run: aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+
+      # --- バックエンドのデプロイ (SSH経由で更新命令) ---
+      - name: EC2上のソースコード更新とコンテナ再起動
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ec2-user/251025
+            git pull origin main
+            docker compose up -d --build
+            docker compose exec -T backend alembic upgrade head

@@ -34,7 +34,7 @@ React (Frontend) + FastAPI (Backend) のモダンな構成に加え、Terraform 
 - [🧪 品質保証とテスト戦略](#-品質保証とテスト戦略)
 - [🔥 独自のエンジニアリング・ポイント](#-独自のエンジニアリング・ポイント)
 - [🛠️ 技術スタックと選定理由](#️-技術スタックと選定理由)
-- [🚀 クイックスタート](#-クイックスタート)
+- [🚀 セットアップガイド](#-セットアップガイド)
 
 ---
 
@@ -265,24 +265,69 @@ graph LR
 
 ---
 
-## 🚀 クイックスタート
+## 🚀 セットアップガイド
 
-Docker を使用して、ローカルにフルスタック環境を数分で構築できます。
+### 1. 🏠 ローカル開発環境 (Docker)
+
+Dockerを使用することで、データベース、バックエンド、フロントエンドを一度に起動できます。最も推奨される方法です。
 
 ```bash
 # 1. リポジトリのクローン
 git clone https://github.com/rtiak-ops/251025.git
 cd 251025
 
-# 2. 環境設定（必要に応じて OpenAI キーを設定）
+# 2. 環境変数の準備
 cp .env.example .env
+# ※ .env を開き、SECRET_KEY や Google/OpenAI の APIキーを設定してください。
+# ※ 未設定でもモックモードで動作可能です。
 
-# 3. コンテナの起動
+# 3. コンテナのビルドと起動
 docker compose up --build
 ```
 
-- **Frontend**: [http://localhost:5173](http://localhost:5173)
-- **Backend API**: [http://localhost:8000/docs](http://localhost:8000/docs) (Swagger UI)
+- **フロントエンド**: [http://localhost](http://localhost)
+- **バックエンドAPI**: [http://localhost:8000/docs](http://localhost:8000/docs) (Swagger UI)
+
+---
+
+### 2. ☁️ クラウド環境の構築 (AWS / Terraform)
+
+Terraformを使用して、AWS上に拡張性の高い本番環境を自動構築します。
+
+#### **インフラの構築手順**
+```bash
+cd terraform
+
+# 1. 初期化
+terraform init
+
+#（再ログイン時）   
+＃時間が空いた場合、AWSに再ログイン。
+aws sso login
+＃実行するとブラウザが立ち上がり、認証を許可する。
+
+# 2. 実行計画の確認
+terraform plan
+
+# 3. リソースの作成
+terraform apply
+```
+※ 構築完了後、CloudFrontのURLが出力されます。
+
+#### **CI/CD (GitHub Actions) の有効化**
+GitHubリポジトリの `Settings > Secrets and variables > Actions` に以下の環境変数を登録してください。これにより、**mainブランチへのPush時にビルド・テスト・デプロイがすべて自動完結**します。
+
+| Secret名 | 説明 |
+|---|---|
+| `AWS_ROLE_ARN` | AWS OIDC認証用のロールARN |
+| `S3_BUCKET_NAME` | フロントエンド配信用のS3バケット名 |
+| `CLOUDFRONT_DISTRIBUTION_ID` | CloudFrontのディストリビューションID |
+| `EC2_HOST` | EC2インスタンスのパブリックIPまたはホスト名 |
+| `EC2_USER` | EC2のログインユーザー名 (通常 `ec2-user`) |
+| `EC2_SSH_KEY` | EC2に接続するためのSSH秘密キー (`.pem`の中身) |
+| `APP_SECRET_KEY` | FastAPIのセキュリティ用秘密鍵 |
+| `DB_PASSWORD` | データベースのパスワード |
+| `GOOGLE_API_KEY` | Gemini APIキー (AI機能用) |
 
 ---
 

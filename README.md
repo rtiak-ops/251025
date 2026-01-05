@@ -322,8 +322,8 @@ terraform apply
 
 2.  **GitHub Secrets の更新**: 
 インフラが新しくなると、IPアドレス（`EC2_HOST`）や CloudFront ID、S3バケット名が変わる可能性があります。
-必ず GitHub の設定画面で新しい値に更新してください。
-terraform output　で値を確認可能。
+GitHubリポジトリの `Settings > Secrets and variables > Actions` に以下の環境変数を登録してください。
+terraform outputで値を確認可能。
 
 ・EC2_HOST: インスタンスが新しくなるため、パブリックIPアドレスが変わります。
 ・CLOUDFRONT_DISTRIBUTION_ID: ディストリビューションが再作成されるとIDが新しくなります。
@@ -334,24 +334,13 @@ terraform output　で値を確認可能。
 GitHub に適当な空コミットなどをプッシュして自動デプロイを走らせるか、
 手動でビルド・アップロードを行うまで画面は表示されません。
 
-#### **CI/CD (GitHub Actions) の有効化**
-GitHubリポジトリの `Settings > Secrets and variables > Actions` に以下の環境変数を登録してください。
-これにより、**mainブランチへのPush時にビルド・テスト・デプロイがすべて自動完結**します。
-
-
-| Secret名 | 説明 |
-|---|---|
-| `AWS_ROLE_ARN` | AWS OIDC認証用のロールARN |
-| `S3_BUCKET_NAME` | フロントエンド配信用のS3バケット名 |
-| `CLOUDFRONT_DISTRIBUTION_ID` | CloudFrontのディストリビューションID |
-| `EC2_HOST` | EC2インスタンスのパブリックIPまたはホスト名 |
-| `EC2_USER` | EC2のログインユーザー名 (通常 `ec2-user`) |
-| `EC2_SSH_KEY` | EC2に接続するためのSSH秘密キー (`.pem`の中身) |
-| `APP_SECRET_KEY` | FastAPIのセキュリティ用秘密鍵 |
-| `DB_PASSWORD` | データベースのパスワード |
-| `GOOGLE_API_KEY` | Gemini APIキー (AI機能用) |
+4.  **デプロイ状況の監視**
+GitHub の [Actions] タブを開きます。
+「CI/CD Pipeline」が走り始めているので、完了するまで待ちます。
+deploy ジョブが緑色になれば成功です。
 
 ---
+
 
 ## 📖 詳細ドキュメント
 

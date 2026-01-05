@@ -152,27 +152,30 @@ jobs:
             git fetch origin ${{ github.ref_name }}
             git reset --hard origin/${{ github.ref_name }}
             
-            # 4. .env ファイルの復元
+            # 4. .env ファイルの準備
+            # 既存の .env があればバックアップから復元、なければ空ファイルを作成
             if [ -f "../.env.bak" ]; then
               mv ../.env.bak .env
             else
-              # 初めて、または作り直しの場合に初期.envを作成
-              echo "Creating initial .env file..."
-              echo "DATABASE_URL=postgresql+asyncpg://postgresMaster://${DB_PASSWORD}@${RDS_ENDPOINT}/todo_db" > .env
-              echo "POSTGRES_USER=postgresMaster" >> .env
-              echo "POSTGRES_PASSWORD=${DB_PASSWORD}" >> .env
-              echo "POSTGRES_DB=todo_db" >> .env
-              echo "SECRET_KEY=${APP_SECRET_KEY}" >> .env
-              echo "ENV=production" >> .env
-              echo "CORS_ORIGINS=https://${CF_DOMAIN}" >> .env
+              touch .env
             fi
 
-            # 5. 最新情報での上書き
+            # 5. 重要変数の更新 (特殊文字に強いprintf方式)
             echo "Updating .env with latest infrastructure values..."
-            sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql+asyncpg://postgresMaster://${DB_PASSWORD}@${RDS_ENDPOINT}/todo_db|" .env
-            sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=${DB_PASSWORD}|" .env
-            sed -i "s|^SECRET_KEY=.*|SECRET_KEY=${APP_SECRET_KEY}|" .env
-            sed -i "s|^CORS_ORIGINS=.*|CORS_ORIGINS=https://${CF_DOMAIN}|" .env
+            # 既存の対象行を一旦削除 (一時ファイルを使用)
+            grep -v -E "^(DATABASE_URL|POSTGRES_USER|POSTGRES_PASSWORD|POSTGRES_DB|SECRET_KEY|ENV|CORS_ORIGINS)=" .env > .env.tmp || true
+            
+            # 安全に値を追記
+            {
+              printf 'DATABASE_URL=postgresql+asyncpg://postgresMaster:%s@%s/todo_db?ssl=require\n' "$DB_PASSWORD" "$RDS_ENDPOINT"
+              echo "POSTGRES_USER=postgresMaster"
+              printf 'POSTGRES_PASSWORD=%s\n' "$DB_PASSWORD"
+              echo "POSTGRES_DB=todo_db"
+              printf 'SECRET_KEY=%s\n' "$APP_SECRET_KEY"
+              echo "ENV=production"
+              echo "CORS_ORIGINS=https://${CF_DOMAIN}"
+            } >> .env.tmp
+            mv .env.tmp .env
             
             # 6. Docker Compose (V2) の確実なインストール
             if ! command -v docker-compose &> /dev/null; then

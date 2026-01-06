@@ -325,7 +325,7 @@ terraform apply
 GitHubリポジトリの `Settings > Secrets and variables > Actions` に以下の環境変数を登録してください。
 terraform outputで値を確認可能。
 
-・EC2_HOST: インスタンスが新しくなるため、パブリックIPアドレスが変わります。
+・EC2_HOST: 停止・起動するたびにインスタンスが新しくなるため、パブリックIPアドレスが変わります。
 ・CLOUDFRONT_DISTRIBUTION_ID: ディストリビューションが再作成されるとIDが新しくなります。
 ・S3_BUCKET_NAME: バケット名にランダムな要素を含ませている場合、名前が変わる可能性があります。
 

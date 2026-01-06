@@ -165,17 +165,24 @@ jobs:
             # 既存の対象行を一旦削除 (一時ファイルを使用)
             grep -v -E "^(DATABASE_URL|POSTGRES_USER|POSTGRES_PASSWORD|POSTGRES_DB|SECRET_KEY|ENV|CORS_ORIGINS)=" .env > .env.tmp || true
             
+            # SECRET_KEY のバリデーション (空白や改行を削除)
+            CLEAN_SECRET_KEY=$(echo "$APP_SECRET_KEY" | tr -d '\r\n ')
+            if [ -z "$CLEAN_SECRET_KEY" ] || [ ${#CLEAN_SECRET_KEY} -lt 32 ]; then
+              echo "WARNING: APP_SECRET_KEY is too short or empty. Production auth will likely fail."
+            fi
+
             # 安全に値を追記
             {
               printf 'DATABASE_URL=postgresql+asyncpg://postgresMaster:%s@%s/todo_db?ssl=require\n' "$DB_PASSWORD" "$RDS_ENDPOINT"
               echo "POSTGRES_USER=postgresMaster"
               printf 'POSTGRES_PASSWORD=%s\n' "$DB_PASSWORD"
               echo "POSTGRES_DB=todo_db"
-              printf 'SECRET_KEY=%s\n' "$APP_SECRET_KEY"
+              printf 'SECRET_KEY=%s\n' "$CLEAN_SECRET_KEY"
               echo "ENV=production"
               echo "CORS_ORIGINS=https://${CF_DOMAIN}"
             } >> .env.tmp
             mv .env.tmp .env
+            echo "Done. CORS_ORIGINS is set to https://${CF_DOMAIN}"
             
             # 6. Docker Compose (V2) の確実なインストール
             if ! command -v docker-compose &> /dev/null; then

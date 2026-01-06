@@ -63,7 +63,7 @@ resource "aws_cloudfront_distribution" "main" {
 
     forwarded_values {
       query_string = true
-      headers      = ["Authorization", "Content-Type"] # 認証に必要なヘッダーを転送
+      headers      = ["Authorization", "Content-Type", "Origin", "Host"] # 認証とCORSに必要なヘッダーを転送
 
       cookies {
         forward = "all"
@@ -84,7 +84,7 @@ resource "aws_cloudfront_distribution" "main" {
 
     forwarded_values {
       query_string = true
-      headers      = ["Authorization", "Content-Type"]
+      headers      = ["Authorization", "Content-Type", "Origin", "Host"]
 
       cookies {
         forward = "all"
@@ -105,7 +105,7 @@ resource "aws_cloudfront_distribution" "main" {
 
     forwarded_values {
       query_string = true
-      headers      = ["Authorization", "Content-Type"]
+      headers      = ["Authorization", "Content-Type", "Origin", "Host"]
 
       cookies {
         forward = "all"

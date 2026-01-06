@@ -168,10 +168,12 @@ app.add_middleware(SecurityHeadersMiddleware)
 # 【CORS (Cross-Origin Resource Sharing) の設定】
 # 「違うドメインのフロントエンド」から「このバックエンドAPI」を叩くことを許可するための設定です。
 # これがないと、ブラウザのセキュリティ制限でフロントエンドからのAPI呼び出しがブロックされます。
-cors_origins_env = os.getenv("CORS_ORIGINS", "")
+cors_origins_env = os.getenv("CORS_ORIGINS", "").strip()
 if cors_origins_env:
-    # 環境変数がある場合（本番など）、そのドメインだけを許可
-    origins = [origin.strip() for origin in cors_origins_env.split(",")]
+    # 環境変数がある場合（本番など）、カンマ区切りで複数のドメインを許可
+    # 空白を除去し、空文字があれば無視する
+    origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+    logger.info(f"CORS origins configured: {origins}")
 else:
     # 開発環境用のデフォルト許可リスト
     origins = [

@@ -360,3 +360,4 @@ deploy ジョブが緑色になれば成功です。
 ---
 **Developed by [rtiak-ops]**  
 *Code with passion, Deploy with confidence.*
+

@@ -305,6 +305,10 @@ terraform init
 ＃時間が空いた場合、AWSに再ログイン。
 aws sso login
 ＃実行するとブラウザが立ち上がり、認証を許可する。
+# 最新のインスタンス状態（IP）を認識させる
+terraform refresh
+# CloudFrontのオリジン設定を更新
+terraform apply
 
 # 2. 実行計画の確認
 terraform plan

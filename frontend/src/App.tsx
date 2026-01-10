@@ -44,21 +44,23 @@ export default function App() {
   // --- データ取得 (React Query) ---
 
   // プロジェクト一覧と進捗サマリーを取得
-  const { data: projects = [] } = useQuery<ProjectSummary[]>({
+  const { data: projectsData } = useQuery<ProjectSummary[]>({
     queryKey: ["projects"],
     queryFn: getProjectSummaries,
-    enabled: !!token, // ログイン時のみ実行
+    enabled: !!token,
   });
+  const projects = Array.isArray(projectsData) ? projectsData : [];
 
   // すべてのタスクを取得
   const { 
-    data: allTodos = [], 
+    data: todosData, 
     isLoading: isTodosLoading
   } = useQuery<Todo[]>({
     queryKey: ["todos"],
     queryFn: getTodos,
     enabled: !!token,
   });
+  const allTodos = Array.isArray(todosData) ? todosData : [];
 
   // --- 副作用 (Side Effects) ---
 

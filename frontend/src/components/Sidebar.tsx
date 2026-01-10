@@ -100,7 +100,7 @@ export default function Sidebar({
         </div>
 
         {/* プロジェクト一覧の動的レンダリング */}
-        {projects.map((project) => (
+        {Array.isArray(projects) && projects.map((project) => (
           <button
             key={project.id}
             onClick={() => onViewChange(project.id)}

@@ -57,10 +57,16 @@ api.interceptors.request.use((config) => { // 全てのリクエストに介入�
 export const getStoredToken = () => localStorage.getItem(TOKEN_KEY); // トークンを返します。
 
 // トークンを削除する関数 (ログアウト時などに使用)
-export const clearToken = () => { // ログアウト処理を行います。
-    localStorage.removeItem(TOKEN_KEY); // 保存されているトークンを消します。
-    // 401エラーなどで強制ログアウトが必要な場合にイベントを発火
-    window.dispatchEvent(new Event("auth:unauthorized")); // ログアウトしたことをアプリ全体に知らせます。
+// tokenToClear が指定されている場合、現在のトークンと一致する場合のみ削除します。
+// これにより、ログイン直後に古いリクエストの401エラーでログアウトされるのを防ぎます。
+export const clearToken = (tokenToClear?: string) => { 
+    const currentToken = localStorage.getItem(TOKEN_KEY);
+    if (tokenToClear && currentToken !== tokenToClear) {
+        console.warn("後続の有効なトークンがあるため、古い401エラーによるログアウトをスキップしました");
+        return;
+    }
+    localStorage.removeItem(TOKEN_KEY);
+    window.dispatchEvent(new Event("auth:unauthorized"));
 }
 
 // トークンを保存する関数 (ログイン成功時に使用)
@@ -130,8 +136,11 @@ export const getTodos = async (): Promise<Todo[]> => { // リスト取得関数�
     const axiosError = error as AxiosError<{ detail?: string | { msg: string }[] }>; // エラーの型を指定。
 
     // もし「401 Unauthorized (認証エラー)」なら、トークンが無効なので削除する
-    if (axiosError.response?.status === 401) { // 認証切れを確認。
-      clearToken(); // トークンを消して再ログインを促します。
+    if (axiosError.response?.status === 401) {
+      // このリクエストで使用したトークンを安全に取り出す
+      const authHeader = axiosError.config?.headers?.Authorization;
+      const usedToken = typeof authHeader === 'string' ? authHeader.split(" ")[1] : undefined;
+      clearToken(usedToken);
     }
 
     let errorMessage = "ToDoリストの取得に失敗しました"; // 基本のエラーメッセージ。
@@ -206,7 +215,9 @@ export const updateTodo = async (
       `ToDo(ID: ${id})の更新に失敗しました`;
 
     if (axiosError.response?.status === 401) {
-      clearToken();
+      const authHeader = axiosError.config?.headers?.Authorization;
+      const usedToken = typeof authHeader === 'string' ? authHeader.split(" ")[1] : undefined;
+      clearToken(usedToken);
     }
 
     console.error(`Error updating todo with ID ${id}:`, errorMessage);
@@ -233,7 +244,9 @@ export const deleteTodo = async (id: number): Promise<void> => {
       `ToDo(ID: ${id})の削除に失敗しました`;
 
     if (axiosError.response?.status === 401) {
-      clearToken();
+      const authHeader = axiosError.config?.headers?.Authorization;
+      const usedToken = typeof authHeader === 'string' ? authHeader.split(" ")[1] : undefined;
+      clearToken(usedToken);
     }
 
     console.error(`Error deleting todo with ID ${id}:`, errorMessage);
@@ -248,13 +261,33 @@ export const deleteTodo = async (id: number): Promise<void> => {
 // ----------------------------------------------------------------------------
 
 export const getProjects = async (): Promise<Project[]> => {
-  const res: AxiosResponse<Project[]> = await api.get("/projects/");
-  return res.data;
+  try {
+    const res: AxiosResponse<Project[]> = await api.get("/projects/");
+    return res.data;
+  } catch (error) {
+    const axiosError = error as AxiosError;
+    if (axiosError.response?.status === 401) {
+      const authHeader = axiosError.config?.headers?.Authorization;
+      const usedToken = typeof authHeader === 'string' ? authHeader.split(" ")[1] : undefined;
+      clearToken(usedToken);
+    }
+    throw error;
+  }
 };
 
 export const getProjectSummaries = async (): Promise<ProjectSummary[]> => {
-  const res: AxiosResponse<ProjectSummary[]> = await api.get("/projects/summary");
-  return res.data;
+  try {
+    const res: AxiosResponse<ProjectSummary[]> = await api.get("/projects/summary");
+    return res.data;
+  } catch (error) {
+    const axiosError = error as AxiosError;
+    if (axiosError.response?.status === 401) {
+      const authHeader = axiosError.config?.headers?.Authorization;
+      const usedToken = typeof authHeader === 'string' ? authHeader.split(" ")[1] : undefined;
+      clearToken(usedToken);
+    }
+    throw error;
+  }
 };
 
 export const createProject = async (data: CreateProjectData): Promise<Project> => {

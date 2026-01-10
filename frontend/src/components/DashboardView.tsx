@@ -68,7 +68,7 @@ export default function DashboardView({ todos, projects, onFilterSelect }: Dashb
         <div className="lg:col-span-2 glass p-8 rounded-3xl">
           <h3 className="text-xl font-bold mb-6 text-slate-800 dark:text-white">プロジェクト別進捗</h3>
           <div className="space-y-6">
-            {projects.length === 0 ? (
+            {!Array.isArray(projects) || projects.length === 0 ? (
               <p className="text-slate-500 text-center py-10">プロジェクトがありません</p>
             ) : (
               projects.map(p => {

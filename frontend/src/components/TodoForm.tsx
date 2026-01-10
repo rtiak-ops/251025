@@ -106,26 +106,8 @@ export default function TodoForm({ onAdd, initialProjectId }: Props) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row gap-4">
-        {/* テキスト入力フィールド */}
-        <div className="relative group flex-1">
-          <input
-            type="text"
-            className="w-full bg-white/50 dark:bg-slate-900/50 border-2 border-slate-200 dark:border-slate-700/50 rounded-2xl p-4 pl-12 text-lg focus:outline-none focus:border-indigo-500 transition-all placeholder:text-slate-400 dark:text-white"
-            placeholder={isAiLoading ? "AIがステップを生成しています..." : "新しいタスク名を入力..."} 
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            disabled={isLoading || isAiLoading}
-          />
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-            {/* プラスアイコン */}
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-          </div>
-        </div>
-
         {/* 優先度選択ボタン群 */}
-        <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl md:w-auto h-fit">
+        <div className="flex bg-slate-200 dark:bg-slate-800 p-1.5 rounded-2xl md:w-auto h-fit border border-slate-300 dark:border-slate-600">
           {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const).map((p) => (
             <button
               key={p}
@@ -133,8 +115,8 @@ export default function TodoForm({ onAdd, initialProjectId }: Props) {
               onClick={() => setPriority(p)}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                 priority === p
-                  ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-600'
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'bg-white dark:bg-slate-600 shadow-md text-indigo-600 dark:text-white border border-slate-300 dark:border-slate-500'
+                  : 'text-slate-600 hover:text-slate-800 dark:text-white/70 dark:hover:text-white'
               }`}
             >
               {p === 'LOW' && '低'}
@@ -144,6 +126,30 @@ export default function TodoForm({ onAdd, initialProjectId }: Props) {
             </button>
           ))}
         </div>
+
+        {/* テキスト入力フィールド */}
+        <div className="relative group flex-1">
+          <input
+            type="text"
+            className="w-full bg-white/70 dark:bg-slate-900/80 border-2 border-slate-300 dark:border-slate-500 rounded-2xl p-4 pl-12 text-lg focus:outline-none focus:border-indigo-500 transition-all placeholder:text-slate-400 dark:text-white"
+            placeholder={isAiLoading ? "AIがステップを生成しています..." : "新しいタスク名を入力..."} 
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                // FormのonSubmit(handleSubmit)が自動で呼ばれるよう、デフォルトの動作に任せる
+                // (万が一のために明示的に何もしないことで標準挙動を担保)
+              }
+            }}
+            disabled={isLoading || isAiLoading}
+          />
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+            {/* プラスアイコン */}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </div>
+        </div>
       </div>
       
       {/* アクションボタンエリア */}
@@ -152,10 +158,10 @@ export default function TodoForm({ onAdd, initialProjectId }: Props) {
         <button
             type="button"
             onClick={handleAiBreakdown}
-            className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-bold transition-all shadow-md ${
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-4 rounded-2xl font-bold transition-all shadow-md ${
             isInputEmpty || isLoading || isAiLoading
-                ? "bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600"
-                : "bg-white dark:bg-slate-800 text-slate-700 dark:text-white border-2 border-slate-100 dark:border-slate-700 hover:shadow-lg hover:scale-[1.02] active:scale-95"
+                ? "bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:text-white/40 border border-transparent"
+                : "bg-white dark:bg-slate-800 text-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-500 hover:shadow-lg hover:scale-[1.02] active:scale-95"
             }`}
             disabled={isInputEmpty || isLoading || isAiLoading}
         >
@@ -169,9 +175,9 @@ export default function TodoForm({ onAdd, initialProjectId }: Props) {
         {/* 通常追加ボタン */}
         <button
             type="submit"
-            className={`px-10 py-4 rounded-2xl font-bold transition-all shadow-md ${
+            className={`flex-1 px-4 py-4 rounded-2xl font-bold transition-all shadow-md ${
             isInputEmpty || isLoading || isAiLoading
-                ? "bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-slate-500"
+                ? "bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-white/40"
                 : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg hover:scale-[1.02] active:scale-95"
             }`}
             disabled={isInputEmpty || isLoading || isAiLoading}

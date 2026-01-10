@@ -19,7 +19,7 @@
   
   /* 背景用グラデーション設定 */
   --bg-gradient-light: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  --bg-gradient-dark: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  --bg-gradient-dark: radial-gradient(circle at top right, #1e293b 0%, #0f172a 100%);
 }
 
 /* ==========================================
@@ -27,7 +27,7 @@
    ========================================== */
 body {
   /* 最小の高さを確保し、フォントの可読性を向上（アンチエイリアス） */
-  @apply min-h-screen antialiased transition-colors duration-500;
+  @apply min-h-screen antialiased transition-colors duration-500 text-slate-900;
   background: var(--bg-gradient-light);
   background-attachment: fixed; /* スクロールしても背景を固定 */
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -37,7 +37,7 @@ body {
 .dark body {
   background: var(--bg-gradient-dark);
   background-attachment: fixed;
-  @apply text-slate-100;
+  @apply text-white;
 }
 
 /* ==========================================
@@ -50,12 +50,15 @@ body {
  */
 .glass {
   /* 背景の不透明度を下げ、backdrop-blurで背後をぼかす */
-  @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl;
+  /* 境界線をよりはっきり(border-white/60)させ、影を強調 */
+  @apply bg-white/70 backdrop-blur-lg border border-white/60 shadow-2xl;
   transition: all 0.3s ease;
 }
 
 .dark .glass {
-  @apply bg-slate-800/50 border-slate-700/50 shadow-2xl;
+  /* ダークモードでは境界線を少し明るめ(slate-600)にし、内側の立体感を追加 */
+  @apply bg-slate-900/80 border-slate-600 shadow-2xl;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.05);
 }
 
 /**
@@ -64,15 +67,15 @@ body {
  */
 input[type="checkbox"] {
   /* appearance-noneで標準のチェックボックスを非表示にする */
-  @apply appearance-none size-6 rounded-lg border-2 border-slate-300 transition-all cursor-pointer;
-  @apply dark:border-slate-600;
+  @apply appearance-none size-6 rounded-lg border-2 border-slate-400 transition-all cursor-pointer;
+  @apply dark:border-slate-400 bg-white dark:bg-slate-800;
 }
 
 /* チェック時のスタイル：インディゴの背景にSVGのチェックマークを表示 */
 input[type="checkbox"]:checked {
-  @apply bg-indigo-500 border-indigo-500;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white' stroke-width='3'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M5 13l4 4L19 7' /%3E%3C/svg%3E");
-  background-size: 70%;
+  @apply bg-indigo-500 border-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)];
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white' stroke-width='4'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M5 13l4 4L19 7' /%3E%3C/svg%3E");
+  background-size: 75%;
   background-position: center;
   background-repeat: no-repeat;
 }

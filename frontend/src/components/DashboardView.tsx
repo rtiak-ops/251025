@@ -1,9 +1,10 @@
-import { LayoutDashboard, CheckCircle2, Clock, AlertTriangle, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 import type { Todo, ProjectSummary } from '../types';
 
 interface DashboardViewProps {
   todos: Todo[];
   projects: ProjectSummary[];
+  onFilterSelect: (filter: { label: string; priority?: Todo['priority']; status?: Todo['status']; completed?: boolean }) => void;
 }
 
 /**
@@ -11,7 +12,7 @@ interface DashboardViewProps {
  * アプリケーションの全体統計を表示するダッシュボードビュー。
  * 全タスクの進捗状況やプロジェクト別の達成率を可視化します。
  */
-export default function DashboardView({ todos, projects }: DashboardViewProps) {
+export default function DashboardView({ todos, projects, onFilterSelect }: DashboardViewProps) {
   // --- 統計データの計算 ---
   const completedTasks = todos.filter(t => t.completed).length; // 完了済み
   const inProgressTasks = todos.filter(t => !t.completed && t.status === 'IN_PROGRESS').length; // 進行中
@@ -30,18 +31,27 @@ export default function DashboardView({ todos, projects }: DashboardViewProps) {
           <LayoutDashboard className="text-indigo-600" size={32} />
           ダッシュボード
         </h2>
-        <div className="text-sm text-slate-500 font-medium bg-white/50 dark:bg-slate-800/50 px-4 py-2 rounded-full border border-white/20">
+        <div className="text-sm text-slate-500 dark:text-white font-medium bg-white/50 dark:bg-slate-800/50 px-4 py-2 rounded-full border border-white/20">
           最終更新: {new Date().toLocaleTimeString()}
         </div>
       </div>
 
-      {/* 統計カードグリッド (4列) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* 統計カードグリッド (3列) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard 
-          title="全てのタスク" 
-          value={todos.length} 
-          icon={<TrendingUp className="text-blue-500" />} 
-          color="blue"
+          title="最優先（至急）" 
+          value={urgentTasks} 
+          icon={<AlertTriangle className="text-red-500" />} 
+          color="red"
+          isAlert={urgentTasks > 0} // 件数が0より多い場合にアラート表示
+          onClick={() => onFilterSelect({ label: '至急タスク', priority: 'URGENT', completed: false })}
+        />
+        <StatCard 
+          title="進行中" 
+          value={inProgressTasks} 
+          icon={<Clock className="text-amber-500" />} 
+          color="amber"
+          onClick={() => onFilterSelect({ label: '進行中のタスク', status: 'IN_PROGRESS', completed: false })}
         />
         <StatCard 
           title="完了済み" 
@@ -49,19 +59,7 @@ export default function DashboardView({ todos, projects }: DashboardViewProps) {
           icon={<CheckCircle2 className="text-green-500" />} 
           color="green"
           subValue={`${completionRate}% 達成`}
-        />
-        <StatCard 
-          title="進行中" 
-          value={inProgressTasks} 
-          icon={<Clock className="text-amber-500" />} 
-          color="amber"
-        />
-        <StatCard 
-          title="最優先（至急）" 
-          value={urgentTasks} 
-          icon={<AlertTriangle className="text-red-500" />} 
-          color="red"
-          isAlert={urgentTasks > 0} // 件数が0より多い場合にアラート表示
+          onClick={() => onFilterSelect({ label: '完了済みタスク', completed: true })}
         />
       </div>
 
@@ -79,7 +77,7 @@ export default function DashboardView({ todos, projects }: DashboardViewProps) {
                 return (
                   <div key={p.id} className="space-y-2">
                     <div className="flex justify-between text-sm font-medium">
-                      <span className="text-slate-700 dark:text-slate-300">{p.name}</span>
+                      <span className="text-slate-700 dark:text-white">{p.name}</span>
                       <span className="text-indigo-600">{rate}%</span>
                     </div>
                     {/* プログレスバー本体 */}
@@ -117,20 +115,32 @@ export default function DashboardView({ todos, projects }: DashboardViewProps) {
 /**
  * 統計カード共通コンポーネント
  */
-function StatCard({ title, value, icon, color, subValue, isAlert }: any) {
+function StatCard({ title, value, icon, color, subValue, isAlert, onClick }: any) {
+  // Tailwindの動的クラス指定（JIT対応: 文字列をそのまま使うのではなく、マッピングにするのが安全）
+  const colorMap: Record<string, string> = {
+    blue: 'bg-blue-500/10 text-blue-500',
+    green: 'bg-green-500/10 text-green-500',
+    amber: 'bg-amber-500/10 text-amber-500',
+    red: 'bg-red-500/10 text-red-500',
+  };
+
+  const colorClass = colorMap[color] || 'bg-slate-500/10 text-slate-500';
+
   return (
-    <div className={`glass p-6 rounded-3xl relative overflow-hidden group hover:-translate-y-1 transition-all ${isAlert ? 'ring-2 ring-red-500/50' : ''}`}>
+    <div 
+      onClick={onClick}
+      className={`glass p-6 rounded-3xl relative overflow-hidden group hover:-translate-y-1 transition-all cursor-pointer ${isAlert ? 'ring-2 ring-red-500/50' : ''}`}
+    >
       <div className="flex justify-between items-start mb-4">
-        {/* アイコンの背景色を動的に設定（Tailwindの arbitrary value を使用する場合は注意が必要ですがここでは簡略化） */}
-        <div className={`p-3 rounded-2xl bg-${color}-500/10`}>
+        <div className={`p-3 rounded-2xl ${colorClass}`}>
           {icon}
         </div>
         {/* 背景の波打つアニメーション（至急タスクがある場合のみ） */}
         {isAlert && <span className="flex h-2 w-2 rounded-full bg-red-500 animate-ping"></span>}
       </div>
       <div className="text-3xl font-bold text-slate-800 dark:text-white mb-1">{value}</div>
-      <div className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</div>
-      {subValue && <div className="text-[10px] mt-2 font-bold text-green-500 uppercase tracking-tight">{subValue}</div>}
+      <div className="text-sm font-medium text-slate-500 dark:text-white">{title}</div>
+      {subValue && <div className="text-[10px] mt-2 font-bold text-green-500 dark:text-green-400 uppercase tracking-tight">{subValue}</div>}
     </div>
   );
 }
@@ -143,7 +153,7 @@ function StatusRow({ label, count, total, color }: any) {
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs font-medium">
-        <span className="text-slate-600 dark:text-slate-400">{label}</span>
+        <span className="text-slate-600 dark:text-white">{label}</span>
         <span className="text-slate-800 dark:text-white">{count}</span>
       </div>
       <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700/50 rounded-full overflow-hidden">

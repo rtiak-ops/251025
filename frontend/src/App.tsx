@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Toaster, toast } from "react-hot-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { type DropResult } from "@hello-pangea/dnd";
-import { getTodos, getStoredToken, clearToken, reorderTodos, getProjectSummaries } from "./api";
+import { getTodos, getStoredToken, clearToken, reorderTodos, getProjectSummaries, updateProject, deleteProject } from "./api";
 import type { Todo, ProjectSummary } from "./types";
 import Sidebar from "./components/Sidebar";
 import DashboardView from "./components/DashboardView";
@@ -21,6 +21,14 @@ export default function App() {
   const [token, setToken] = useState<string | null>(getStoredToken());
   // 現在表示しているビュー（ダッシュボード、全タスク、または特定のプロジェクトID）
   const [currentView, setCurrentView] = useState<'dashboard' | 'all' | number>('dashboard');
+  
+  // フィルター状態
+  const [activeFilter, setActiveFilter] = useState<{
+    label: string;
+    priority?: Todo['priority'];
+    status?: Todo['status'];
+    completed?: boolean;
+  } | null>(null);
   
   // テーマ（ライト/ダークモード）
   const [theme, setTheme] = useState<"light" | "dark">(() => {
@@ -115,12 +123,72 @@ export default function App() {
     }
   };
 
+  /**
+   * ダッシュボードの統計カードクリック時のハンドラー
+   */
+  const handleFilterSelect = (filter: any) => {
+    setActiveFilter(filter);
+    setCurrentView('all'); // フィルター時は「すべてのタスク」ビューに遷移
+  };
+
+  const handleViewChange = (view: 'dashboard' | 'all' | number) => {
+    setCurrentView(view);
+    setActiveFilter(null); // ビュー切り替え時はフィルターをリセット
+  };
+
+  /** プロジェクトの編集ハンドラー */
+  const handleEditProject = async () => {
+    if (typeof currentView !== 'number' || !currentProject) return;
+    
+    const newName = window.prompt("プロジェクト名を変更:", currentProject.name);
+    if (newName === null) return; // キャンセル
+    
+    const newDesc = window.prompt("プロジェクトの説明を変更:", currentProject.description || "");
+    if (newDesc === null) return;
+
+    try {
+      await updateProject(currentView, { name: newName, description: newDesc });
+      toast.success("プロジェクトを更新しました");
+      handleDataChange();
+    } catch (e) {
+      toast.error("更新に失敗しました");
+    }
+  };
+
+  /** プロジェクトの削除ハンドラー */
+  const handleDeleteProject = async () => {
+    if (typeof currentView !== 'number' || !currentProject) return;
+    
+    if (!window.confirm(`プロジェクト「${currentProject.name}」を削除しますか？配下のタスクもすべて削除されます。`)) {
+      return;
+    }
+
+    try {
+      await deleteProject(currentView);
+      toast.success("プロジェクトを削除しました");
+      setCurrentView('dashboard');
+      handleDataChange();
+    } catch (e) {
+      toast.error("削除に失敗しました");
+    }
+  };
+
   // --- 算出プロパティ (Computed) ---
 
   // 現在のビューに合わせて表示するタスクをフィルタリング
   const filteredTodos = allTodos.filter(t => {
-    if (currentView === 'all' || currentView === 'dashboard') return true;
-    return t.project_id === currentView;
+    // 1. ビューのチェック
+    const matchesView = currentView === 'all' || currentView === 'dashboard' || t.project_id === currentView;
+    if (!matchesView) return false;
+
+    // 2. フィルターのチェック
+    if (activeFilter) {
+      if (activeFilter.priority && t.priority !== activeFilter.priority) return false;
+      if (activeFilter.status && t.status !== activeFilter.status) return false;
+      if (activeFilter.completed !== undefined && t.completed !== activeFilter.completed) return false;
+    }
+
+    return true;
   });
 
   // 数値（ID）の場合は該当するプロジェクト情報を取得
@@ -137,7 +205,7 @@ export default function App() {
             <h1 className="text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">
               BizFlow
             </h1>
-            <p className="text-slate-500 font-medium">プロフェッショナルな業務管理を</p>
+            <p className="text-slate-500 dark:text-white font-medium">プロフェッショナルな業務管理を</p>
           </div>
           <AuthForm onAuthenticated={setToken} />
         </div>
@@ -148,12 +216,12 @@ export default function App() {
 
   // メインレイアウト
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex p-4 gap-6">
+    <div className="min-h-screen flex p-4 gap-6">
       {/* ナビゲーションサイドバー */}
       <Sidebar 
         projects={projects}
         currentView={currentView}
-        onViewChange={setCurrentView}
+        onViewChange={handleViewChange}
         onLogout={handleLogout}
         theme={theme}
         onThemeToggle={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -163,7 +231,7 @@ export default function App() {
       {/* メインコンテンツ: ビューに応じて切り替え */}
       <main className="flex-1 max-w-5xl mx-auto w-full">
         {currentView === 'dashboard' ? (
-          <DashboardView todos={allTodos} projects={projects} />
+          <DashboardView todos={allTodos} projects={projects} onFilterSelect={handleFilterSelect} />
         ) : (
           <ProjectTasksView 
             project={currentProject}
@@ -171,6 +239,10 @@ export default function App() {
             isLoading={isTodosLoading}
             onDataChange={handleDataChange}
             onDragEnd={handleDragEnd}
+            activeFilter={activeFilter}
+            onClearFilter={() => setActiveFilter(null)}
+            onEditProject={handleEditProject}
+            onDeleteProject={handleDeleteProject}
           />
         )}
       </main>

@@ -52,12 +52,12 @@ export default function Sidebar({
         <h1 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">
           BizFlow
         </h1>
-        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Enterprise Task Manager</p>
+        <p className="text-xs text-slate-500 dark:text-white font-medium">Enterprise Task Manager</p>
       </div>
 
       {/* ナビゲーションメニュー */}
       <nav className="flex-1 space-y-2 overflow-y-auto">
-        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-2">
+        <div className="text-xs font-semibold text-slate-400 dark:text-white/60 uppercase tracking-wider mb-2 px-2">
           メイン
         </div>
         
@@ -67,7 +67,7 @@ export default function Sidebar({
           className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
             currentView === 'dashboard'
               ? 'bg-indigo-600 text-white shadow-lg'
-              : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-300'
+              : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-white'
           }`}
         >
           <span className="text-lg">📊</span> ダッシュボード
@@ -79,7 +79,7 @@ export default function Sidebar({
           className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
             currentView === 'all'
               ? 'bg-indigo-600 text-white shadow-lg'
-              : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-300'
+              : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-white'
           }`}
         >
           <span className="text-lg">📅</span> すべてのタスク
@@ -87,7 +87,7 @@ export default function Sidebar({
 
         {/* プロジェクトセクションヘッダー（追加ボタン付き） */}
         <div className="pt-6 flex items-center justify-between mb-2 px-2">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          <span className="text-xs font-semibold text-slate-400 dark:text-white/60 uppercase tracking-wider">
             プロジェクト
           </span>
           <button 
@@ -107,7 +107,7 @@ export default function Sidebar({
             className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center justify-between ${
               currentView === project.id
                 ? 'bg-indigo-600 text-white shadow-lg'
-                : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-300'
+                : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-white'
             }`}
           >
             <span className="flex items-center gap-3 truncate">
@@ -134,7 +134,7 @@ export default function Sidebar({
         </button>
         <button
           onClick={onLogout}
-          className="w-full px-4 py-2 text-sm font-medium text-slate-500 hover:text-red-500 transition-colors flex items-center justify-center gap-2"
+          className="w-full px-4 py-2 text-sm font-medium text-slate-500 dark:text-white hover:text-red-500 transition-colors flex items-center justify-center gap-2"
         >
           🚪 ログアウト
         </button>

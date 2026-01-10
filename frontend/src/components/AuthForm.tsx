@@ -71,7 +71,7 @@ export default function AuthForm({ onAuthenticated }: Props) {
         <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
           {mode === "login" ? "おかえりなさい！" : "アカウント作成"}
         </h2>
-        <p className="text-slate-500 dark:text-slate-400">
+        <p className="text-slate-500 dark:text-white">
           {mode === "login" ? "詳細を入力してログインしてください" : "登録してタスク管理を始めましょう"}
         </p>
       </div>
@@ -82,7 +82,7 @@ export default function AuthForm({ onAuthenticated }: Props) {
           <div className="relative group">
             <input
               type="email"
-              className="w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl p-3 pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white"
+              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white"
               placeholder="メールアドレス"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -99,7 +99,7 @@ export default function AuthForm({ onAuthenticated }: Props) {
           <div className="relative group">
             <input
               type="password"
-              className="w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl p-3 pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white"
+              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white"
               placeholder="パスワード"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -136,7 +136,7 @@ export default function AuthForm({ onAuthenticated }: Props) {
         {/* モード切替リンク */}
         <button
           type="button"
-          className="w-full text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-500 transition-colors"
+          className="w-full text-sm font-medium text-slate-500 dark:text-white hover:text-indigo-500 transition-colors"
           onClick={() => {
             setMode(mode === "login" ? "register" : "login");
             setError(null);

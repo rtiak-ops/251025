@@ -111,6 +111,9 @@ class Todo(Base):
     # 外部キー: このTodoを所有するプロジェクトのID (任意)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
 
+    # 外部キー: このTodoを所有するユーザーのID
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
     # ステータス: 'TODO', 'IN_PROGRESS', 'REVIEW', 'DONE' など
     status = Column(String(20), default="TODO", nullable=False)
     

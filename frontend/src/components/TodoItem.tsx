@@ -74,30 +74,32 @@ export default function TodoItem({ todo, onChange }: Props) {
           {/* タスク属性バッジエリア */}
           <div className="flex items-center gap-2 mb-1 overflow-x-auto no-scrollbar">
             {/* 優先度バッジ：重要度に応じて配色を変更 */}
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider flex-shrink-0 ${
-              todo.priority === 'URGENT' ? 'bg-red-100 text-red-600 dark:bg-red-900/40' :
-              todo.priority === 'HIGH' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40' :
-              todo.priority === 'MEDIUM' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40' :
-              'bg-slate-100 text-slate-500 dark:bg-slate-800'
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider flex-shrink-0 border ${
+              todo.priority === 'URGENT' ? 'bg-red-500 text-white border-red-600 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30' :
+              todo.priority === 'HIGH' ? 'bg-amber-500 text-white border-amber-600 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30' :
+              todo.priority === 'MEDIUM' ? 'bg-blue-500 text-white border-blue-600 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30' :
+              'bg-slate-500 text-white border-slate-600 dark:bg-slate-700 dark:text-white dark:border-slate-600'
             }`}>
-              {todo.priority}
+              {todo.priority === 'URGENT' ? '至急' :
+               todo.priority === 'HIGH' ? '高' :
+               todo.priority === 'MEDIUM' ? '中' : '低'}
             </span>
 
             {/* ステータス選択ドロップダウン：バッジ風のデザイン */}
             <select 
               value={todo.status}
               onChange={(e) => updateStatus(e.target.value as any)}
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-md cursor-pointer border-none focus:ring-0 flex-shrink-0 ${
-                todo.status === 'DONE' ? 'bg-green-100 text-green-600 dark:bg-green-900/40' :
-                todo.status === 'REVIEW' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40' :
-                todo.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40' :
-                'bg-slate-100 text-slate-500 dark:bg-slate-800'
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-md cursor-pointer border-none focus:ring-0 flex-shrink-0 appearance-none bg-transparent ${
+                todo.status === 'DONE' ? 'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400' :
+                todo.status === 'REVIEW' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' :
+                todo.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' :
+                'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-white'
               }`}
             >
-              <option value="TODO">未着手</option>
-              <option value="IN_PROGRESS">進行中</option>
-              <option value="REVIEW">レビュー</option>
-              <option value="DONE">完了</option>
+              <option value="TODO" className="dark:bg-slate-800 text-slate-700 dark:text-white">未着手</option>
+              <option value="IN_PROGRESS" className="dark:bg-slate-800 text-slate-700 dark:text-white">進行中</option>
+              <option value="REVIEW" className="dark:bg-slate-800 text-slate-700 dark:text-white">レビュー</option>
+              <option value="DONE" className="dark:bg-slate-800 text-slate-700 dark:text-white">完了</option>
             </select>
           </div>
 
@@ -105,15 +107,15 @@ export default function TodoItem({ todo, onChange }: Props) {
           <span
             className={`text-base font-semibold truncate transition-all duration-300 ${
               todo.completed
-                ? "line-through text-slate-400 dark:text-slate-500"
-                : "text-slate-700 dark:text-slate-200"
+                ? "line-through text-slate-400 dark:text-white/50"
+                : "text-slate-700 dark:text-white"
             }`}
           >
             {todo.title}
           </span>
           {/* 説明文：1行で省略表示 */}
           {todo.description && (
-            <span className="text-xs text-slate-400 dark:text-slate-500 line-clamp-1">
+            <span className="text-xs text-slate-400 dark:text-white/80 line-clamp-1">
               {todo.description}
             </span>
           )}

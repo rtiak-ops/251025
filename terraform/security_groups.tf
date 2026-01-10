@@ -1,71 +1,65 @@
-# EC2インスタンス用のセキュリティグループ（ファイアウォール）
-# どの通信を許可するかを設定します
-resource "aws_security_group" "ec2" {
-  name        = "${var.project_name}-ec2-sg"
-  description = "Security group for EC2 instance"
-  vpc_id      = aws_vpc.main.id
+# ==================================================================================================
+# 門番（Security Groups）：通信のルールを決める
+# ==================================================================================================
 
-  # SSHアクセス（リモートログイン）を許可
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # 本番環境では特定のIPに制限することを推奨します
-  }
+resource "aws_security_group" "ec2" {        # サーバー（EC2）用の門番ルールを作ります
+  name        = "${var.project_name}-ec2-sg" # 門番に名前（プロジェクト名＋ec2-sg）を付けます
+  description = "Security group for EC2 instance" # どんな門番か、説明書きをします
+  vpc_id      = aws_vpc.main.id              # この門番を配置する街（VPC）を指定します
 
-  # HTTPアクセス（Webサイトの閲覧）を許可
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  ingress {                                  # 入口のルール（外から中へ）を決めます
+    from_port   = 22                         # 22番ポート（SSH）から
+    to_port     = 22                         # 22番ポートまでを開けます
+    protocol    = "tcp"                      # TCPという通信方式を使います
+    cidr_blocks = ["0.0.0.0/0"]              # 世界中のどこからでもアクセスOKにします
+  }                                          # SSHルールの終了
 
-  # バックエンドAPIへのアクセスを許可 (ポート8000)
-  ingress {
-    from_port   = 8000
-    to_port     = 8000
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  ingress {                                  # 次の入口ルールを決めます
+    from_port   = 80                         # 80番ポート（HTTP）から
+    to_port     = 80                         # 80番ポートまでを開けます
+    protocol    = "tcp"                      # TCP通信です
+    cidr_blocks = ["0.0.0.0/0"]              # 世界中からサイトを見れるようにします
+  }                                          # HTTPルールの終了
 
-  # インスタンスから外への全ての通信を許可
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  ingress {                                  # 次の入口ルールを決めます
+    from_port   = 8000                       # 8000番ポート（API用）から
+    to_port     = 8000                       # 8000番ポートまでを開けます
+    protocol    = "tcp"                      # TCP通信です
+    cidr_blocks = ["0.0.0.0/0"]              # 世界中からAPIを使えるようにします
+  }                                          # APIルールの終了
 
-  tags = {
-    Name = "${var.project_name}-ec2-sg"
-  }
-}
+  egress {                                   # 出口のルール（中から外へ）を決めます
+    from_port   = 0                          # 全てのポートから
+    to_port     = 0                          # 全てのポートへ
+    protocol    = "-1"                       # 通信の種類も何でもOK（-1は全許可）
+    cidr_blocks = ["0.0.0.0/0"]              # 世界中のどこへでも通信しに行けるようにします
+  }                                          # 出口ルールの終了
 
-# RDS（データベース）用のセキュリティグループ
-resource "aws_security_group" "rds" {
-  name        = "${var.project_name}-rds-sg"
-  description = "Security group for RDS instance"
-  vpc_id      = aws_vpc.main.id
+  tags = {                                   # タグ（ふせん）を付けます
+    Name = "${var.project_name}-ec2-sg"     # 管理画面で見やすいように名前を付けます
+  }                                          # タグの終了
+}                                           # ec2門番の設定終了
 
-  # PostgreSQLの通信（ポート5432）を許可
-  # セキュリティのため、EC2インスタンスからの通信のみに限定しています
-  ingress {
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ec2.id]
-  }
+resource "aws_security_group" "rds" {        # データベース（RDS）用の門番ルールを作ります
+  name        = "${var.project_name}-rds-sg" # 門番に名前を付けます
+  description = "Security group for RDS instance" # 説明書きです
+  vpc_id      = aws_vpc.main.id              # 街（VPC）を指定します
 
-  # データベースから外への通信を許可
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  ingress {                                  # 入口のルールを決めます
+    from_port       = 5432                   # 5432番ポート（PostgreSQL用）を開けます
+    to_port         = 5432                   # 5432番ポートまでです
+    protocol        = "tcp"                  # TCP通信です
+    security_groups = [aws_security_group.ec2.id] # 重要：EC2門番を通った仲間だけを通します
+  }                                          # DB入口ルールの終了
 
-  tags = {
-    Name = "${var.project_name}-rds-sg"
-  }
-}
+  egress {                                   # 出口のルールを決めます
+    from_port   = 0                          # 全てのポートを
+    to_port     = 0                          # 全てのポートへ
+    protocol    = "-1"                       # 何でも許可します
+    cidr_blocks = ["0.0.0.0/0"]              # どこへでも通信OKにします
+  }                                          # 出口ルールの終了
+
+  tags = {                                   # タグを付けます
+    Name = "${var.project_name}-rds-sg"     # 名前タグです
+  }                                          # タグの終了
+}                                           # rds門番の設定終了

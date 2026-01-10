@@ -305,18 +305,43 @@ terraform init
 ＃時間が空いた場合、AWSに再ログイン。
 aws sso login
 ＃実行するとブラウザが立ち上がり、認証を許可する。
-# 最新のインスタンス状態（IP）を認識させる
-terraform refresh
-# CloudFrontのオリジン設定を更新
-terraform apply
 
-# 2. 実行計画の確認
-terraform plan
-
-# 3. リソースの作成
+# 2. リソースの作成（初回/更新）
 terraform apply
 ```
-※ 構築完了後、CloudFrontのURLが出力されます。
+※ 完了後、CloudFrontのURLが出力されます。
+
+---
+
+## 💤 インフラの停止と再開 (コスト削減)
+
+開発を行わない時間に EC2 や RDS などのリソースを停止している場合、**再開時には IP アドレスの変化に伴う更新作業が必要です。** 以下の手順で行ってください。
+
+### **1. インスタンスの開始 (AWS コンソール)**
+AWS コンソール（EC2 / RDS）で対象のリソースを選択し、「開始」をクリックします。
+※ ステータスが「実行中」あるいは「利用可能」になるまで数分待ちます。
+
+### **2. インフラ情報の同期 (Terraform)**
+EC2 を再起動するとパブリック IP アドレスが変わるため、CloudFront の接続先（オリジン）を更新する必要があります。
+```bash
+cd terraform
+terraform apply
+```
+※ `terraform apply` を実行することで、新しい IP アドレスが CloudFront の配信設定に自動反映されます。
+
+### **3. GitHub Secrets の更新**
+GitHub リポジトリの `Settings > Secrets and variables > Actions` を開き、以下の値を新しい IP に書き換えます。
+- `EC2_HOST`: 新しい EC2 のパブリック IP アドレス。
+
+### **4. 最新コードの再デプロイ**
+GitHub Actions を手動で実行するか、空コミットをプッシュしてデプロイを走らせます。
+```bash
+git commit --allow-empty -m "fix: Environment resumed"
+git push origin main
+```
+これにより、新しい IP に基づいた `.env` 設定が EC2 内に適用され、認証が正常に通るようになります。
+
+---
 
 #### **⚠️ インフラを再構築（destroy & apply）する場合の注意点**
 `terraform destroy` を実行して環境を一度削除し、再度 `apply` する場合は、以下の点に注意してください。

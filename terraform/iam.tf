@@ -1,74 +1,79 @@
+# ==================================================================================================
+# 7. 権限管理 (IAM)
+# ==================================================================================================
+# 「誰が」「何に対して」「何をして良いか」という許可証（ルール）を作ります。
+# ここでは、自動デプロイツール（GitHub Actions）がAWSを操作するための設定をしています。
+
 # --------------------------------------------------------------------------------------------------
-# GitHub Actions 用の IAM 設定
+# ① 信頼の設定 (OIDC Provider)
 # --------------------------------------------------------------------------------------------------
-# このファイルでは、GitHub Actions が AWS リソース（S3やCloudFront）を操作するための権限を設定します。
-# 「アクセスキー」を発行せず、より安全な「OIDC (OpenID Connect)」という仕組みを利用します。
+# 「GitHubというサービスを信頼しますよ」という登録をAWS側で行います。
+data "aws_iam_openid_connect_provider" "github" {  # GitHubとAWSを繋ぐための「認証窓口」の情報を取得します
+  url = "https://token.actions.githubusercontent.com" # GitHubが発行するデプロイ用チケットの発行元URLです
+}                                               # 情報取得終了
 
-# 1. GitHub の認証サーバーを AWS に信頼させる設定
-# GitHub Actions が発行するトークンを AWS が検証できるようにするためのプロバイダー情報です。
-data "aws_iam_openid_connect_provider" "github" {
-  url = "https://token.actions.githubusercontent.com"
-}
+# --------------------------------------------------------------------------------------------------
+# ② 役割 (IAM Role)：GitHub Actions用の「仮の姿」
+# --------------------------------------------------------------------------------------------------
+# 直接ユーザーを作るのではなく、「この条件を満たすGitHubリポジトリなら、一時的にこの役割に変身して良いよ」という枠組みを作ります。
+resource "aws_iam_role" "github_actions" {       # GitHubデプロイ専用の「役割（ロール）」を作ります
+  name = "${var.project_name}-github-actions-role" # 役割に名前を付けます
 
-# 2. GitHub Actions が一時的に「なりきる」ための IAM ロール
-# 直接ユーザーを作るのではなく、「この条件を満たすGitHubリポジトリなら使って良いよ」という役割（ロール）を作ります。
-resource "aws_iam_role" "github_actions" {
-  name = "${var.project_name}-github-actions-role"
-
-  # 信頼ポリシー（誰がこのロールを使えるか）の設定
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        # OIDC経由での認証（Web Identity）を許可する
-        Action = "sts:AssumeRoleWithWebIdentity"
-        Effect = "Allow"
-        Principal = {
-          # 上で定義した GitHub プロバイダーを指定
-          Federated = data.aws_iam_openid_connect_provider.github.arn
-        }
+  # 「変身を許可する」ための書類（Assume Role Policy）
+  assume_role_policy = jsonencode({              # 誰がこの役割になって良いか、ルールを書きます
+    Version = "2012-10-17"                      # AWSのポリシーを書く時の標準的な日付（形式）です
+    Statement = [                               # ルールの内容をリストで書きます
+      {                                         # 1つ目のルールです
+        Action = "sts:AssumeRoleWithWebIdentity" # 「Web認証を使って役割に変身する」ことを許可します
+        Effect = "Allow"                        # 「許可」します
+        Principal = {                           # 変身を許可する相手を指定します
+          Federated = data.aws_iam_openid_connect_provider.github.arn # さっきのGitHub認証窓口からの依頼を受け付けます
+        }                                       # 相手指定終了
         # 【重要】セキュリティの要
-        # 特定のリポジトリ（今回の場合は rtiak-ops/251025）からのみ許可するように制限します。
-        # これがないと、全世界のGitHubユーザーがあなたのAWSを操作できてしまいます。
-        Condition = {
-          StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:rtiak-ops/251025:*"
-          }
-        }
-      }
-    ]
-  })
-}
+        # 「自分の特定のリポジトリ（rtiak-ops/251025）から来た時だけ」という厳しい条件を付けます。
+        Condition = {                            # さらに詳しい条件を付けます
+          StringLike = {                        # 下の値が一致しているかチェックします
+            "token.actions.githubusercontent.com:sub" = "repo:rtiak-ops/251025:*" # 特定のリポジトリ（rtiak-ops/251025）からのアクセスだけに絞ります
+          }                                     # チェック内容終了
+        }                                       # 条件設定終了
+      }                                         # ルール終了
+    ]                                           # リスト終了
+  })                                            # ポリシー記述終了
+}                                               # 役割設定終了
 
-# 3. IAM ロールに付与する具体的な権限（ポリシー）
-# 「GitHub Actions に何をして良いか」を定義します。
-resource "aws_iam_role_policy" "github_actions_policy" {
-  name = "${var.project_name}-github-actions-policy"
-  role = aws_iam_role.github_actions.id
+# --------------------------------------------------------------------------------------------------
+# ③ 許可証 (IAM Policy)：具体的に何ができるか？
+# --------------------------------------------------------------------------------------------------
+# 役割（IAMロール）に対して、「具体的にどのボタンを押して良いか」を決めます。
+resource "aws_iam_role_policy" "github_actions_policy" { # 具体的に「何をして良いか」という許可証を作ります
+  name = "${var.project_name}-github-actions-policy" # 許可証に名前を付けます
+  role = aws_iam_role.github_actions.id          # 上で作った「役割」にこの許可証を渡します
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        # S3へのアップロード、削除、リスト表示などを許可（フロントエンドのデプロイ用）
-        # CloudFront のキャッシュクリア（Invalidation）を許可
-        Action = [
-          "s3:PutObject",
-          "s3:GetObject",
-          "s3:ListBucket",
-          "s3:DeleteObject",
-          "cloudfront:CreateInvalidation"
-        ]
-        Effect   = "Allow"
-        # 本番環境ではさらに Resource を特定の S3 バケットの ARN に絞るのがベストプラクティスです。
-        Resource = "*" 
-      }
-    ]
-  })
-}
+  policy = jsonencode({                          # 許可する具体的なアクションを書きます
+    Version = "2012-10-17"                      # 標準的な形式です
+    Statement = [                               # ルールリストです
+      {                                         # 許可ルールの詳細です
+        # S3にファイルを置く（デプロイ）、キャッシュを消す（更新反映）などを許可します。
+        Action = [                              # 許可する「ボタン（操作）」のリストです
+          "s3:PutObject",                       # S3にファイルをアップロードする
+          "s3:GetObject",                       # S3からファイルを取得する
+          "s3:ListBucket",                      # S3のファイル一覧を見る
+          "s3:DeleteObject",                    # S3の古いファイルを消す
+          "cloudfront:CreateInvalidation"       # CloudFrontのキャッシュをクリアして新情報を反映させる
+        ]                                       # 操作リスト終了
+        Effect   = "Allow"                      # これらを「許可」します
+        Resource = "*"                          # 全てのリソースを対象にします（必要に応じて細かく絞ることも可能）
+      }                                         # ルール終了
+    ]                                           # リスト終了
+  })                                            # ポリシー記述終了
+}                                               # 許可証設定終了
 
-# 4. 作成したロールの ARN（識別子）を出力
-# GitHub Actions のワークフローファイル（YAML）でこの値を使用します。
-output "github_actions_role_arn" {
-  value = aws_iam_role.github_actions.arn
-}
+# --------------------------------------------------------------------------------------------------
+# ④ 結果の出力 (Output)
+# --------------------------------------------------------------------------------------------------
+# 作成した「役割の名前（ARN）」を後で使えるように表示します。
+# これを GitHub のシークレットに設定することで、連携ができるようになります。
+output "github_actions_role_arn" {               # 作成した役割の「正式名称（ARN）」を出力します
+  value = aws_iam_role.github_actions.arn        # 役割のARNを画面に表示します
+}                                               # 出力設定終了
+

@@ -1,96 +1,110 @@
-# ワークフローの名前。
+# ワークフローの名前を定義します。
 name: CD Pipeline (Deploy)
 
-# 実行タイミング（トリガー）の設定。
+# ワークフローを実行する条件（トリガー）を設定します。
 on:
-  workflow_dispatch: # GitHubのブラウザ画面から手動で実行できるようにします。
+  # GitHubの管理画面からボタンをクリックして手動で実行できるようにします。
+  workflow_dispatch:
+  # 指定したブランチにコードが保存(push)された時に実行します。
   push:
-    branches: [main, develop] # main または develop ブランチにコードが保存(push)された時に実行
+    # 対象となるブランチ（main と develop）を指定します。
+    branches: [main, develop]
 
+# 実行される一連の処理（ジョブ）を定義します。
 jobs:
-  # ==========================================
-  # デプロイ (本番/開発環境への反映)
-  # ==========================================
+  # デプロイ（本番環境などへの反映）を行うジョブを定義します。
   deploy:
+    # 実行環境として Ubuntu（Linux）の最新版を使用します。
     runs-on: ubuntu-latest
     
-    # 安全に AWS と通信（認証）するための権限設定
+    # 安全に AWS と通信（認証）を行うための権限を設定します。
     permissions:
-      id-token: write # GitHub IDトークンを発行して AWS とのやり取りに使います
+      # OIDC（OpenID Connect）を使って一時的な ID トークンを発行する権限です。
+      id-token: write
+      # リポジトリの内容を読み取る権限です。
       contents: read
 
+    # 実行する具体的な手順（ステップ）を記述します。
     steps:
+      # GitHubからリポジトリのコードをこの実行環境にコピーします。
       - name: チェックアウト
         uses: actions/checkout@v4
 
-      # --- AWS 認証 ---
-      # ログイン情報（IAMロール）を GitHub Secrets から読み込み、AWSを使えるようにします。
+      # AWS認証情報（IAMロールなど）を設定し、AWSを使えるようにします。
       - name: AWS 認証設定
         uses: aws-actions/configure-aws-credentials@v4
         with:
+          # 使用するIAMロールのARNをSecretsから取得します。
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          # AWSのリージョンを東京（ap-northeast-1）に設定します。
           aws-region: ap-northeast-1
 
-      # --- 最新のインフラ情報を取得 ---
+      # 現在稼働しているAWSインフラの最新情報を動的に取得します。
       - name: 最新のインフラ情報を取得
+        # 他のステップでこの結果を使えるようにIDを付けます。
         id: infra-info
         run: |
-          # 1. EC2のIP取得 (タグ: Name=todo-app-ec2)
+          # 1. バックエンドを動かすEC2サーバーのIPアドレスを取得します。
           IP=$(aws ec2 describe-instances \
             --filters "Name=tag:Name,Values=todo-app-ec2" "Name=instance-state-name,Values=running" \
             --query "Reservations[0].Instances[0].PublicIpAddress" \
             --output text)
           
+          # IPアドレスが取得できなかった場合はエラーで終了します。
           if [ "$IP" == "None" ] || [ -z "$IP" ]; then
             echo "エラー: 起動中のEC2インスタンスが見つかりませんでした。"
             exit 1
           fi
+          # 取得したIPを画面に表示し、後のステップで使える変数として保存します。
           echo "EC2 IP: $IP"
           echo "ec2_ip=$IP" >> $GITHUB_OUTPUT
 
-          # 2. S3バケット名取得 (タグ: Name=todo-app-frontend-bucket)
-          # resourcegroupstaggingapi を使うとタグからARNを引けます
+          # 2. フロントエンドのファイルを置くS3バケット名を取得します。
           S3_ARN=$(aws resourcegroupstaggingapi get-resources \
             --tag-filters Key=Name,Values=todo-app-frontend-bucket \
             --query "ResourceTagMappingList[0].ResourceARN" \
             --output text)
           
+          # バケットが見つからない場合はエラーにします。
           if [ "$S3_ARN" == "None" ] || [ -z "$S3_ARN" ]; then
             echo "エラー: S3バケットが見つかりませんでした。"
             exit 1
           fi
-          S3_BUCKET_NAME=${S3_ARN##*:} # arn:aws:s3:::bucket-name から名前だけ抽出
+          # ARN（識別子）からバケット名だけを取り出します。
+          S3_BUCKET_NAME=${S3_ARN##*:}
           echo "S3 Bucket: $S3_BUCKET_NAME"
           echo "s3_bucket=$S3_BUCKET_NAME" >> $GITHUB_OUTPUT
 
-          # 3. CloudFront情報の取得
-          # S3バケット名をオリジンに持つディストリビューションを検索します
+          # 3. 配信ネットワークであるCloudFrontの情報を取得します。
           CF_ID=$(aws cloudfront list-distributions \
             --query "DistributionList.Items[?Origins.Items[?contains(DomainName, '$S3_BUCKET_NAME')]].Id" \
             --output text | awk '{print $1}')
           
+          # CloudFrontの設定が見つからない場合はエラーにします。
           if [ "$CF_ID" == "None" ] || [ -z "$CF_ID" ]; then
             echo "エラー: S3バケット ($S3_BUCKET_NAME) をオリジンに持つCloudFrontが見つかりませんでした。"
             exit 1
           fi
           
-          # IDを使用してドメイン名を取得
+          # CloudFrontのドメイン名（URLの基になるもの）を取得します。
           CF_DOMAIN=$(aws cloudfront get-distribution --id "$CF_ID" --query "Distribution.DomainName" --output text)
           
+          # 取得したドメイン名とIDを後のステップで使えるように保存します。
           echo "CloudFront Domain: $CF_DOMAIN"
           echo "CloudFront ID: $CF_ID"
           echo "cf_domain=$CF_DOMAIN" >> $GITHUB_OUTPUT
           echo "cf_id=$CF_ID" >> $GITHUB_OUTPUT
 
-          # 4. RDS エンドポイントの取得 (タグ: Name=todo-app-rds)
+          # 4. データベース(RDS)の接続先アドレスを取得します。
           RDS_ENDPOINT=$(aws rds describe-db-instances \
             --filters "Name=db-instance-id,Values=todo-app-db" \
             --query "DBInstances[0].Endpoint.Address" \
             --output text)
+          # 接続先アドレスを保存します。
           echo "RDS Endpoint: $RDS_ENDPOINT"
           echo "rds_endpoint=$RDS_ENDPOINT" >> $GITHUB_OUTPUT
 
-      # --- フロントエンドのデプロイ (S3 & CloudFront) ---
+      # フロントエンドをビルドするためにNode.jsをセットアップします。
       - name: Node.js セットアップ
         uses: actions/setup-node@v4
         with:
@@ -98,107 +112,126 @@ jobs:
           cache: 'npm'
           cache-dependency-path: ./frontend/package-lock.json
 
+      # フロントエンドの本番用ファイルを生成します。
       - name: フロントエンドのビルド
         working-directory: ./frontend
         env:
+          # APIの接続先として、先ほど取得したCloudFrontのドメインを設定します。
           VITE_API_BASE_URL: https://${{ steps.infra-info.outputs.cf_domain }}
         run: |
+          # 依存ライブラリをインストールします。
           npm ci
+          # ビルドを実行して dist フォルダにファイルを出力します。
           npm run build
 
-      # ビルドされたファイルを S3 バケットにコピーします。
+      # ビルドされたファイルを S3 バケットにアップロード（同期）します。
       - name: S3へ同期
         run: |
+          # 内容を同期させ、リポジトリに存在しない古いファイルは削除（--delete）します。
           aws s3 sync ./frontend/dist s3://${{ steps.infra-info.outputs.s3_bucket }} --delete
 
-      # 世界中のキャッシュサーバー(CloudFront)に残っている古いデータを消去します。
+      # 世界中のキャッシュサーバーに残っている古いデータを消去して即時反映させます。
       - name: CloudFrontキャッシュクリア (Invalidation)
         run: |
+          # 全てのパス (/*) のキャッシュを無効化します。
           aws cloudfront create-invalidation --distribution-id ${{ steps.infra-info.outputs.cf_id }} --paths "/*"
 
-      # --- バックエンドのデプロイ (EC2) ---
-      # バックエンドサーバー(EC2)に直接ログイン(SSH)して操作します。
+      # バックエンドを動かしているEC2サーバーへ接続し、中身を更新します。
       - name: EC2へデプロイ
         uses: appleboy/ssh-action@v1.0.3
-        # シークレットや動的な値を env ブロックで定義
+        # SSH先で使いたい値を環境変数として定義します。
         env:
           APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}
           CF_DOMAIN: ${{ steps.infra-info.outputs.cf_domain }}
           RDS_ENDPOINT: ${{ steps.infra-info.outputs.rds_endpoint }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         with:
+          # 接続先は先ほど取得したEC2のIPアドレスです。
           host: ${{ steps.infra-info.outputs.ec2_ip }}
           username: ${{ secrets.EC2_USER }}
+          # 接続に使用する秘密鍵です。
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           timeout: 60s
           command_timeout: 10m
-          # SSH先に渡す環境変数を指定
+          # 上記 env で定義した変数を SSH 先の環境に渡します。
           envs: APP_SECRET_KEY,CF_DOMAIN,RDS_ENDPOINT,DB_PASSWORD
+          # SSH接続後に実行する一連のコマンドです。
           script: |
+            # プロジェクトを配置するディレクトリを指定します。
             PROJECT_DIR="$HOME/251025"
-            # 1. フォルダの準備
+            # 1. 初めての場合はフォルダを準備（クローン）します。
             if [ ! -d "$PROJECT_DIR" ]; then
               git clone https://github.com/${{ github.repository }}.git "$PROJECT_DIR"
             fi
+            # 作業ディレクトリへ移動します。
             cd "$PROJECT_DIR"
             
-            # 2. .env ファイルの避難
+            # 2. 既存の環境設定ファイル (.env) を一時的にバックアップします。
             if [ -f ".env" ]; then
               cp .env ../.env.bak
             fi
             
-            # 3. コードの更新
+            # 3. GitHubから最新のコードを取得し、強制的に最新状態にします。
             git fetch origin ${{ github.ref_name }}
             git reset --hard origin/${{ github.ref_name }}
             
-            # 4. .env ファイルの準備
-            # 既存の .env があればバックアップから復元、なければ空ファイルを作成
+            # 4. 環境設定ファイル (.env) を復元または新規作成します。
             if [ -f "../.env.bak" ]; then
               mv ../.env.bak .env
             else
               touch .env
             fi
-
-            # 5. 重要変数の更新 (特殊文字に強いprintf方式)
+ 
+            # 5. 最新のAWSインフラ情報を .env ファイルに書き込みます。
             echo "Updating .env with latest infrastructure values..."
-            # 既存の対象行を一旦削除 (一時ファイルを使用)
+            # 既存の対象設定行を一旦削除します。
             grep -v -E "^(DATABASE_URL|POSTGRES_USER|POSTGRES_PASSWORD|POSTGRES_DB|SECRET_KEY|ENV|CORS_ORIGINS)=" .env > .env.tmp || true
             
-            # SECRET_KEY のバリデーション (空白や改行を削除)
+            # 秘密鍵から不要な空白や改行を取り除きます。
             CLEAN_SECRET_KEY=$(echo "$APP_SECRET_KEY" | tr -d '\r\n ')
+            # 秘密鍵が短すぎる場合は警告を表示します。
             if [ -z "$CLEAN_SECRET_KEY" ] || [ ${#CLEAN_SECRET_KEY} -lt 32 ]; then
               echo "WARNING: APP_SECRET_KEY is too short or empty. Production auth will likely fail."
             fi
-
-            # 安全に値を追記
+ 
+            # 最新の接続情報を .env.tmp に追記します。
             {
+              # データベースの接続URL（パスワードとエンドポイントを含む）
               printf 'DATABASE_URL=postgresql+asyncpg://postgresMaster:%s@%s/todo_db?ssl=require\n' "$DB_PASSWORD" "$RDS_ENDPOINT"
               echo "POSTGRES_USER=postgresMaster"
+              # データベースパスワード
               printf 'POSTGRES_PASSWORD=%s\n' "$DB_PASSWORD"
               echo "POSTGRES_DB=todo_db"
+              # アプリの秘密鍵
               printf 'SECRET_KEY=%s\n' "$CLEAN_SECRET_KEY"
+              # 実行環境設定
               echo "ENV=production"
+              # CORS許可設定（フロントエンドのURL）
               echo "CORS_ORIGINS=https://${CF_DOMAIN}"
             } >> .env.tmp
+            # 書き換えたファイルを正式な .env として反映します。
             mv .env.tmp .env
             echo "Done. CORS_ORIGINS is set to https://${CF_DOMAIN}"
             
-            # 6. Docker Compose (V2) の確実なインストール
+            # 6. Docker Compose が入っていない場合はインストールします。
             if ! command -v docker-compose &> /dev/null; then
               echo "Installing Docker Compose standalone..."
               sudo curl -SL https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-x86_64 -o /usr/bin/docker-compose
               sudo chmod +x /usr/bin/docker-compose
             fi
             
-            # 7. Docker の状態確認
+            # 7. Docker サービスが停止している場合は開始します。
             sudo systemctl start docker
             
-            # 8. コンテナの起動
+            # 8. Dockerコンテナを最新コードでビルドし、再起動します。
             echo "Starting containers..."
             sudo /usr/bin/docker-compose up -d --build
             
-            # 9. データベース更新
+            # 9. データベースのテーブル構造を最新に更新します。
             echo "Waiting for app to start..."
+            # アプリが起動するのを少し待ちます。
             sleep 20
+            # alembic を使ってマイグレーションを実行します。
             sudo /usr/bin/docker-compose exec -T backend alembic upgrade head
+

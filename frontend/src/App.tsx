@@ -22,13 +22,16 @@ export default function App() {
   // 現在表示しているビュー（ダッシュボード、全タスク、または特定のプロジェクトID）
   const [currentView, setCurrentView] = useState<'dashboard' | 'all' | number>('dashboard');
   
-  // フィルター状態
-  const [activeFilter, setActiveFilter] = useState<{
+  // フィルタータイプ
+  type Filter = {
     label: string;
     priority?: Todo['priority'];
     status?: Todo['status'];
     completed?: boolean;
-  } | null>(null);
+  };
+  
+  // フィルター状態
+  const [activeFilter, setActiveFilter] = useState<Filter | null>(null);
   
   // テーマ（ライト/ダークモード）
   const [theme, setTheme] = useState<"light" | "dark">(() => {
@@ -126,7 +129,7 @@ export default function App() {
   /**
    * ダッシュボードの統計カードクリック時のハンドラー
    */
-  const handleFilterSelect = (filter: any) => {
+  const handleFilterSelect = (filter: Filter) => {
     setActiveFilter(filter);
     setCurrentView('all'); // フィルター時は「すべてのタスク」ビューに遷移
   };
@@ -150,7 +153,7 @@ export default function App() {
       await updateProject(currentView, { name: newName, description: newDesc });
       toast.success("プロジェクトを更新しました");
       handleDataChange();
-    } catch (e) {
+    } catch {
       toast.error("更新に失敗しました");
     }
   };
@@ -168,7 +171,7 @@ export default function App() {
       toast.success("プロジェクトを削除しました");
       setCurrentView('dashboard');
       handleDataChange();
-    } catch (e) {
+    } catch {
       toast.error("削除に失敗しました");
     }
   };

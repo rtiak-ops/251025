@@ -40,7 +40,7 @@ export default function Sidebar({
       toast.success("プロジェクトを作成しました");
       // 作成成功後、親コンポーネントに通知してデータを再取得させる
       onProjectCreated();
-    } catch (error) {
+    } catch {
       toast.error("作成に失敗しました");
     }
   };

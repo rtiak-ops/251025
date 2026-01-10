@@ -115,7 +115,17 @@ export default function DashboardView({ todos, projects, onFilterSelect }: Dashb
 /**
  * 統計カード共通コンポーネント
  */
-function StatCard({ title, value, icon, color, subValue, isAlert, onClick }: any) {
+interface StatCardProps {
+  title: string;
+  value: number;
+  icon: React.ReactNode;
+  color: string;
+  subValue?: string;
+  isAlert?: boolean;
+  onClick: () => void;
+}
+
+function StatCard({ title, value, icon, color, subValue, isAlert, onClick }: StatCardProps) {
   // Tailwindの動的クラス指定（JIT対応: 文字列をそのまま使うのではなく、マッピングにするのが安全）
   const colorMap: Record<string, string> = {
     blue: 'bg-blue-500/10 text-blue-500',
@@ -148,7 +158,14 @@ function StatCard({ title, value, icon, color, subValue, isAlert, onClick }: any
 /**
  * プロジェクト進捗など、割合を表示する行コンポーネント
  */
-function StatusRow({ label, count, total, color }: any) {
+interface StatusRowProps {
+  label: string;
+  count: number;
+  total: number;
+  color: string;
+}
+
+function StatusRow({ label, count, total, color }: StatusRowProps) {
   const percent = total > 0 ? (count / total) * 100 : 0;
   return (
     <div className="space-y-1">

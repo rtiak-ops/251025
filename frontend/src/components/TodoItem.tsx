@@ -25,7 +25,7 @@ export default function TodoItem({ todo, onChange }: Props) {
         status: newStatus
       });
       onChange(); // 親コンポーネントにデータの再取得を依頼
-    } catch (error) {
+    } catch {
       toast.error("更新に失敗しました");
     }
   };
@@ -41,7 +41,7 @@ export default function TodoItem({ todo, onChange }: Props) {
         completed: status === 'DONE'
       });
       onChange();
-    } catch (error) {
+    } catch {
       toast.error("ステータスの更新に失敗しました");
     }
   };
@@ -54,7 +54,7 @@ export default function TodoItem({ todo, onChange }: Props) {
       await deleteTodo(todo.id);
       onChange();
       toast.success("削除しました");
-    } catch (error) {
+    } catch {
       toast.error("削除に失敗しました");
     }
   };
@@ -88,7 +88,7 @@ export default function TodoItem({ todo, onChange }: Props) {
             {/* ステータス選択ドロップダウン：バッジ風のデザイン */}
             <select 
               value={todo.status}
-              onChange={(e) => updateStatus(e.target.value as any)}
+              onChange={(e) => updateStatus(e.target.value as Todo['status'])}
               className={`text-[10px] font-bold px-2 py-0.5 rounded-md cursor-pointer border-none focus:ring-0 flex-shrink-0 appearance-none bg-transparent ${
                 todo.status === 'DONE' ? 'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400' :
                 todo.status === 'REVIEW' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' :

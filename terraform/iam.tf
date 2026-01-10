@@ -53,16 +53,21 @@ resource "aws_iam_role_policy" "github_actions_policy" { # 具体的に「何を
     Version = "2012-10-17"                      # 標準的な形式です
     Statement = [                               # ルールリストです
       {                                         # 許可ルールの詳細です
-        # S3にファイルを置く（デプロイ）、キャッシュを消す（更新反映）などを許可します。
+        # S3へのファイル配置、インフラ情報の取得、キャッシュ削除などを許可します。
         Action = [                              # 許可する「ボタン（操作）」のリストです
           "s3:PutObject",                       # S3にファイルをアップロードする
           "s3:GetObject",                       # S3からファイルを取得する
           "s3:ListBucket",                      # S3のファイル一覧を見る
           "s3:DeleteObject",                    # S3の古いファイルを消す
-          "cloudfront:CreateInvalidation"       # CloudFrontのキャッシュをクリアして新情報を反映させる
+          "cloudfront:CreateInvalidation",      # CloudFrontのキャッシュをクリアする
+          "cloudfront:ListDistributions",       # CloudFrontの一覧を取得する
+          "cloudfront:GetDistribution",        # CloudFrontの詳細設定を取得する
+          "ec2:DescribeInstances",              # EC2サーバーの情報を取得する
+          "rds:DescribeDBInstances",            # データベースの情報を取得する
+          "resourcegroupstaggingapi:GetResources" # タグを使ってリソースを探す
         ]                                       # 操作リスト終了
         Effect   = "Allow"                      # これらを「許可」します
-        Resource = "*"                          # 全てのリソースを対象にします（必要に応じて細かく絞ることも可能）
+        Resource = "*"                          # 全てのリソースを対象にします
       }                                         # ルール終了
     ]                                           # リスト終了
   })                                            # ポリシー記述終了

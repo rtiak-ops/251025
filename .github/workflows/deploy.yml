@@ -76,15 +76,31 @@ jobs:
           echo "s3_bucket=$S3_BUCKET_NAME" >> $GITHUB_OUTPUT
 
           # 3. 配信ネットワークであるCloudFrontの情報を取得します。
-          CF_ID=$(aws cloudfront list-distributions \
-            --query "DistributionList.Items[?Origins.Items[?contains(DomainName, '$S3_BUCKET_NAME')]].Id" \
-            --output text | awk '{print $1}')
+          # 名前タグを使って確実にこのプロジェクトのCloudFrontを見つけます。
+          CF_ARN=$(aws resourcegroupstaggingapi get-resources \
+            --resource-type-filters cloudfront:distribution \
+            --tag-filters Key=Name,Values=todo-app-cloudfront \
+            --query "ResourceTagMappingList[0].ResourceARN" \
+            --output text)
+          
+          # タグで見つからない場合は、予備としてS3バケット名から検索します。
+          if [ "$CF_ARN" == "None" ] || [ -z "$CF_ARN" ]; then
+            echo "警告: タグでCloudFrontが見つかりませんでした。S3バケット名から検索を試みます..."
+            CF_ID=$(aws cloudfront list-distributions \
+              --query "DistributionList.Items[?Origins.Items[?contains(DomainName, '$S3_BUCKET_NAME')]].Id" \
+              --output text | awk '{print $1}')
+          else
+            # ARN (arn:aws:cloudfront::...:distribution/ID) から ID 部分だけを取り出します。
+            CF_ID=${CF_ARN##*/}
+          fi
           
           # CloudFrontの設定が見つからない場合はエラーにします。
-          if [ "$CF_ID" == "None" ] || [ -z "$CF_ID" ]; then
-            echo "エラー: S3バケット ($S3_BUCKET_NAME) をオリジンに持つCloudFrontが見つかりませんでした。"
+          if [ "$CF_ID" == "None" ] || [ -z "$CF_ID" ] || [ "$CF_ID" == "null" ]; then
+            echo "エラー: 対象のCloudFrontが見つかりませんでした。タグ(todo-app-cloudfront) または S3バケット ($S3_BUCKET_NAME) のオリジン設定を確認してください。"
             exit 1
           fi
+          
+          echo "取得した CloudFront ID: $CF_ID"
           
           # CloudFrontのドメイン名（URLの基になるもの）を取得します。
           CF_DOMAIN=$(aws cloudfront get-distribution --id "$CF_ID" --query "Distribution.DomainName" --output text)

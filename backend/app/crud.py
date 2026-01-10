@@ -348,3 +348,96 @@ async def reorder_todos(db: AsyncSession, todo_ids: list[int], owner_id: int):
     
     # 3. 変更を一括コミット
     await db.commit()
+
+# ==============================================================================
+# プロジェクト関連の CRUD 操作
+# ==============================================================================
+
+async def get_projects(db: AsyncSession, owner_id: int) -> list[models.Project]:
+    """
+    特定ユーザーの全てのプロジェクトを取得する関数
+    """
+    result = await db.execute(
+        select(models.Project).where(models.Project.owner_id == owner_id).order_by(models.Project.created_at.desc())
+    )
+    return result.scalars().all()
+
+async def get_project_by_id(db: AsyncSession, project_id: int, owner_id: int) -> models.Project | None:
+    """
+    指定されたIDのプロジェクトを取得する関数
+    """
+    result = await db.execute(
+        select(models.Project).where(models.Project.id == project_id, models.Project.owner_id == owner_id)
+    )
+    return result.scalar_one_or_none()
+
+async def create_project(db: AsyncSession, project: schemas.ProjectCreate, owner_id: int) -> models.Project:
+    """
+    新しいプロジェクトを作成する関数
+    """
+    db_project = models.Project(**project.model_dump(), owner_id=owner_id)
+    db.add(db_project)
+    await db.commit()
+    await db.refresh(db_project)
+    return db_project
+
+async def update_project(db: AsyncSession, project_id: int, project: schemas.ProjectUpdate, owner_id: int) -> models.Project | None:
+    """
+    プロジェクトを更新する関数
+    """
+    db_project = await get_project_by_id(db, project_id, owner_id)
+    if not db_project:
+        return None
+    
+    update_data = project.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_project, key, value)
+    
+    await db.commit()
+    await db.refresh(db_project)
+    return db_project
+
+async def delete_project(db: AsyncSession, project_id: int, owner_id: int) -> models.Project | None:
+    """
+    プロジェクトを削除する関数
+    """
+    db_project = await get_project_by_id(db, project_id, owner_id)
+    if db_project:
+        await db.delete(db_project)
+        await db.commit()
+    return db_project
+
+async def get_project_summaries(db: AsyncSession, owner_id: int):
+    """
+    各プロジェクトのタスク統計（総数、完了数）を含むサマリーを取得する
+    """
+    from sqlalchemy import func
+    
+    # プロジェクト一覧を取得
+    stmt = select(models.Project).where(models.Project.owner_id == owner_id)
+    result = await db.execute(stmt)
+    projects = result.scalars().all()
+    
+    summaries = []
+    for p in projects:
+        # このプロジェクトに紐づくタスク数をカウント
+        todo_stmt = select(func.count(models.Todo.id)).where(models.Todo.project_id == p.id)
+        completed_stmt = select(func.count(models.Todo.id)).where(models.Todo.project_id == p.id, models.Todo.completed == True)
+        
+        todo_count = (await db.execute(todo_stmt)).scalar() or 0
+        completed_count = (await db.execute(completed_stmt)).scalar() or 0
+        
+        # schemas.ProjectSummary に基づく辞書データを作成
+        summary = {
+            "id": p.id,
+            "name": p.name,
+            "description": p.description,
+            "created_at": p.created_at,
+            "updated_at": p.updated_at,
+            "owner_id": p.owner_id,
+            "todo_count": todo_count,
+            "completed_count": completed_count
+        }
+        summaries.append(summary)
+        
+    return summaries

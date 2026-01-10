@@ -33,6 +33,33 @@ class User(Base):
     # back_populates: Todoモデルの"owner"属性と双方向にリンク
     # cascade="all, delete-orphan": ユーザーが削除された場合、関連するTodoも自動的に削除される
     todos = relationship("Todo", back_populates="owner", cascade="all, delete-orphan")
+    
+    # リレーションシップ: このユーザーが所有するプロジェクトへの参照
+    projects = relationship("Project", back_populates="owner", cascade="all, delete-orphan")
+
+class Project(Base):
+    """
+    プロジェクトモデル（データベーステーブル: projects）
+    
+    タスクをグループ化するためのプロジェクト。
+    """
+    __tablename__ = "projects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+    
+    # 外部キー: このプロジェクトを所有するユーザーのID
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    
+    # リレーションシップ
+    owner = relationship("User", back_populates="projects")
+    todos = relationship("Todo", back_populates="project", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<Project(id={self.id}, name='{self.name}')>"
 
 class Todo(Base):
     # テーブル名: 一般的に複数形を使用します
@@ -81,14 +108,24 @@ class Todo(Base):
         nullable=False
     )
 
-    # 外部キー: このTodoを所有するユーザーのID（usersテーブルのidを参照）
-    # 認証機能が必須のため、すべてのTodoには必ず所有者（owner_id）が紐付いている必要があります。
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    # 外部キー: このTodoを所有するプロジェクトのID (任意)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
 
+    # ステータス: 'TODO', 'IN_PROGRESS', 'REVIEW', 'DONE' など
+    status = Column(String(20), default="TODO", nullable=False)
     
+    # 優先度: 'LOW', 'MEDIUM', 'HIGH', 'URGENT' など
+    priority = Column(String(20), default="MEDIUM", nullable=False)
+    
+    # 期限日
+    due_date = Column(DateTime(timezone=True), nullable=True)
+
     # リレーションシップ: このTodoを所有するユーザーへの参照
     # back_populates: Userモデルの"todos"属性と双方向にリンク
     owner = relationship("User", back_populates="todos")
+
+    # リレーションシップ: このTodoが属するプロジェクトへの参照
+    project = relationship("Project", back_populates="todos")
 
     # デバッグやログ出力で役立つ表現メソッド
     def __repr__(self):

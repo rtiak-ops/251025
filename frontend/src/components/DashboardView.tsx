@@ -1,0 +1,154 @@
+import { LayoutDashboard, CheckCircle2, Clock, AlertTriangle, TrendingUp } from 'lucide-react';
+import type { Todo, ProjectSummary } from '../types';
+
+interface DashboardViewProps {
+  todos: Todo[];
+  projects: ProjectSummary[];
+}
+
+/**
+ * DashboardView.tsx
+ * アプリケーションの全体統計を表示するダッシュボードビュー。
+ * 全タスクの進捗状況やプロジェクト別の達成率を可視化します。
+ */
+export default function DashboardView({ todos, projects }: DashboardViewProps) {
+  // --- 統計データの計算 ---
+  const completedTasks = todos.filter(t => t.completed).length; // 完了済み
+  const inProgressTasks = todos.filter(t => !t.completed && t.status === 'IN_PROGRESS').length; // 進行中
+  const todoTasks = todos.filter(t => !t.completed && t.status === 'TODO').length; // 未着手
+  // 全体達成率（％）
+  const completionRate = todos.length > 0 ? Math.round((completedTasks / todos.length) * 100) : 0;
+
+  // 「至急」優先度の未完了タスク件数
+  const urgentTasks = todos.filter(t => !t.completed && t.priority === 'URGENT').length;
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      {/* ページタイトルセクション */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
+          <LayoutDashboard className="text-indigo-600" size={32} />
+          ダッシュボード
+        </h2>
+        <div className="text-sm text-slate-500 font-medium bg-white/50 dark:bg-slate-800/50 px-4 py-2 rounded-full border border-white/20">
+          最終更新: {new Date().toLocaleTimeString()}
+        </div>
+      </div>
+
+      {/* 統計カードグリッド (4列) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard 
+          title="全てのタスク" 
+          value={todos.length} 
+          icon={<TrendingUp className="text-blue-500" />} 
+          color="blue"
+        />
+        <StatCard 
+          title="完了済み" 
+          value={completedTasks} 
+          icon={<CheckCircle2 className="text-green-500" />} 
+          color="green"
+          subValue={`${completionRate}% 達成`}
+        />
+        <StatCard 
+          title="進行中" 
+          value={inProgressTasks} 
+          icon={<Clock className="text-amber-500" />} 
+          color="amber"
+        />
+        <StatCard 
+          title="最優先（至急）" 
+          value={urgentTasks} 
+          icon={<AlertTriangle className="text-red-500" />} 
+          color="red"
+          isAlert={urgentTasks > 0} // 件数が0より多い場合にアラート表示
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* プロジェクト別進捗エリア (2/3幅) */}
+        <div className="lg:col-span-2 glass p-8 rounded-3xl">
+          <h3 className="text-xl font-bold mb-6 text-slate-800 dark:text-white">プロジェクト別進捗</h3>
+          <div className="space-y-6">
+            {projects.length === 0 ? (
+              <p className="text-slate-500 text-center py-10">プロジェクトがありません</p>
+            ) : (
+              projects.map(p => {
+                // プロジェクトごとの達成率計算
+                const rate = p.todo_count > 0 ? Math.round((p.completed_count / p.todo_count) * 100) : 0;
+                return (
+                  <div key={p.id} className="space-y-2">
+                    <div className="flex justify-between text-sm font-medium">
+                      <span className="text-slate-700 dark:text-slate-300">{p.name}</span>
+                      <span className="text-indigo-600">{rate}%</span>
+                    </div>
+                    {/* プログレスバー本体 */}
+                    <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-1000"
+                        style={{ width: `${rate}%` }}
+                      ></div>
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      {p.completed_count} / {p.todo_count} タスク完了
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* ステータス分布エリア (1/3幅) */}
+        <div className="glass p-8 rounded-3xl">
+          <h3 className="text-xl font-bold mb-6 text-slate-800 dark:text-white">ステータス分布</h3>
+          <div className="space-y-4">
+            <StatusRow label="未着手" count={todoTasks} total={todos.length} color="bg-slate-400" />
+            <StatusRow label="進行中" count={inProgressTasks} total={todos.length} color="bg-amber-400" />
+            <StatusRow label="レビュー中" count={todos.filter(t => t.status === 'REVIEW').length} total={todos.length} color="bg-indigo-400" />
+            <StatusRow label="完了" count={completedTasks} total={todos.length} color="bg-green-400" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 統計カード共通コンポーネント
+ */
+function StatCard({ title, value, icon, color, subValue, isAlert }: any) {
+  return (
+    <div className={`glass p-6 rounded-3xl relative overflow-hidden group hover:-translate-y-1 transition-all ${isAlert ? 'ring-2 ring-red-500/50' : ''}`}>
+      <div className="flex justify-between items-start mb-4">
+        {/* アイコンの背景色を動的に設定（Tailwindの arbitrary value を使用する場合は注意が必要ですがここでは簡略化） */}
+        <div className={`p-3 rounded-2xl bg-${color}-500/10`}>
+          {icon}
+        </div>
+        {/* 背景の波打つアニメーション（至急タスクがある場合のみ） */}
+        {isAlert && <span className="flex h-2 w-2 rounded-full bg-red-500 animate-ping"></span>}
+      </div>
+      <div className="text-3xl font-bold text-slate-800 dark:text-white mb-1">{value}</div>
+      <div className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</div>
+      {subValue && <div className="text-[10px] mt-2 font-bold text-green-500 uppercase tracking-tight">{subValue}</div>}
+    </div>
+  );
+}
+
+/**
+ * プロジェクト進捗など、割合を表示する行コンポーネント
+ */
+function StatusRow({ label, count, total, color }: any) {
+  const percent = total > 0 ? (count / total) * 100 : 0;
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs font-medium">
+        <span className="text-slate-600 dark:text-slate-400">{label}</span>
+        <span className="text-slate-800 dark:text-white">{count}</span>
+      </div>
+      <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700/50 rounded-full overflow-hidden">
+        <div className={`h-full ${color}`} style={{ width: `${percent}%` }}></div>
+      </div>
+    </div>
+  );
+}

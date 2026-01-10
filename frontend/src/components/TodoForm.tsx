@@ -5,13 +5,20 @@ import { toast } from "react-hot-toast";
 interface Props {
   /** 親コンポーネントでTODOリストを再取得（更新）するためのコールバック関数 */
   onAdd: () => void;
+  /** 初期プロジェクトID（特定のプロジェクトビューから開いた場合） */
+  initialProjectId?: number;
 }
 
 /**
  * TodoForm コンポーネント
  * ユーザーが新しいタスクを入力し、「通常追加」または「AIによるタスク分解」を選択できるフォーム。
  */
-export default function TodoForm({ onAdd }: Props) {
+/**
+ * TodoForm.tsx
+ * ユーザーが新しいタスクを入力し、「通常追加」または「AIによるタスク分解」を選択できるフォーム。
+ * ビジネス要件に合わせ、優先度（Priority）の選択機能も備えています。
+ */
+export default function TodoForm({ onAdd, initialProjectId }: Props) {
   // --- 状態管理 (State) ---
   
   /** 入力中のタスクタイトル */
@@ -23,50 +30,46 @@ export default function TodoForm({ onAdd }: Props) {
   /** AI API による分解処理および、その後の連続保存処理が進行中かどうか */
   const [isAiLoading, setIsAiLoading] = useState(false);
 
-  /** * 入力バリデーション: 空文字、またはスペースのみの場合は操作を無効化する
-   * フォームの `disabled` 属性やクリックガードに使用。
-   */
+  /** 優先度の選択状態 (デフォルトは「中」) */
+  const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
+
+  /** 入力バリデーション: 空文字、またはスペースのみの場合は操作を無効化する */
   const isInputEmpty = !title.trim();
 
   /**
    * ハンドラ: 通常のタスク追加
-   * 1つのタイトルをそのままサーバーへ保存します。
+   * 単一のタスクを現在のプロジェクト（もしあれば）に関連付けて保存します。
    */
   const handleSubmit = async (e: React.FormEvent) => {
-    // フォーム送信によるページリロードを防止
     e.preventDefault();
-
-    // 二重送信の防止（入力なし or いずれかの通信中なら何もしない）
     if (isInputEmpty || isLoading || isAiLoading) return;
 
     setIsLoading(true);
-    
-    // toast.loading は「保留中」の状態を表示し、後で success/error に更新できる ID を返す
     const toastId = toast.loading("タスクを追加中...");
 
     try {
-      // API 経由で新規作成
-      await createTodo({ title });
+      await createTodo({ 
+        title, 
+        priority, 
+        project_id: initialProjectId, // どのプロジェクト配下に追加するか
+        status: 'TODO'
+      });
       
-      // 成功時の処理:
-      setTitle(""); // 入力欄をクリア
-      onAdd();      // リストを更新するように親へ通知
-      
-      // 既存のトーストを成功表示に書き換える
+      setTitle(""); // 入力欄のリセット
+      setPriority('MEDIUM');
+      onAdd();      // 親側のデータを再取得
       toast.success("タスクを追加しました！", { id: toastId });
     } catch (error) {
-      // エラーオブジェクトからメッセージを抽出
       const errorMessage = error instanceof Error ? error.message : "追加に失敗しました";
       toast.error(errorMessage, { id: toastId });
     } finally {
-      // 成功・失敗に関わらずローディング状態を解除
       setIsLoading(false);
     }
   };
 
   /**
    * ハンドラ: AIによるタスク分解
-   * 入力された大きなタスクを AI が小さなステップに分け、それらを個別の TODO として一括登録します。
+   * 大きなタスクを AI が論理的なステップに分解し、それらを個別のタスクとして一括登録します。
    */
   const handleAiBreakdown = async () => {
     if (isInputEmpty || isAiLoading) return;
@@ -75,20 +78,21 @@ export default function TodoForm({ onAdd }: Props) {
     const toastId = toast.loading("AIが思考中... 🧠");
 
     try {
-      // 1. AI APIを叩き、文字列の配列（例: ["材料を買う", "野菜を切る", ... ]）を取得
+      // 1. AI APIを呼び出し、タスクの分解結果を文字列配列で取得
       const subtasks = await breakdownTask(title);
 
-      /**
-       * 2. 取得した各サブタスクを順次 API で保存
-       * ※ ここでは for...of 文を使い、1つずつ順番に完了を待ちます（直列処理）。
-       * ※ 並列で行いたい場合は Promise.all(subtasks.map(...)) も検討。
-       */
+      // 2. 分解された各タスクを順次、現在のプロジェクトに関連付けて保存
       for (const subtaskTitle of subtasks) {
-        await createTodo({ title: subtaskTitle });
+        await createTodo({ 
+          title: subtaskTitle, 
+          priority, 
+          project_id: initialProjectId,
+          status: 'TODO'
+        });
       }
       
-      // すべての処理が完了した後の後処理
       setTitle("");
+      setPriority('MEDIUM');
       onAdd();
       toast.success("AIがタスクを分解しました！", { id: toastId });
     } catch (error) {
@@ -100,65 +104,79 @@ export default function TodoForm({ onAdd }: Props) {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-4"
-    >
-      {/* 入力エリア */}
-      <div className="relative group">
-        <input
-          type="text"
-          className="w-full bg-white/50 dark:bg-slate-900/50 border-2 border-slate-200 dark:border-slate-700/50 rounded-2xl p-4 pl-12 text-lg focus:outline-none focus:border-indigo-500 transition-all placeholder:text-slate-400 dark:text-white"
-          // 通信中かどうかでプレースホルダーの内容を切り替える
-          placeholder={isAiLoading ? "AIがステップを生成しています..." : "何をしますか？"} 
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          disabled={isLoading || isAiLoading} // 通信中は入力をロック
-        />
-        
-        {/* 装飾用の左側アイコン（検索・追加をイメージ） */}
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row gap-4">
+        {/* テキスト入力フィールド */}
+        <div className="relative group flex-1">
+          <input
+            type="text"
+            className="w-full bg-white/50 dark:bg-slate-900/50 border-2 border-slate-200 dark:border-slate-700/50 rounded-2xl p-4 pl-12 text-lg focus:outline-none focus:border-indigo-500 transition-all placeholder:text-slate-400 dark:text-white"
+            placeholder={isAiLoading ? "AIがステップを生成しています..." : "新しいタスク名を入力..."} 
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            disabled={isLoading || isAiLoading}
+          />
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+            {/* プラスアイコン */}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
+          </div>
+        </div>
+
+        {/* 優先度選択ボタン群 */}
+        <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl md:w-auto h-fit">
+          {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPriority(p)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                priority === p
+                  ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-600'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {p === 'LOW' && '低'}
+              {p === 'MEDIUM' && '中'}
+              {p === 'HIGH' && '高'}
+              {p === 'URGENT' && '至急'}
+            </button>
+          ))}
         </div>
       </div>
       
-      {/* 操作ボタンエリア */}
+      {/* アクションボタンエリア */}
       <div className="flex gap-3">
-        {/* AI分解ボタン: 
-            グラデーション色を使用して、通常の追加ボタンよりも特別な機能であることを視覚的に強調。
-        */}
+        {/* AI分解ボタン */}
         <button
-            type="button" // form 内で submit させないために type="button" を明示
+            type="button"
             onClick={handleAiBreakdown}
-            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all shadow-md ${
+            className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-bold transition-all shadow-md ${
             isInputEmpty || isLoading || isAiLoading
                 ? "bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600"
-                : "bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:shadow-lg hover:scale-[1.02] active:scale-95"
+                : "bg-white dark:bg-slate-800 text-slate-700 dark:text-white border-2 border-slate-100 dark:border-slate-700 hover:shadow-lg hover:scale-[1.02] active:scale-95"
             }`}
             disabled={isInputEmpty || isLoading || isAiLoading}
         >
             {isAiLoading ? (
-              <span className="animate-pulse">✨ 生成中...</span>
+              <span className="animate-pulse">✨ AIが思考中...</span>
             ) : (
-              <>✨ AI分解</>
+              <><span className="text-xl">✨</span> AIで分解して追加</>
             )}
         </button>
 
-        {/* 通常の追加ボタン:
-            デフォルトの submit アクション（handleSubmit）を発火させます。
-        */}
+        {/* 通常追加ボタン */}
         <button
             type="submit"
-            className={`px-8 py-3 rounded-2xl font-bold transition-all shadow-md ${
+            className={`px-10 py-4 rounded-2xl font-bold transition-all shadow-md ${
             isInputEmpty || isLoading || isAiLoading
                 ? "bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-slate-500"
                 : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg hover:scale-[1.02] active:scale-95"
             }`}
             disabled={isInputEmpty || isLoading || isAiLoading}
         >
-            {isLoading ? "追加中..." : "追加"}
+            {isLoading ? "送信中..." : "追加"}
         </button>
       </div>
     </form>

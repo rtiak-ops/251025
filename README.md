@@ -1,4 +1,4 @@
-# 🚀 Modern AI-Powered ToDo App
+# 🚀 BizFlow: Enterprise AI Task Management Platform
 
 [![CI/CD Pipeline](https://github.com/rtiak-ops/251025/actions/workflows/ci.yml/badge.svg)](https://github.com/rtiak-ops/251025/actions/workflows/ci.yml)
 [![Trivy Security Scan](https://img.shields.io/badge/Security-Trivy_Passed-brightgreen)](https://github.com/rtiak-ops/251025/security/code-scanning)
@@ -11,30 +11,55 @@
   <tr>
     <td align="center" width="50%">
       <img src="docs/images/todo-auth.png" alt="認証ページ" style="max-width:100%;"><br>
-      <sub>認証ページ</sub>
+      <sub>プレミアム認証インターフェース</sub>
     </td>
     <td align="center" width="50%">
-      <img src="docs/images/todo-todos.png" alt="AIタスク分解" style="max-width:100%;"><br>
-      <sub>「10時に会議」と入力後、AIがタスクを構造化して提案する</sub>
+      <img src="docs/images/todo-todos.png" alt="ダッシュボード" style="max-width:100%;"><br>
+      <sub>インテリジェント・プロジェクトダッシュボード</sub>
     </td>
   </tr>
 </table>
 
 ## 🌟 プロジェクト概要
 
-このプロジェクトは、単なるToDo管理アプリではありません。**「実務で通用する品質のWebアプリケーションを、最新のAI技術とDevOps環境で提供する」**ことを目的としたポートフォリオ作品です。
+**BizFlow** は、単なるタスク管理を超えた、**「実務の複雑さに耐えうるプロフェッショナルなタスクプラットフォーム」**です。
+プロジェクト管理、ビジネスワークフロー、そして最新のLLM（大規模言語モデル）によるタスク分解機能を統合しました。
 
-React (Frontend) + FastAPI (Backend) のモダンな構成に加え、Terraform によるインフラのコード化 (IaC)、GitHub Actions による高度な CI/CD パイプライン、そして LLM を活用した独自の「AI分解」機能を統合しています。
+ビジネス現場で求められる「優先順位の可視化」「プロジェクト横断の進捗管理」「AIによる業務の細分化」を、グラスモーフィズムを採用したプレミアムなUXで実現しています。
 
 ## 📋 目次
+- [✨ 主要なビジネス機能](#-主要なビジネス機能)
 - [🏗️ システムアーキテクチャ](#️-システムアーキテクチャ)
 - [📊 データベース設計 (ER図)](#-データベース設計-er図)
 - [🎬 主要なシーケンス (Core Workflows)](#-主要なシーケンス-core-workflows)
 - [💡 解決した技術的課題](#-解決した技術的課題)
-- [🧪 品質保証とテスト戦略](#-品質保証とテスト戦略)
-- [🔥 独自のエンジニアリング・ポイント](#-独自のエンジニアリング・ポイント)
-- [🛠️ 技術スタックと選定理由](#️-技術スタックと選定理由)
+- [🛠️ 技術スタック](#️-技術スタック)
 - [🚀 セットアップガイド](#-セットアップガイド)
+
+---
+
+## ✨ 主要なビジネス機能
+
+### 1. 📊 インテリジェント・ダッシュボード
+全体のタスク進捗、プロジェクトごとの達成率、緊急タスクの警告を一目で把握可能。
+- **達成率の可視化**: プロジェクトごとの進捗を動的なプログレスバーで表示。
+- **緊急アラート**: 優先度が「至急(URGENT)」のタスクが残っている場合に自動で通知。
+
+### 2. 📁 プロジェクト・階層管理
+タスクをプロジェクト単位で整理し、業務の境界を明確にします。
+- **プロジェクト横断表示**: すべてのタスクを俯瞰するビューと、プロジェクトに特化したビューを即座に切り替え。
+- **動的なフォルダ機能**: サイドバーから直感的にプロジェクトを作成・管理。
+
+### 3. 🚦 ビジネス・ワークフロー
+現場の運用に即したタスク情報の管理を実現。
+- **4段階の優先度**: `LOW`, `MEDIUM`, `HIGH`, `URGENT` によるフィルタリング。
+- **ライフサイクル管理**: `未着手` → `進行中` → `レビュー` → `完了` のステータス遷移。
+- **期限管理**: 期限付きタスクを視覚的に強調。
+
+### 4. 🧠 AIタスク分解 (GenAI Integration)
+「大きな課題」を「実行可能なステップ」に。
+- **AI分解**: 入力された抽象的なタスクを、Google Gemini APIを活用して具体化・細分化。
+- **シームレスな登録**: 分解されたサブタスクを、現在のプロジェクト配下に一括で自動登録。
 
 ---
 
@@ -51,7 +76,7 @@ graph TD
     subgraph "AWS Cloud (Managed VPC)"
         EC2 <-->|RDS Connection| RDS[(RDS PostgreSQL)]
         EC2 -.->|JSON Logs| CW[CloudWatch]
-        EC2 -.->|External API| AI[OpenAI / Gemini API]
+        EC2 -.->|External API| AI[Gemini / OpenAI API]
     end
 
     subgraph "DevOps Ecosystem"
@@ -64,15 +89,25 @@ graph TD
 
 ## 📊 データベース設計 (ER図)
 
-拡張性と整合性を重視したシンプルなスキーマ構成です。
+ビジネス要件に対応した、リレーショナルなデータ構造を採用しています。
 
 ```mermaid
 erDiagram
+    USERS ||--o{ PROJECTS : "manages"
     USERS ||--o{ TODOS : "owns"
+    PROJECTS ||--o{ TODOS : "contains"
+
     USERS {
         int id PK
-        string email UK "Unique & Indexed"
+        string email UK
         string hashed_password
+        datetime created_at
+    }
+    PROJECTS {
+        int id PK
+        string name
+        text description
+        int owner_id FK
         datetime created_at
     }
     TODOS {
@@ -80,313 +115,67 @@ erDiagram
         string title
         text description
         boolean completed
-        int order "For sorting"
-        datetime created_at
-        datetime updated_at
-        int owner_id FK "References users.id"
+        string status "TODO, IN_PROGRESS, REVIEW, DONE"
+        string priority "LOW, MEDIUM, HIGH, URGENT"
+        datetime due_date
+        int project_id FK
+        int owner_id FK
+        int order
     }
-```
-
----
-
-## 🎬 主要なシーケンス (Core Workflows)
-
-アプリケーションの主要な動作フローを可視化しています。
-
-### 1. 認証 & 認可フロー
-JWTを使用したステートレスな認証と、APIインターセプターによる自動トークン付与の仕組みです。
-
-```mermaid
-sequenceDiagram
-    participant User as ユーザー
-    participant Front as Frontend (React)
-    participant Back as Backend (FastAPI)
-    participant DB as Database (Postgres)
-
-    User->>Front: ログイン情報入力
-    Front->>Back: POST /auth/login
-    Back->>DB: ユーザー照合 & パスワード検証
-    DB-->>Back: ユーザー情報
-    Back-->>Front: JWT (Access Token) 返却
-    Note over Front: localStorage にトークンを保存
-
-    User->>Front: ToDo一覧を表示
-    Note over Front: Axios Interceptor が<br/>自動でヘッダーにトークンを付与
-    Front->>Back: GET /todos/ (Authorization: Bearer JWT)
-    Back->>Back: トークンの有効署名を検証
-    Back->>DB: ユーザーに紐づくToDoを取得
-    DB-->>Back: Todo List
-    Back-->>Front: JSONデータを返却
-```
-
-### 2. AIタスク分解
-ユーザーの入力に基づき、LLMがタスクを構造化して提案するフローです。
-
-```mermaid
-sequenceDiagram
-    participant User as ユーザー
-    participant Front as Frontend (React)
-    participant Back as Backend (FastAPI)
-    participant AI as AI Service (Gemini)
-
-    User->>Front: 「旅行の計画」を入力 & ✨AI分解をクリック
-    Front->>Back: POST /ai/breakdown {title: "旅行的計画"}
-    
-    alt APIキー未設定 (Mock Mode)
-        Back-->>Front: モックのサブタスクを即座に返却
-    else Gemini APIキー設定済み (推奨)
-        Back->>AI: Geminiを呼び出し
-        AI-->>Back: 分解結果 (JSON形式)
-        Back-->>Front: 構造化されたサブタスクを返却
-    end
-
-    Front->>User: サブタスクをUIに反映
-```
-
-### 3. CI/CD パイプライン
-GitHub Actions を活用した、テスト・ビルド・セキュリティチェックの自動化フローです。
-
-```mermaid
-graph LR
-    Push([Code Push / PR]) --> Trigger{GitHub Actions}
-    
-    subgraph "Quality Gate (Parallel)"
-        Trigger --> BE[Backend Test / Lint]
-        Trigger --> FE[Frontend Test / Lint]
-    end
-    
-    BE --> Scan
-    FE --> Scan
-    
-    subgraph "Security & Reliability"
-        Scan[Trivy Security Scan]
-        Build[Docker Build Test]
-    end
-    
-    BE --> Build
-    FE --> Build
-    
-    Scan --> Result{Success?}
-    Build --> Result
-    
-    Result -->|Yes| Merge([Merge / Deploy Ready])
-    Result -->|No| Fail([Fix Required])
 ```
 
 ---
 
 ## 🔥 独自のエンジニアリング・ポイント
 
-### 1. 🧠 AIタスク分解
-「何をすべきか分からない」という課題をLLMが解決します。
-- **AIサポート**: Google Gemini API (2.5 Flash/3.0 Flash) に対応。環境変数に基づいて動的に切り替わります。
-- **効率的なプロンプト設計**: コンテキストを絞り込み、実行可能なサブタスクを構造化して返却。
-- **フォールバック設計**: APIキー未設定時は自動でモックモードへ移行し、UXを損なわない設計。
+### 1. ⚡ 楽観的UI更新 (Optimistic UI)
+**TanStack Query** を活用し、並び替えやステータス更新を「待ち時間ゼロ」で反映。APIのレスポンスを待たずにUIを先行更新することで、デスクトップアプリのような操作感を提供。
 
-### 2. ⚡ 高度な状態管理と楽観的更新
-- **TanStack Query (React Query)** を使用し、サーバーデータのキャッシュと同期を最適化。
-- **Optimistic Updates**: タスクの追加や削除時に、サーバーの応答を待たずにUIを即座に更新。通信遅延を感じさせないスムーズな操作感を実現。
+### 2. 🛡️ セキュリティ・バイ・デザイン
+- **認証**: JWT + HttpOnly Cookie (推奨) / Authorization Header によるセキュアな認証。
+- **スキャン**: **Trivy** によるコンテナ/依存関係の脆弱性スキャンをGitHub Actionsで常時実施。
+- **インフラ**: TerraformによるVPC/セキュリティグループの厳密な定義。
 
-### 3. 🛡️ 生産準備完了 (Production Ready) なセキュリティ
-- **認証/認可**: JWT (JSON Web Token) を用いたステートレス認証。パスワードは bcrypt (passlib) でハッシュ化。
-- **防御的エンジニアリング**: `slowapi` によるレート制限、適切なCORS、セキュリティヘッダーの設定。
-- **脆弱性診断**: CIプロセスにて **Trivy** による静的スキャンを常時実行。
-
-### 4. 🚀 徹底した CI/CD と IaC
-- **Infrastructure as Code**: Terraform により、ネットワーク(VPC)から計算資源、DBまでを完全にコードで管理。
-- **オートメーション**:
-    - 全てのプルリクエストに対し、自動で Linter, UnitTest (pytest/vitest) を実行。
-    - Dockerイメージのビルド検証とセキュリティスキャンをパスしたコードのみがデプロイ対象。
+### 3. 🎨 プレミアムUX
+- **グラスモーフィズム**: 半透明のぼかし効果を多用した最新のUIデザイン。
+- **ダークモード同期**: OSの設定やユーザーの好みに合わせたスムーズなテーマ切り替え。
 
 ---
 
-## 💡 解決した技術的課題 (Technical Challenges)
+## 🛠️ 技術スタック
 
-### 1. AIレスポンスの遅延とユーザー体験の不一致
-- **課題**: Gemini APIのレスポンスには数秒〜10秒程度の時間を要し、その間ユーザーが「操作不能」と感じる懸念があった。
-- **解決策**:
-    - **楽観的更新 (Optimistic Updates)**: タスク追加時にサーバーの応答を待たずにUI側で仮のアイテムを表示。
-    - **非同期ストリーミング/スケルトン表示**: AI分解中であることを示す専用のスケルトンUIを導入し、心理的な待ち時間を軽減。
-
-### 2. インフラ環境の「再現性」と「可観測性」
-- **課題**: 手動デプロイによる設定漏れや、環境ごとの差異がトラブルの原因になっていた。
-- **解決策**:
-    - **Terraformのフル活用**: 全リソースをIaC化し、`terraform apply` 一発で本番同等の環境を再現可能に。
-    - **構造化ログ**: `python-json-logger` を導入し、CloudWatch等でのログ解析を容易にするJSON形式のログを出力するように設計。
-
----
-
-## 🧪 品質保証とテスト戦略 (Quality Assurance)
-
-「品質は工程で作り込む」という考えに基づき、以下のテスト戦略を導入しています。
-
-### 1. 多層的なテストスイート
-- **Backend (pytest)**:
-    - ユニットテスト: CRUDロジック、認証/認可スタックの検証。
-    - 結合テスト: テスト用DBを使用したエンドポイントの正常系・異常系検証。
-- **Frontend (vitest / React Testing Library)**:
-    - コンポーネントテスト: UI要素が正しくレンダリングされ、イベントが発火するかを検証。
-    - フックテスト: カスタムフック（API通信ロジック等）の動作検証。
-
-### 2. CIパイプラインによる継続的品質管理
-- **自動実行**: 全てのプルリクエストに対し、GitHub Actions上でテストが自動実行。
-- **セキュリティ・スキャン**: **Trivy** による依存ライブラリの脆弱性診断をパイプラインに組み込み、既知の脆弱性を含むコードがマージされるのを防止。
-
----
-
-## 🛠️ 技術スタックと選定理由
-
-| カテゴリ | 技術 | 選定理由 |
-|---|---|---|
-| **Frontend** | React 19, TypeScript | 型安全性の確保と、エコシステムの広さによるメンテナンス性を重視。 |
-| **State Mgmt** | TanStack Query | ローカルの状態とサーバーデータの同期をシンプルに、かつ高度に制御するため。 |
-| **Backend** | Python 3.13, FastAPI | 非同期処理 (asyncio) のネイティブサポートによる高パフォーマンスと開発速度の両立。 |
-| **Database** | PostgreSQL 17 | 信頼性と柔軟な JSON 処理能力、実務での採用実績を考慮。 |
-| **Infra (IaC)** | Terraform | マルチクラウドにも対応可能な汎用性と、HCLによる構成の可読性を重視。 |
-| **CI/CD** | GitHub Actions | GitHubリポジトリとの密結合による開発ワークフローの最適化。 |
-
----
-
-## 📂 ディレクトリ構成
-
-```text
-.
-├── backend/             # FastAPI サーバー
-│   ├── app/             # ビジネスロジック, Models, Schemas
-│   ├── tests/           # pytest による高いテストカバレッジの維持
-│   └── alembic/         # データベーススキーマ管理（マイグレーション）
-├── frontend/            # React + Vite
-│   ├── src/             # TypeScript によるコンポーネント設計
-│   └── public/          # 静的アセット
-├── terraform/           # AWS インフラ定義 (VPC, EC2, RDS, S3, CF)
-├── .github/workflows/   # CI/CD パイプライン (Test, Lint, Security, Build)
-└── memo/                # 詳細なドキュメント (Auth, RDS, Deployなど)
-```
+| カテゴリ | 技術 |
+|---|---|
+| **Frontend** | React 19, TypeScript, **Lucide-React**, Tailwind CSS |
+| **Backend** | Python 3.13, FastAPI, **SQLAlchemy (Async)** |
+| **Logic** | TanStack Query, React Hook Form |
+| **Database** | PostgreSQL 17, Alembic (Migration) |
+| **Infra/DevOps** | AWS, Terraform, GitHub Actions, Docker |
+| **AI** | **Google Gemini Pro / Flash**, OpenAI API |
 
 ---
 
 ## 🚀 セットアップガイド
 
 ### 1. 🏠 ローカル開発環境 (Docker)
-
-Dockerを使用することで、データベース、バックエンド、フロントエンドを一度に起動できます。最も推奨される方法です。
+最も手軽に環境を構築できる方法です。
 
 ```bash
-# 1. リポジトリのクローン
 git clone https://github.com/rtiak-ops/251025.git
 cd 251025
-
-# 2. 環境変数の準備
 cp .env.example .env
-# ※ .env を開き、SECRET_KEY や Google/OpenAI の APIキーを設定してください。
-# ※ 未設定でもモックモードで動作可能です。
-
-# 3. コンテナのビルドと起動
+# .envにGOOGLE_API_KEYなどを設定（任意）
 docker compose up --build
 ```
-
-- **フロントエンド**: [http://localhost](http://localhost)
-- **バックエンドAPI**: [http://localhost:8000/docs](http://localhost:8000/docs) (Swagger UI)
-
----
-
-### 2. ☁️ クラウド環境の構築 (AWS / Terraform)
-
-Terraformを使用して、AWS上に拡張性の高い本番環境を自動構築します。
-
-#### **インフラの構築手順**
-```bash
-cd terraform
-
-# 1. 初期化
-terraform init
-
-#（再ログイン時）   
-＃時間が空いた場合、AWSに再ログイン。
-aws sso login
-＃実行するとブラウザが立ち上がり、認証を許可する。
-
-# 2. リソースの作成（初回/更新）
-terraform apply
-```
-※ 完了後、CloudFrontのURLが出力されます。
+- **App**: [http://localhost](http://localhost)
+- **API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
-
-## 💤 インフラの停止と再開 (コスト削減)
-
-開発を行わない時間に EC2 や RDS などのリソースを停止している場合、**再開時には IP アドレスの変化に伴う更新作業が必要です。** 以下の手順で行ってください。
-
-### **1. インスタンスの開始 (AWS コンソール)**
-AWS コンソール（EC2 / RDS）で対象のリソースを選択し、「開始」をクリックします。
-※ ステータスが「実行中」あるいは「利用可能」になるまで数分待ちます。
-
-### **2. インフラ情報の同期 (Terraform)**
-EC2 を再起動するとパブリック IP アドレスが変わるため、CloudFront の接続先（オリジン）を更新する必要があります。
-```bash
-cd terraform
-terraform apply
-```
-※ `terraform apply` を実行することで、新しい IP アドレスが CloudFront の配信設定に自動反映されます。
-
-### **3. GitHub Secrets の更新**
-GitHub リポジトリの `Settings > Secrets and variables > Actions` を開き、以下の値を新しい IP に書き換えます。
-- `EC2_HOST`: 新しい EC2 のパブリック IP アドレス。
-
-### **4. 最新コードの再デプロイ**
-GitHub Actions を手動で実行するか、空コミットをプッシュしてデプロイを走らせます。
-```bash
-git commit --allow-empty -m "fix: Environment resumed"
-git push origin main
-```
-これにより、新しい IP に基づいた `.env` 設定が EC2 内に適用され、認証が正常に通るようになります。
-
----
-
-#### **⚠️ インフラを再構築（destroy & apply）する場合の注意点**
-`terraform destroy` を実行して環境を一度削除し、再度 `apply` する場合は、以下の点に注意してください。
-
-1.  **データの喪失**: 
-データベース（RDS）やファイル（S3）の内容はすべて削除されます。
-
-2.  **GitHub Secrets の更新**: 
-インフラが新しくなると、IPアドレス（`EC2_HOST`）や CloudFront ID、S3バケット名が変わる可能性があります。
-GitHubリポジトリの `Settings > Secrets and variables > Actions` に以下の環境変数を登録してください。
-terraform outputで値を確認可能。
-
-・EC2_HOST: 停止・起動するたびにインスタンスが新しくなるため、パブリックIPアドレスが変わります。
-・CLOUDFRONT_DISTRIBUTION_ID: ディストリビューションが再作成されるとIDが新しくなります。
-・S3_BUCKET_NAME: バケット名にランダムな要素を含ませている場合、名前が変わる可能性があります。
-
-3.  **アプリの再デプロイ**: 
-再構築直後の S3 は空の状態です。
-GitHub に適当な空コミットなどをプッシュして自動デプロイを走らせるか、
-手動でビルド・アップロードを行うまで画面は表示されません。
-
-4.  **デプロイ状況の監視**
-GitHub の [Actions] タブを開きます。
-「CI/CD Pipeline」が走り始めているので、完了するまで待ちます。
-deploy ジョブが緑色になれば成功です。
-
----
-
 
 ## 📖 詳細ドキュメント
-
-より深くエンジニアリングの詳細を知りたい方は、以下のドキュメントを参照してください。
 - [🔐 認証フローの徹底解説](AUTH_FLOW.md)
 - [📘 コードリーディング・ガイド](CODE_READING_GUIDE.md)
-- [☁️ AWSデプロイ戦略](memo/EC2_DEPLOY_PLAN.md)
-
----
-
-## 📈 今後のロードマップ
-- [ ] マルチテナント対応（組織・チーム機能）
-- [ ] WebSocket によるリアルタイム通知
-- [ ] AWS 各リソースの監視 (CloudWatch Alarm) の追加
-- [ ] モバイルアプリ (React Native) への展開
 
 ---
 **Developed by [rtiak-ops]**  
-*Code with passion, Deploy with confidence.*
-
+*Enterprise Scale. AI Native. Professional Quality.*

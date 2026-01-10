@@ -21,6 +21,10 @@ export interface Todo {
   updated_at: string;   // 更新日時
   owner_id?: number;    // 作成者のユーザーID (オプション)
   order: number;        // 並び順
+  project_id?: number;  // 紐づくプロジェクトID
+  status: 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE'; // ステータス
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'; // 優先度
+  due_date?: string;    // 期限
 }
 
 /**
@@ -66,3 +70,28 @@ export interface AuthToken {
   access_token: string; // アクセストークン本体 (APIリクエストのヘッダーに付けて送る)
   token_type: string;   // トークンの種類 (通常は "bearer")
 }
+
+// ----------------------------------------------------------------------------
+// 3. プロジェクト関連の型定義
+// ----------------------------------------------------------------------------
+
+export interface Project {
+  id: number;
+  name: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+  owner_id: number;
+}
+
+export interface ProjectSummary extends Project {
+  todo_count: number;
+  completed_count: number;
+}
+
+export interface CreateProjectData {
+  name: string;
+  description?: string;
+}
+
+export type UpdateProjectData = Partial<CreateProjectData>;

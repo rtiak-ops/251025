@@ -1,51 +1,53 @@
-import type { Todo } from "../types.ts";
+import type { Todo } from "../types";
 import { updateTodo, deleteTodo } from "../api";
 import { toast } from "react-hot-toast";
+import { Trash2, Clock } from "lucide-react";
 
-
-/**
- * Propsインターフェース定義
- * コンポーネントが受け取るデータの型を定義します。
- */
 interface Props {
-  /** 表示するTodoアイテムのデータオブジェクト */
   todo: Todo;
-  /** 
-   * Todoの状態が変更された（更新または削除）際に呼び出されるコールバック関数。
-   * 親コンポーネントはこの関数を受け取ったら、Todoリストを再取得（リフレッシュ）して
-   * UIを最新の状態に更新する必要があります。
-   */
   onChange: () => void;
 }
 
 /**
- * TodoItem コンポーネント
- * 
- * リスト内の個々のTodoアイテムを表示し、操作するためのコンポーネントです。
- * 
- * 主な機能:
- * 1. 【完了切り替え】: チェックボックスをクリックすると完了状態をAPI経由で更新します。
- * 2. 【削除】: 削除ボタンをクリックするとTodoをAPI経由で削除します。
- * 3. 【表示】: タイトルを表示し、完了済みの場合は取り消し線を表示します。
+ * TodoItem.tsx
+ * 個別のタスクを表示し、完了状態の切り替え、ステータスの変更、削除を行うコンポーネント。
  */
 export default function TodoItem({ todo, onChange }: Props) {
-  
   /**
-   * 完了状態の切り替え
+   * 完了チェックボックスの切り替えハンドラー
+   * completed 状態に合わせて status も自動的に更新します。
    */
   const toggle = async () => {
     try {
-      await updateTodo(todo.id, { completed: !todo.completed });
-      onChange();
+      const newStatus = todo.completed ? 'TODO' : 'DONE';
+      await updateTodo(todo.id, { 
+        completed: !todo.completed,
+        status: newStatus
+      });
+      onChange(); // 親コンポーネントにデータの再取得を依頼
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "更新に失敗しました";
-      console.error("更新エラー:", errorMessage);
-      toast.error(errorMessage);
+      toast.error("更新に失敗しました");
     }
   };
 
   /**
-   * タスクの削除
+   * ステータス（未着手・進行中等）の個別更新ハンドラー
+   */
+  const updateStatus = async (status: Todo['status']) => {
+    try {
+      await updateTodo(todo.id, { 
+        status,
+        // DONE になった場合は completed も true にする
+        completed: status === 'DONE'
+      });
+      onChange();
+    } catch (error) {
+      toast.error("ステータスの更新に失敗しました");
+    }
+  };
+
+  /**
+   * タスクの削除ハンドラー
    */
   const remove = async () => {
     try {
@@ -53,60 +55,88 @@ export default function TodoItem({ todo, onChange }: Props) {
       onChange();
       toast.success("削除しました");
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "削除に失敗しました";
-      console.error("削除エラー:", errorMessage);
-      toast.error(errorMessage);
+      toast.error("削除に失敗しました");
     }
   };
 
   return (
-    // groupクラス: 子要素のhover状態を親から制御するため（削除ボタンの表示に利用）
-    <div className="flex justify-between items-center group">
-      {/* 
-        左側: チェックボックスとタイトル
-        クリック領域を広げるために全体をlabelで囲んでいます。
-      */}
-      <label className="flex-1 flex items-center gap-4 p-4 cursor-pointer">
+    <div className="flex justify-between items-center group p-4 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-all rounded-2xl">
+      <div className="flex items-center gap-4 flex-1 min-w-0">
+        {/* 透明感のあるカスタムチェックボックス */}
         <input 
           type="checkbox" 
           checked={todo.completed} 
           onChange={toggle} 
-          // index.cssで定義したカスタムチェックボックススタイルが適用されます
-          className="focus:ring-offset-2 focus:ring-indigo-500"
+          className="size-5 rounded-lg border-2 border-slate-300 transition-all cursor-pointer accent-indigo-600"
         />
         
-        <div className="flex flex-col">
+        <div className="flex flex-col min-w-0">
+          {/* タスク属性バッジエリア */}
+          <div className="flex items-center gap-2 mb-1 overflow-x-auto no-scrollbar">
+            {/* 優先度バッジ：重要度に応じて配色を変更 */}
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider flex-shrink-0 ${
+              todo.priority === 'URGENT' ? 'bg-red-100 text-red-600 dark:bg-red-900/40' :
+              todo.priority === 'HIGH' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40' :
+              todo.priority === 'MEDIUM' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40' :
+              'bg-slate-100 text-slate-500 dark:bg-slate-800'
+            }`}>
+              {todo.priority}
+            </span>
+
+            {/* ステータス選択ドロップダウン：バッジ風のデザイン */}
+            <select 
+              value={todo.status}
+              onChange={(e) => updateStatus(e.target.value as any)}
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-md cursor-pointer border-none focus:ring-0 flex-shrink-0 ${
+                todo.status === 'DONE' ? 'bg-green-100 text-green-600 dark:bg-green-900/40' :
+                todo.status === 'REVIEW' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40' :
+                todo.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40' :
+                'bg-slate-100 text-slate-500 dark:bg-slate-800'
+              }`}
+            >
+              <option value="TODO">未着手</option>
+              <option value="IN_PROGRESS">進行中</option>
+              <option value="REVIEW">レビュー</option>
+              <option value="DONE">完了</option>
+            </select>
+          </div>
+
+          {/* タイトル：完了時は打ち消し線を表示 */}
           <span
-            className={`text-lg font-semibold transition-all duration-300 ${
+            className={`text-base font-semibold truncate transition-all duration-300 ${
               todo.completed
-                ? "line-through text-slate-400 dark:text-slate-500" // 完了時は打ち消し線とグレーダウン
+                ? "line-through text-slate-400 dark:text-slate-500"
                 : "text-slate-700 dark:text-slate-200"
             }`}
           >
             {todo.title}
           </span>
-          {/* 説明文がある場合のみ表示（一考の余地あり） */}
+          {/* 説明文：1行で省略表示 */}
           {todo.description && (
             <span className="text-xs text-slate-400 dark:text-slate-500 line-clamp-1">
               {todo.description}
             </span>
           )}
         </div>
-      </label>
+      </div>
 
-      {/* 
-        右側: 削除ボタン
-        opacity-0 group-hover:opacity-100: 通常は隠しておき、マウスホバー時のみ表示してUIをスッキリさせます。
-      */}
-      <button
-        onClick={remove}
-        className="mr-4 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-        title="タスクを削除"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.34 12m-4.72 0-.34-12M4.5 6.375h15m-15 0A2.25 2.25 0 0 1 6.75 4.125h10.5a2.25 2.25 0 0 1 2.25 2.25v.375m-15 0a2.25 2.25 0 0 0 1.5 2.126V19.5A2.25 2.25 0 0 0 8.25 21.75h7.5a2.25 2.25 0 0 0 2.25-2.25V8.501a2.25 2.25 0 0 0 1.5-2.126m-15 0a2.25 2.25 0 0 0 1.5-2.126" />
-        </svg>
-      </button>
+      <div className="flex items-center gap-2 ml-4">
+        {/* 期限日表示：モバイルでは非表示にしてスッキリさせる */}
+        {todo.due_date && (
+          <div className="hidden md:flex items-center gap-1 text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg flex-shrink-0">
+            <Clock size={12} />
+            {new Date(todo.due_date).toLocaleDateString()}
+          </div>
+        )}
+        {/* 削除ボタン：ホバー時のみ表示 */}
+        <button
+          onClick={remove}
+          className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+          title="タスクを削除"
+        >
+          <Trash2 size={18} />
+        </button>
+      </div>
     </div>
   );
 }

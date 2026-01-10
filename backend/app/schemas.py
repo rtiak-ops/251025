@@ -136,6 +136,18 @@ class TodoBase(BaseModel):
     # 任意項目で、デフォルトはFalse（未完了）。
     completed: bool = False
 
+    # プロジェクトID
+    project_id: int | None = None
+
+    # ステータス (TODO, IN_PROGRESS, REVIEW, DONE)
+    status: str = "TODO"
+
+    # 優先度 (LOW, MEDIUM, HIGH, URGENT)
+    priority: str = "MEDIUM"
+
+    # 期限日
+    due_date: datetime | None = None
+
     # タイトルのバリデーション（検証）を行うメソッド
     @field_validator("title")
     @classmethod
@@ -217,6 +229,18 @@ class TodoUpdate(BaseModel):
     # 更新時に完了状態を変更しない場合はNoneのまま。
     completed: bool | None = None
 
+    # project_idを任意に変更
+    project_id: int | None = None
+
+    # statusを任意に変更
+    status: str | None = None
+
+    # priorityを任意に変更
+    priority: str | None = None
+
+    # due_dateを任意に変更
+    due_date: datetime | None = None
+
 # ----------------------------------------------------------------------
 # 4. APIからクライアントへ返却されるTo Doアイテムのデータ構造 (TodoOut)
 # ----------------------------------------------------------------------
@@ -284,3 +308,33 @@ class TodoReorder(BaseModel):
     # To DoのIDのリスト。表示したい順番に並べる。
     # 例: [3, 1, 2] → ID=3が1番目、ID=1が2番目、ID=2が3番目に表示される
     todo_ids: list[int]
+
+# ======================================================================
+# プロジェクト管理関連のスキーマ
+# ======================================================================
+
+class ProjectBase(BaseModel):
+    name: str
+    description: str | None = None
+
+class ProjectCreate(ProjectBase):
+    pass
+
+class ProjectUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+
+class ProjectOut(ProjectBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    owner_id: int
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class ProjectSummary(ProjectOut):
+    """
+    ダッシュボード用などのプロジェクトサマリー
+    """
+    todo_count: int = 0
+    completed_count: int = 0

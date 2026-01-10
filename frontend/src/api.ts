@@ -5,6 +5,10 @@ import type {
   UpdateTodoData,
   User,
   AuthToken,
+  Project,
+  CreateProjectData,
+  UpdateProjectData,
+  ProjectSummary,
 } from "./types";
 
 // ============================================================================
@@ -153,15 +157,11 @@ export const getTodos = async (): Promise<Todo[]> => { // リスト取得関数�
  * @param data - 作成するTodoのデータ (タイトル、説明)
  * @returns 作成されたTodoデータ
  */
-export const createTodo = async ({
-  title,
-  description,
-}: CreateTodoData): Promise<Todo> => {
+export const createTodo = async (
+  data: CreateTodoData & { project_id?: number, status?: string, priority?: string, due_date?: string }
+): Promise<Todo> => {
   try {
-    const res: AxiosResponse<Todo> = await api.post("/todos/", {
-      title,
-      description,
-    });
+    const res: AxiosResponse<Todo> = await api.post("/todos/", data);
     return res.data;
   } catch (error) {
     const axiosError = error as AxiosError<{ detail?: string | { msg: string }[] }>;
@@ -244,7 +244,35 @@ export const deleteTodo = async (id: number): Promise<void> => {
 };
 
 // ----------------------------------------------------------------------------
-// 6. API関数: その他の機能 (Other Features)
+// 6. API関数: プロジェクト関連 (Project API)
+// ----------------------------------------------------------------------------
+
+export const getProjects = async (): Promise<Project[]> => {
+  const res: AxiosResponse<Project[]> = await api.get("/projects/");
+  return res.data;
+};
+
+export const getProjectSummaries = async (): Promise<ProjectSummary[]> => {
+  const res: AxiosResponse<ProjectSummary[]> = await api.get("/projects/summary");
+  return res.data;
+};
+
+export const createProject = async (data: CreateProjectData): Promise<Project> => {
+  const res: AxiosResponse<Project> = await api.post("/projects/", data);
+  return res.data;
+};
+
+export const updateProject = async (id: number, data: UpdateProjectData): Promise<Project> => {
+  const res: AxiosResponse<Project> = await api.patch(`/projects/${id}`, data);
+  return res.data;
+};
+
+export const deleteProject = async (id: number): Promise<void> => {
+  await api.delete(`/projects/${id}`);
+};
+
+// ----------------------------------------------------------------------------
+// 7. API関数: その他の機能 (Other Features)
 // ----------------------------------------------------------------------------
 
 /**

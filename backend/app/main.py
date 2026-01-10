@@ -21,7 +21,7 @@ from slowapi.util import get_remote_address  # Rate Limiting
 
 # アプリケーション固有のモジュールをインポート
 from .database import Base, engine  # データベース接続エンジンと、モデルのベースクラスをインポート
-from .routers import ai, auth, todos  # ToDo関連のエンドポイント（ルーター）をインポート
+from .routers import ai, auth, todos, projects  # ToDo関連のエンドポイント（ルーター）をインポート
 
 # ----------------------------------------------------------------------
 # 0. ロギングとセキュリティ設定
@@ -200,5 +200,6 @@ app.add_middleware(
 
 # 外部ファイル (routers/todos.py) で定義されたエンドポイントを組み込む
 app.include_router(auth.router)
+app.include_router(projects.router)
 app.include_router(todos.router)
 app.include_router(ai.router)

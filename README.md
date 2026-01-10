@@ -35,6 +35,8 @@
 - [💡 解決した技術的課題](#-解決した技術的課題)
 - [🛠️ 技術スタック](#️-技術スタック)
 - [🚀 セットアップガイド](#-セットアップガイド)
+    - [1. 🏠 ローカル開発環境 (Docker)](#1--ローカル開発環境-docker)
+    - [2. ☁️ クラウド展開 (AWS/Terraform)](#2--クラウド展開-awsterraform)
 
 ---
 
@@ -169,6 +171,41 @@ docker compose up --build
 ```
 - **App**: [http://localhost](http://localhost)
 - **API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### 2. ☁️ クラウド展開 (AWS/Terraform)
+AWS上に本番環境を自動構築し、GitHub Actionsによる継続的デプロイ（CD）を有効化します。
+
+#### ① AWS 認証の設定
+AWS SSOを使用して、ローカル端末からAWSを操作可能にします。
+```bash
+aws sso login
+```
+
+#### ② インフラの構築 (Terraform)
+`terraform` ディレクトリに移動し、インフラを作成します。
+```bash
+cd terraform
+# 初期化
+terraform init
+# 構築の実行 (変数の入力が求められます)
+terraform apply
+```
+
+#### ③ GitHub Secrets の設定
+GitHubのリポジトリ設定（Settings > Secrets and variables > Actions）に以下の値を登録することで、自動デプロイが開始されます。
+
+| Secret Key | 説明 |
+|---|---|
+| `AWS_ROLE_ARN` | Terraform実行後に出力された `github_actions_role_arn` |
+| `APP_SECRET_KEY` | JWT認証用の秘密鍵（32文字以上のランダムな文字列） |
+| `DB_PASSWORD` | RDSのマスターパスワード |
+| `EC2_SSH_KEY` | EC2接続用の秘密鍵 (PEM形式) |
+| `EC2_USER` | `ec2-user` か `ubuntu` (AMIに依存) |
+| `EC2_HOST` | EC2のパブリックIP（動的取得に失敗する場合の予備） |
+| `GOOGLE_API_KEY` | Gemini APIキー |
+
+#### ④ デプロイ
+`main` または `develop` ブランチにコードを `push` すると、自動的にフロントエンド（S3/CloudFront）とバックエンド（EC2/Docker）が更新されます。
 
 ---
 

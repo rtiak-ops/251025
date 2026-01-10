@@ -55,7 +55,7 @@ describe('TodoForm', () => {
   it('タスクを入力して送信できる', async () => {
     const mockOnAdd = vi.fn().mockResolvedValue({})
     // 2. createTodo が成功するように設定
-    vi.mocked(mockCreateTodo).mockResolvedValue({ id: 1, title: 'テストタスク', description: '', completed: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), owner_id: 1, order: 0 })
+    vi.mocked(mockCreateTodo).mockResolvedValue({ id: 1, title: 'テストタスク', description: '', completed: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), owner_id: 1, order: 0, status: 'TODO', priority: 'MEDIUM' })
 
     const user = userEvent.setup()
 
@@ -65,8 +65,8 @@ describe('TodoForm', () => {
       </QueryClientProvider>
     )
 
-    const input = screen.getByPlaceholderText(/何をしますか？/i)
-    const button = screen.getByRole('button', { name: /追加/i })
+    const input = screen.getByPlaceholderText(/新しいタスク名を入力/i)
+    const button = screen.getByRole('button', { name: /^追加$/ })
 
     await user.type(input, 'テストタスク')
     await user.click(button)
@@ -89,7 +89,7 @@ describe('TodoForm', () => {
       </QueryClientProvider>
     )
 
-    const button = screen.getByRole('button', { name: /追加/i })
+    const button = screen.getByRole('button', { name: /^追加$/ })
     await user.click(button)
 
     expect(mockOnAdd).not.toHaveBeenCalled()
@@ -98,7 +98,7 @@ describe('TodoForm', () => {
   it('送信中はボタンが無効化される', async () => {
     // 意図的に解決を遅らせるPromiseを返す
     vi.mocked(mockCreateTodo).mockImplementation(() => 
-      new Promise(resolve => setTimeout(() => resolve({ id: 1, title: '待機テスト', description: '', completed: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), owner_id: 1, order: 0 }), 500))
+      new Promise(resolve => setTimeout(() => resolve({ id: 1, title: '待機テスト', description: '', completed: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), owner_id: 1, order: 0, status: 'TODO', priority: 'MEDIUM' }), 500))
     )
     
     const mockOnAdd = vi.fn().mockResolvedValue({})
@@ -110,8 +110,8 @@ describe('TodoForm', () => {
       </QueryClientProvider>
     )
 
-    const input = screen.getByPlaceholderText(/何をしますか？/i)
-    const button = screen.getByRole('button', { name: /追加/i })
+    const input = screen.getByPlaceholderText(/新しいタスク名を入力/i)
+    const button = screen.getByRole('button', { name: /^追加$/ })
 
     await user.type(input, '待機テスト')
     await user.click(button)

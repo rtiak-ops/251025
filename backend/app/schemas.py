@@ -355,3 +355,4 @@ class ProjectSummary(ProjectOut):
     """
     todo_count: int = 0
     completed_count: int = 0
+    role: str | None = None

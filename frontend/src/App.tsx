@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Toaster, toast } from "react-hot-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { type DropResult } from "@hello-pangea/dnd";
-import { getTodos, getStoredToken, clearToken, reorderTodos, getProjectSummaries, updateProject, deleteProject } from "./api";
-import type { Todo, ProjectSummary } from "./types";
+import { getTodos, getStoredToken, clearToken, reorderTodos, getProjectSummaries, updateProject, deleteProject, getMe } from "./api";
+import type { Todo, ProjectSummary, User } from "./types";
 import Sidebar from "./components/Sidebar";
 import DashboardView from "./components/DashboardView";
 import ProjectTasksView from "./components/ProjectTasksView";
@@ -53,6 +53,13 @@ export default function App() {
     enabled: !!token,
   });
   const projects = Array.isArray(projectsData) ? projectsData : [];
+
+  // 現在のログインユーザー情報を取得
+  const { data: currentUser } = useQuery<User>({
+    queryKey: ["me"],
+    queryFn: getMe,
+    enabled: !!token,
+  });
 
   // すべてのタスクを取得
   const { 
@@ -276,6 +283,7 @@ export default function App() {
             onClearFilter={() => setActiveFilter(null)}
             onEditProject={handleEditProject}
             onDeleteProject={handleDeleteProject}
+            currentUser={currentUser}
           />
         )}
       </main>

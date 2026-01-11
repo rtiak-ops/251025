@@ -1,7 +1,8 @@
+import { useRef } from "react";
 import type { Todo } from "../types";
 import { updateTodo, deleteTodo } from "../api";
 import { toast } from "react-hot-toast";
-import { Trash2, Clock } from "lucide-react";
+import { Trash2, Calendar } from "lucide-react";
 
 interface Props {
   todo: Todo;
@@ -13,6 +14,17 @@ interface Props {
  * 個別のタスクを表示し、完了状態の切り替え、ステータスの変更、削除を行うコンポーネント。
  */
 export default function TodoItem({ todo, onChange }: Props) {
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDatePicker = () => {
+    const input = dateInputRef.current;
+    if (!input) return;
+    if ('showPicker' in input && typeof (input as any).showPicker === 'function') {
+      try { (input as any).showPicker(); } catch { input.click(); }
+    } else {
+      input.click();
+    }
+  };
   /**
    * 完了チェックボックスの切り替えハンドラー
    * completed 状態に合わせて status も自動的に更新します。
@@ -123,13 +135,19 @@ export default function TodoItem({ todo, onChange }: Props) {
       </div>
 
       <div className="flex items-center gap-2 ml-4">
-        {/* 期限日表示：クリックして変更可能 */}
-        <div className="relative flex items-center gap-1 text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg flex-shrink-0 group/date">
-          <Clock size={12} />
-          <span>{todo.due_date ? new Date(todo.due_date).toLocaleDateString() : '期限なし'}</span>
+        {/* 期限日表示：クリックして変更可能（作成後も編集可能） */}
+        <div 
+          onClick={handleDatePicker}
+          className="relative flex items-center gap-1 text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg flex-shrink-0 group/date hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer"
+        >
+          <Calendar size={12} className="text-slate-400 group-hover/date:text-indigo-500 transition-colors" />
+          <span className={todo.due_date ? "text-indigo-600 dark:text-indigo-400" : ""}>
+            {todo.due_date ? new Date(todo.due_date).toLocaleDateString() : '期限設定'}
+          </span>
           <input
+            ref={dateInputRef}
             type="date"
-            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full [color-scheme:light] dark:[color-scheme:dark]"
+            className="absolute inset-0 opacity-0 pointer-events-none w-0 h-0"
             value={todo.due_date ? todo.due_date.split('T')[0] : ""}
             onChange={async (e) => {
               try {

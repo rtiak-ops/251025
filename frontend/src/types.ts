@@ -83,6 +83,7 @@ export interface Project {
   created_at: string;
   updated_at: string;
   owner_id: number;
+  collaborators?: Collaborator[];
 }
 
 export interface Collaborator {
@@ -96,7 +97,6 @@ export interface ProjectSummary extends Project {
   todo_count: number;
   completed_count: number;
   role?: 'owner' | 'collaborator';
-  collaborators?: Collaborator[];
 }
 
 export interface CreateProjectData {

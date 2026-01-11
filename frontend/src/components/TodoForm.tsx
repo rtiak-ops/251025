@@ -1,93 +1,72 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { createTodo, breakdownTask } from "../api";
 import { toast } from "react-hot-toast";
-import { Clock } from "lucide-react";
+import { Plus, Sparkles, AlignLeft, Calendar } from "lucide-react";
 
 interface Props {
-  /** 親コンポーネントでTODOリストを再取得（更新）するためのコールバック関数 */
   onAdd: () => void;
-  /** 初期プロジェクトID（特定のプロジェクトビューから開いた場合） */
   initialProjectId?: number;
 }
 
-/**
- * TodoForm コンポーネント
- * ユーザーが新しいタスクを入力し、「通常追加」または「AIによるタスク分解」を選択できるフォーム。
- */
-/**
- * TodoForm.tsx
- * ユーザーが新しいタスクを入力し、「通常追加」または「AIによるタスク分解」を選択できるフォーム。
- * ビジネス要件に合わせ、優先度（Priority）の選択機能も備えています。
- */
 export default function TodoForm({ onAdd, initialProjectId }: Props) {
-  // --- 状態管理 (State) ---
-  
-  /** 入力中のタスクタイトル */
   const [title, setTitle] = useState("");
-  
-  /** 通常のタスク保存 API が通信中かどうか */
-  const [isLoading, setIsLoading] = useState(false);
-  
-  /** AI API による分解処理および、その後の連続保存処理が進行中かどうか */
-  const [isAiLoading, setIsAiLoading] = useState(false);
-
-  /** 優先度の選択状態 (デフォルトは「中」) */
+  const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
-
-  /** 期限（締切）の選択状態 */
   const [dueDate, setDueDate] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
-  /** 入力バリデーション: 空文字、またはスペースのみの場合は操作を無効化する */
-  const isInputEmpty = !title.trim();
+  const handleDatePicker = () => {
+    const input = dateInputRef.current;
+    if (!input) return;
+    if ('showPicker' in input && typeof (input as any).showPicker === 'function') {
+      try { (input as any).showPicker(); } catch { input.click(); }
+    } else {
+      input.click();
+    }
+  };
 
-  /**
-   * ハンドラ: 通常のタスク追加
-   * 単一のタスクを現在のプロジェクト（もしあれば）に関連付けて保存します。
-   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isInputEmpty || isLoading || isAiLoading) return;
+    if (!title.trim() || isLoading || isAiLoading) return;
 
     setIsLoading(true);
-    const toastId = toast.loading("タスクを追加中...");
+    const toastId = toast.loading("タスクを保存中...");
 
     try {
       await createTodo({ 
-        title, 
+        title: title.trim(), 
+        description: description.trim() || undefined,
         priority, 
-        project_id: initialProjectId, // どのプロジェクト配下に追加するか
+        project_id: initialProjectId,
         status: 'TODO',
         due_date: dueDate || undefined
       });
       
-      setTitle(""); // 入力欄のリセット
+      setTitle("");
+      setDescription("");
       setPriority('MEDIUM');
       setDueDate("");
-      onAdd();      // 親側のデータを再取得
-      toast.success("タスクを追加しました！", { id: toastId });
+      setIsExpanded(false);
+      onAdd();
+      toast.success("タスクを保存しました", { id: toastId });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "追加に失敗しました";
-      toast.error(errorMessage, { id: toastId });
+      toast.error("保存に失敗しました", { id: toastId });
     } finally {
       setIsLoading(false);
     }
   };
 
-  /**
-   * ハンドラ: AIによるタスク分解
-   * 大きなタスクを AI が論理的なステップに分解し、それらを個別のタスクとして一括登録します。
-   */
   const handleAiBreakdown = async () => {
-    if (isInputEmpty || isAiLoading) return;
-    
+    if (!title.trim() || isAiLoading) return;
     setIsAiLoading(true);
-    const toastId = toast.loading("AIが思考中... 🧠");
+    const toastId = toast.loading("AIがタスクを分解中...", { icon: "✨" });
 
     try {
-      // 1. AI APIを呼び出し、タスクの分解結果を文字列配列で取得
       const subtasks = await breakdownTask(title);
-
-      // 2. 分解された各タスクを順次、現在のプロジェクトに関連付けて保存
       for (const subtaskTitle of subtasks) {
         await createTodo({ 
           title: subtaskTitle, 
@@ -99,106 +78,144 @@ export default function TodoForm({ onAdd, initialProjectId }: Props) {
       }
       
       setTitle("");
-      setPriority('MEDIUM');
+      setDescription("");
       setDueDate("");
+      setIsExpanded(false);
       onAdd();
-      toast.success("AIがタスクを分解しました！", { id: toastId });
-    } catch (error) {
-        console.error("AI Breakdown Error:", error);
-        toast.error("AIによる分解に失敗しました", { id: toastId });
+      toast.success("AI分解が完了しました", { id: toastId });
+    } catch {
+      toast.error("AI分解に失敗しました", { id: toastId });
     } finally {
-        setIsAiLoading(false);
+      setIsAiLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      {/* 1段目: テキスト入力フィールド (タイトル) */}
-      <div className="relative group w-full">
-        <input
-          type="text"
-          className="w-full bg-white/70 dark:bg-slate-900/80 border-2 border-slate-300 dark:border-slate-500 rounded-2xl p-4 pl-12 text-lg focus:outline-none focus:border-indigo-500 transition-all placeholder:text-slate-400 dark:text-white"
-          placeholder={isAiLoading ? "AIがステップを生成しています..." : "新しいタスク名を入力..."} 
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          disabled={isLoading || isAiLoading}
-        />
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-        </div>
-      </div>
-
-      {/* 2段目: 優先度、締切、アクションボタンを横一列に配置 */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* 優先度選択 */}
-        <div className="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-xl border border-slate-300 dark:border-slate-600">
-          {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPriority(p)}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
-                priority === p
-                  ? 'bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-white'
-                  : 'text-slate-600 dark:text-white/70'
-              }`}
-            >
-              {p === 'LOW' && '低'}
-              {p === 'MEDIUM' && '中'}
-              {p === 'HIGH' && '高'}
-              {p === 'URGENT' && '至急'}
-            </button>
-          ))}
-        </div>
-
-        {/* 締切入力 */}
-        <div className="relative flex items-center bg-slate-200 dark:bg-slate-800 p-2 rounded-xl border border-slate-300 dark:border-slate-600 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors cursor-pointer min-w-[120px]">
-          <div className="flex items-center gap-2 px-1 text-slate-500 dark:text-slate-400 pointer-events-none w-full justify-center">
-            <Clock size={14} />
-            <span className="text-[10px] font-bold">
-              {dueDate ? new Date(dueDate).toLocaleDateString() : "締切を設定"}
-            </span>
+    <div className={`transition-all duration-300 ${isExpanded ? 'bg-white/40 dark:bg-slate-800/20 p-5 rounded-3xl border-2 border-indigo-500/20 shadow-xl' : ''}`}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {/* メイン入力セクション */}
+        <div className="relative group">
+          <div className="absolute left-4 top-4 text-indigo-500">
+            <Plus size={24} className={isAiLoading ? "animate-spin" : ""} />
           </div>
           <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full [color-scheme:light] dark:[color-scheme:dark]"
+            type="text"
+            className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl p-4 pl-12 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all placeholder:text-slate-400 dark:text-white shadow-sm"
+            placeholder={isAiLoading ? "思考中..." : "新しいタスクをクイック追加..."}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onFocus={() => setIsExpanded(true)}
+            disabled={isLoading || isAiLoading}
           />
         </div>
 
-        {/* スペーサー */}
-        <div className="flex-1 min-w-[10px]" />
+        {/* 展開される詳細セクション */}
+        {isExpanded && (
+          <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4">
+            {/* 説明入力 */}
+            <div className="relative">
+              <div className="absolute left-4 top-3 text-slate-400">
+                <AlignLeft size={18} />
+              </div>
+              <textarea
+                placeholder="説明を追加 (オプション)..."
+                className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl p-3 pl-12 text-sm focus:outline-none focus:border-indigo-500 transition-all dark:text-white min-h-[80px] resize-none"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
 
-        {/* AI分解ボタン */}
-        <button
-          type="button"
-          onClick={handleAiBreakdown}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
-            isInputEmpty || isLoading || isAiLoading
-              ? "bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-800"
-              : "bg-white dark:bg-slate-800 text-slate-700 dark:text-white border border-slate-200 dark:border-slate-500 hover:shadow-md"
-          }`}
-          disabled={isInputEmpty || isLoading || isAiLoading}
-        >
-          {isAiLoading ? <span className="animate-pulse">✨ AI分解中...</span> : <><span className="text-sm">✨</span> AI分解</>}
-        </button>
+            {/* 設定項目グループ */}
+            <div className="flex flex-wrap items-center gap-4">
+              {/* 優先度セレクト */}
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 mb-1 block">
+                  Priority
+                </label>
+                <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                  {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPriority(p)}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                        priority === p
+                          ? p === 'URGENT' ? 'bg-red-500 text-white shadow-lg' :
+                            p === 'HIGH' ? 'bg-amber-500 text-white shadow-lg' :
+                            p === 'MEDIUM' ? 'bg-indigo-500 text-white shadow-lg' :
+                            'bg-slate-500 text-white shadow-lg'
+                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      {p === 'LOW' ? '低' : p === 'MEDIUM' ? '中' : p === 'HIGH' ? '高' : '至急'}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-        {/* 通常追加ボタン */}
-        <button
-          type="submit"
-          className={`px-6 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
-            isInputEmpty || isLoading || isAiLoading
-              ? "bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-700"
-              : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md"
-          }`}
-          disabled={isInputEmpty || isLoading || isAiLoading}
-        >
-          {isLoading ? "中..." : "追加"}
-        </button>
-      </div>
-    </form>
+              {/* 締切設定 */}
+              <div className="flex-1 min-w-[150px]">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 mb-1 block">
+                  Due Date
+                </label>
+                <div 
+                  onClick={handleDatePicker}
+                  className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition-all cursor-pointer text-slate-600 dark:text-slate-400"
+                >
+                  <Calendar size={16} />
+                  <span className="text-xs font-bold">
+                    {dueDate ? new Date(dueDate).toLocaleDateString() : "未設定"}
+                  </span>
+                  <input
+                    ref={dateInputRef}
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className="absolute opacity-0 pointer-events-none w-0 h-0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* アクションボタン */}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsExpanded(false);
+                  if (!title) {
+                    setTitle("");
+                    setDueDate("");
+                  }
+                }}
+                className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                キャンセル
+              </button>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleAiBreakdown}
+                  disabled={!title.trim() || isAiLoading}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-500/10 to-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:from-purple-500 hover:to-indigo-500 hover:text-white transition-all shadow-sm group disabled:opacity-50"
+                >
+                  <Sparkles size={14} className="group-hover:animate-pulse" />
+                  {isAiLoading ? "分解中..." : "AI分解"}
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={!title.trim() || isLoading}
+                  className="flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-500/30 disabled:opacity-50"
+                >
+                  {isLoading ? "保存中..." : "タスクを追加"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </form>
+    </div>
   );
 }

@@ -129,6 +129,11 @@ export const searchUsers = async (email: string): Promise<User[]> => {
   return res.data;
 };
 
+export const getMe = async (): Promise<User> => {
+  const res = await api.get("/auth/me");
+  return res.data;
+};
+
 // ----------------------------------------------------------------------------
 // 5. API関数: ToDo関連 (ToDo API)
 // ----------------------------------------------------------------------------

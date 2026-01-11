@@ -76,3 +76,10 @@ async def search_users(
     stmt = select(User).where(User.email.ilike(f"%{email}%")).limit(5)
     result = await db.execute(stmt)
     return result.scalars().all()
+
+@router.get("/me", response_model=schemas.UserOut)
+async def read_users_me(current_user: schemas.UserOut = Depends(auth.get_current_user)):
+    """
+    ログイン中の自分の情報を取得します。
+    """
+    return current_user

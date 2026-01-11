@@ -38,30 +38,16 @@ router = APIRouter(prefix="/todos", tags=["Todos"])
     status_code=status.HTTP_200_OK  # 成功時のHTTPステータスコードを明示的に指定（200 OK）
 )
 async def read_todos(
+    q: str | None = None, # 検索クエリ
     db: AsyncSession = Depends(get_db),  # DBセッションを依存性注入で取得
     current_user: schemas.UserOut = Depends(get_current_user),  # 認証済みユーザー情報を取得
 ) -> list[schemas.TodoOut]:
     """
-    ログインユーザーの全ToDoアイテムを取得します。
-    
-    【処理の流れ】
-    1. JWTトークンから現在のログインユーザーを特定
-    2. そのユーザーが所有する全てのToDoアイテムをデータベースから取得
-    3. 取得したToDoリストをJSON形式で返却
-    
-    【パラメータ】
-    - db: データベースセッション（自動注入）
-    - current_user: 認証済みユーザー情報（自動注入）
-    
-    【戻り値】
-    - ToDoアイテムのリスト（作成日時の昇順）
-    
-    【エラー】
-    - 401 Unauthorized: 認証トークンが無効または期限切れの場合
+    ログインユーザーの全ToDoアイテムを取得します（検索対応）。
     """
     # crudモジュールの非同期関数を呼び出し、データベースからToDoリストを取得
     # owner_idを指定することで、ログインユーザーのToDoのみを取得
-    todos = await crud.get_todos(db, owner_id=current_user.id)
+    todos = await crud.get_todos(db, owner_id=current_user.id, q=q)
     return todos  # 取得したToDoリストを返す
 
 

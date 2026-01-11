@@ -120,6 +120,14 @@ export const loginUser = async ( // ログイン関数を定義。
   }
 };
 
+/**
+ * ユーザーをメールで検索する
+ */
+export const searchUsers = async (email: string): Promise<User[]> => {
+  const res = await api.get("/auth/users", { params: { email } });
+  return res.data;
+};
+
 // ----------------------------------------------------------------------------
 // 5. API関数: ToDo関連 (ToDo API)
 // ----------------------------------------------------------------------------
@@ -127,10 +135,12 @@ export const loginUser = async ( // ログイン関数を定義。
 /**
  * 自分のToDoリストを全て取得する関数
  */
-export const getTodos = async (): Promise<Todo[]> => { // リスト取得関数。
+export const getTodos = async (q?: string): Promise<Todo[]> => { // リスト取得関数。
   try { // 通信失敗に備えます。
     // GETリクエストで /todos/ からデータを取得
-    const res: AxiosResponse<Todo[]> = await api.get("/todos/"); // ToDo一覧をリクエストします。
+    const res: AxiosResponse<Todo[]> = await api.get("/todos/", {
+      params: { q }
+    }); // ToDo一覧をリクエストします。
     return res.data; // 取得したリストを返します。
   } catch (error) { // エラー発生時。
     const axiosError = error as AxiosError<{ detail?: string | { msg: string }[] }>; // エラーの型を指定。
@@ -302,6 +312,15 @@ export const updateProject = async (id: number, data: UpdateProjectData): Promis
 
 export const deleteProject = async (id: number): Promise<void> => {
   await api.delete(`/projects/${id}`);
+};
+
+export const addCollaborator = async (projectId: number, userId: number, permission: string = "editor"): Promise<any> => {
+  const res = await api.post(`/projects/${projectId}/collaborators`, { user_id: userId, permission });
+  return res.data;
+};
+
+export const removeCollaborator = async (projectId: number, userId: number): Promise<void> => {
+  await api.delete(`/projects/${projectId}/collaborators/${userId}`);
 };
 
 // ----------------------------------------------------------------------------

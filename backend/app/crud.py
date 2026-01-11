@@ -166,26 +166,28 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> mode
 # Todoアイテムの作成、読み取り、更新、削除、並び替えに関する関数を定義します。
 # 各Todoは特定のユーザー（owner_id）に紐づいています。
 
-async def get_todos(db: AsyncSession, owner_id: int) -> list[models.Todo]:
+async def get_todos(db: AsyncSession, owner_id: int, project_id: int | None = None, q: str | None = None) -> list[models.Todo]:
     """
-    特定ユーザーの全てのTodoアイテムを取得する関数
-    
-    引数:
-        db: データベースセッション（非同期）
-        owner_id: Todoの所有者（ユーザー）のID
-    
-    戻り値:
-        Todoアイテムのリスト（order カラムの昇順でソート済み）
-    
-    処理:
-        - owner_id が一致する Todo を全て取得
-        - order カラムで並び替え（ドラッグ&ドロップの順序を保持）
+    Todoアイテムを取得する関数（検索とプロジェクト検索をサポート）
     """
-    # SELECT * FROM todos WHERE owner_id = ? ORDER BY order ASC
-    result = await db.execute(
-        select(models.Todo).where(models.Todo.owner_id == owner_id).order_by(models.Todo.order)
-    )
-    # 全ての結果をリストとして返す
+    # ユーザーが所有しているTodo、または協力しているプロジェクトのTodoを取得可能にする
+    # シンプルにするため、まずは所有Todoを取得
+    stmt = select(models.Todo).order_by(models.Todo.order)
+    
+    # 権限チェック: 自分がオーナーのTodo
+    # (将来的に共同編集プロジェクトのタスクもここに含める場合は拡張)
+    stmt = stmt.where(models.Todo.owner_id == owner_id)
+
+    if project_id:
+        stmt = stmt.where(models.Todo.project_id == project_id)
+    
+    if q:
+        # タイトルまたは説明にキーワードが含まれるものを検索 (大文字小文字無視)
+        stmt = stmt.where(
+            models.Todo.title.ilike(f"%{q}%") | models.Todo.description.ilike(f"%{q}%")
+        )
+        
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 async def create_todo(db: AsyncSession, todo: schemas.TodoCreate, owner_id: int) -> models.Todo:
@@ -355,11 +357,24 @@ async def reorder_todos(db: AsyncSession, todo_ids: list[int], owner_id: int):
 
 async def get_projects(db: AsyncSession, owner_id: int) -> list[models.Project]:
     """
-    特定ユーザーの全てのプロジェクトを取得する関数
+    特定ユーザーが閲覧可能な全てのプロジェクトを取得する関数（自分が作成したもの + 招待されたもの）
     """
-    result = await db.execute(
-        select(models.Project).where(models.Project.owner_id == owner_id).order_by(models.Project.created_at.desc())
-    )
+    # 自分がオーナーのプロジェクト
+    owner_stmt = select(models.Project).where(models.Project.owner_id == owner_id)
+    
+    # 招待されているプロジェクトのIDを取得
+    collab_stmt = select(models.ProjectCollaborator.project_id).where(models.ProjectCollaborator.user_id == owner_id)
+    invited_stmt = select(models.Project).where(models.Project.id.in_(collab_stmt))
+    
+    # 和集合的な取得 (実際にはSQLでUnionしたりできますが、ここではシンプルに)
+    # SQLAlchemyのUnionを使用
+    from sqlalchemy import union_all
+    complete_stmt = select(models.Project).where(
+        (models.Project.owner_id == owner_id) | 
+        (models.Project.id.in_(collab_stmt))
+    ).order_by(models.Project.created_at.desc())
+
+    result = await db.execute(complete_stmt)
     return result.scalars().all()
 
 async def get_project_by_id(db: AsyncSession, project_id: int, owner_id: int) -> models.Project | None:
@@ -413,10 +428,8 @@ async def get_project_summaries(db: AsyncSession, owner_id: int):
     """
     from sqlalchemy import func
     
-    # プロジェクト一覧を取得
-    stmt = select(models.Project).where(models.Project.owner_id == owner_id)
-    result = await db.execute(stmt)
-    projects = result.scalars().all()
+    # 閲覧可能な全プロジェクトを取得
+    projects = await get_projects(db, owner_id)
     
     summaries = []
     for p in projects:
@@ -427,6 +440,9 @@ async def get_project_summaries(db: AsyncSession, owner_id: int):
         todo_count = (await db.execute(todo_stmt)).scalar() or 0
         completed_count = (await db.execute(completed_stmt)).scalar() or 0
         
+        # 自分の役割（オーナーかコラボレーターか）を判定
+        role = "owner" if p.owner_id == owner_id else "collaborator"
+
         # schemas.ProjectSummary に基づく辞書データを作成
         summary = {
             "id": p.id,
@@ -436,8 +452,28 @@ async def get_project_summaries(db: AsyncSession, owner_id: int):
             "updated_at": p.updated_at,
             "owner_id": p.owner_id,
             "todo_count": todo_count,
-            "completed_count": completed_count
+            "completed_count": completed_count,
+            "role": role # 追加情報
         }
         summaries.append(summary)
         
     return summaries
+
+async def add_collaborator(db: AsyncSession, project_id: int, collaborator: schemas.CollaboratorCreate) -> models.ProjectCollaborator:
+    db_collab = models.ProjectCollaborator(
+        project_id=project_id,
+        user_id=collaborator.user_id,
+        permission=collaborator.permission
+    )
+    db.add(db_collab)
+    await db.commit()
+    await db.refresh(db_collab)
+    return db_collab
+
+async def remove_collaborator(db: AsyncSession, project_id: int, user_id: int):
+    stmt = delete(models.ProjectCollaborator).where(
+        models.ProjectCollaborator.project_id == project_id,
+        models.ProjectCollaborator.user_id == user_id
+    )
+    await db.execute(stmt)
+    await db.commit()

@@ -1,5 +1,8 @@
-import { Folder, Edit3, Trash2 } from 'lucide-react';
-import type { Todo, Project, ProjectSummary } from '../types';
+import { Folder, Edit3, Trash2, Users, UserPlus } from 'lucide-react';
+import type { Todo, Project, ProjectSummary, Collaborator } from '../types';
+import { addCollaborator, searchUsers } from '../api';
+import { toast } from 'react-hot-toast';
+import { useState } from 'react';
 import TodoItem from './TodoItem';
 import TodoForm from './TodoForm';
 import TodoSkeleton from './TodoSkeleton';
@@ -32,6 +35,29 @@ export default function ProjectTasksView({
   activeFilter,
   onClearFilter
 }: ProjectTasksViewProps) {
+  const [inviteEmail, setInviteEmail] = useState("");
+
+  const handleInvite = async () => {
+    if (!project || !inviteEmail.trim()) return;
+    try {
+      // 1. ユーザーをメールで検索
+      const users = await searchUsers(inviteEmail);
+      const user = users.find(u => u.email === inviteEmail);
+      
+      if (!user) {
+        toast.error("ユーザーが見つかりません");
+        return;
+      }
+
+      // 2. コラボレーターとして追加
+      await addCollaborator(project.id, user.id, 'editor');
+      toast.success(`${inviteEmail} を招待しました`);
+      setInviteEmail("");
+      onDataChange(); // 更新を反映
+    } catch {
+      toast.error("招待に失敗しました");
+    }
+  };
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* プロジェクトヘッダー：左側に情報、右側に新規作成フォームを配置 */}
@@ -61,7 +87,7 @@ export default function ProjectTasksView({
 
             {/* プロジェクト操作ボタン（タイトル付近に配置） */}
             {project && (
-              <div className="flex items-center gap-3 pt-2">
+              <div className="flex flex-wrap items-center gap-3 pt-2">
                 <button 
                   onClick={onEditProject}
                   className="px-4 py-2 bg-white/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-700 transition-all text-slate-500 hover:text-indigo-600 flex items-center gap-2 text-sm font-bold"
@@ -74,7 +100,38 @@ export default function ProjectTasksView({
                 >
                   <Trash2 size={16} /> 削除
                 </button>
+
+                {/* メンバー表示セクション */}
+                <div className="flex items-center gap-2 ml-4 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-900/50">
+                    <Users size={16} className="text-indigo-600" />
+                    <span className="text-xs font-bold text-indigo-600">メンバー:</span>
+                    <div className="flex -space-x-2">
+                        <div className="w-8 h-8 rounded-full bg-indigo-500 border-2 border-white dark:border-slate-800 flex items-center justify-center text-[10px] text-white font-bold" title="Owner">O</div>
+                        {(project as ProjectSummary).collaborators?.map((c: Collaborator) => (
+                            <div key={c.id} className="w-8 h-8 rounded-full bg-slate-400 border-2 border-white dark:border-slate-800 flex items-center justify-center text-[10px] text-white font-bold" title={c.user_email || 'Member'}>M</div>
+                        ))}
+                    </div>
+                </div>
               </div>
+            )}
+
+            {/* メンバー追加（招待）フォーム */}
+            {project && (project as any).role === 'owner' && (
+                <div className="pt-4 flex items-center gap-2">
+                    <input 
+                        type="email" 
+                        placeholder="メンバーのメールアドレスで招待..." 
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        className="flex-1 bg-white/30 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                    />
+                    <button 
+                        onClick={handleInvite}
+                        className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg transition-all"
+                    >
+                        <UserPlus size={18} />
+                    </button>
+                </div>
             )}
           </div>
 

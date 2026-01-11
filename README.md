@@ -63,6 +63,16 @@
 - **AI分解**: 入力された抽象的なタスクを、Google Gemini APIを活用して具体化・細分化。
 - **シームレスな登録**: 分解されたサブタスクを、現在のプロジェクト配下に一括で自動登録。
 
+### 5. 🔍 高速な全文検索
+必要な情報を瞬時に特定。
+- **リアルタイム検索**: タイトルや説明文から、プロジェクト横断でタスクを高速に検索。
+- **動的フィルタリング**: 検索結果をさらに優先度やステータスで絞り込み可能。
+
+### 6. 👥 チームコラボレーション
+プロジェクトを共有し、協力してタスクを遂行。
+- **プロジェクト招待**: メールアドレスを使用して、他ユーザーをプロジェクトに招待。
+- **権限管理**: 招待されたメンバーに '閲覧者' や '編集者' などの権限を付与可能。
+
 ---
 
 ## 🏗️ システムアーキテクチャ
@@ -101,14 +111,17 @@ graph TD
 
 ```mermaid
 erDiagram
-    USERS ||--o{ PROJECTS : "manages"
+    USERS ||--o{ PROJECTS : "owns"
     USERS ||--o{ TODOS : "owns"
     PROJECTS ||--o{ TODOS : "contains"
+    USERS ||--o{ PROJECT_COLLABORATORS : "participates"
+    PROJECTS ||--o{ PROJECT_COLLABORATORS : "has"
 
     USERS {
         int id PK
         string email UK
         string hashed_password
+        string role "admin, user"
         datetime created_at
     }
     PROJECTS {
@@ -117,6 +130,12 @@ erDiagram
         text description
         int owner_id FK
         datetime created_at
+    }
+    PROJECT_COLLABORATORS {
+        int id PK
+        int project_id FK
+        int user_id FK
+        string permission "viewer, editor"
     }
     TODOS {
         int id PK
@@ -133,9 +152,10 @@ erDiagram
 ```
 
 ### 主要テーブルの説明
-- **users**: システムの利用者情報を格納。`hashed_password` により安全にパスワードを管理します。
-- **projects**: 関連するタスクをグループ化する論理的なコンテナ。`owner_id` により所有者を特定します。
-- **todos**: 最小単位のタスク。`status`（進行状況）、`priority`（優先度）、`due_date`（期限）を保持し、柔軟な管理が可能です。`project_id` を任意に設定することで、プロジェクト所属・未所属の両方に対応します。
+- **users**: システムの利用者情報を格納。`hashed_password` による安全な管理に加え、`role` による権限管理（管理者/一般）をサポートします。
+- **projects**: 関連するタスクをグループ化するコンテナ。
+- **project_collaborators**: プロジェクトの共有情報を管理。特定のプロジェクトに対して複数のユーザーを招待し、権限を割り当てます。
+- **todos**: 最小単位のタスク。`status`, `priority`, `due_date` を保持し、詳細な管理が可能です。
 
 ---
 

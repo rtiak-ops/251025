@@ -32,6 +32,9 @@ export default function App() {
   
   // フィルター状態
   const [activeFilter, setActiveFilter] = useState<Filter | null>(null);
+
+  // 検索クエリ
+  const [searchQuery, setSearchQuery] = useState("");
   
   // テーマ（ライト/ダークモード）
   const [theme, setTheme] = useState<"light" | "dark">(() => {
@@ -56,8 +59,8 @@ export default function App() {
     data: todosData, 
     isLoading: isTodosLoading
   } = useQuery<Todo[]>({
-    queryKey: ["todos"],
-    queryFn: getTodos,
+    queryKey: ["todos", searchQuery],
+    queryFn: () => getTodos(searchQuery),
     enabled: !!token,
   });
   const allTodos = Array.isArray(todosData) ? todosData : [];
@@ -193,6 +196,11 @@ export default function App() {
       if (activeFilter.completed !== undefined && t.completed !== activeFilter.completed) return false;
     }
 
+    // 3. 検索クエリのチェック (フロントエンドでも念のため。サーバー側でもフィルタ済みだが)
+    if (searchQuery && !t.title.toLowerCase().includes(searchQuery.toLowerCase()) && !t.description?.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+    }
+
     return true;
   });
 
@@ -235,6 +243,26 @@ export default function App() {
 
       {/* メインコンテンツ: ビューに応じて切り替え */}
       <main className="flex-1 max-w-5xl mx-auto w-full">
+        {/* 上部検索バー */}
+        <div className="mb-6 relative">
+          <input 
+            type="text" 
+            placeholder="タスクを検索..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-2xl py-3 px-12 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium dark:text-white"
+          />
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+          {searchQuery && (
+            <button 
+                onClick={() => setSearchQuery("")}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+            >
+                ✕
+            </button>
+          )}
+        </div>
+
         {currentView === 'dashboard' ? (
           <DashboardView todos={allTodos} projects={projects} onFilterSelect={handleFilterSelect} />
         ) : (

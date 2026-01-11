@@ -74,6 +74,9 @@ class UserOut(UserBase):
     # ユーザーアカウントの作成日時
     created_at: datetime
     
+    # 役割
+    role: str
+
     # Pydantic V2方式: orm_modeの代替としてmodel_configを使用
     # これにより、SQLAlchemyのモデルオブジェクトから直接データを取得できる
     model_config = ConfigDict(from_attributes=True)
@@ -324,11 +327,25 @@ class ProjectUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
 
+class CollaboratorBase(BaseModel):
+    user_id: int
+    permission: str = "editor"
+
+class CollaboratorCreate(CollaboratorBase):
+    pass
+
+class CollaboratorOut(CollaboratorBase):
+    id: int
+    user_email: str | None = None # フロントエンド表示用
+    
+    model_config = ConfigDict(from_attributes=True)
+
 class ProjectOut(ProjectBase):
     id: int
     created_at: datetime
     updated_at: datetime
     owner_id: int
+    collaborators: list[CollaboratorOut] = []
     
     model_config = ConfigDict(from_attributes=True)
 

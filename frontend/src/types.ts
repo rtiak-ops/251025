@@ -60,6 +60,7 @@ export interface User {
   id: number;           // ユーザーID
   email: string;        // メールアドレス (ログインIDとして使用)
   created_at: string;   // アカウント作成日時
+  role: 'admin' | 'user'; // 役割
 }
 
 /**
@@ -84,9 +85,18 @@ export interface Project {
   owner_id: number;
 }
 
+export interface Collaborator {
+  id: number;
+  user_id: number;
+  user_email?: string;
+  permission: 'viewer' | 'editor';
+}
+
 export interface ProjectSummary extends Project {
   todo_count: number;
   completed_count: number;
+  role?: 'owner' | 'collaborator';
+  collaborators?: Collaborator[];
 }
 
 export interface CreateProjectData {

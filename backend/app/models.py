@@ -29,6 +29,9 @@ class User(Base):
     # アカウント作成日時: ユーザーが登録された日時を自動記録
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     
+    # 役割: 'admin' か 'user' (将来的に拡張可能)
+    role = Column(String(20), default="user", nullable=False)
+
     # リレーションシップ: このユーザーが所有するTodoアイテムへの参照
     # back_populates: Todoモデルの"owner"属性と双方向にリンク
     # cascade="all, delete-orphan": ユーザーが削除された場合、関連するTodoも自動的に削除される
@@ -36,6 +39,9 @@ class User(Base):
     
     # リレーションシップ: このユーザーが所有するプロジェクトへの参照
     projects = relationship("Project", back_populates="owner", cascade="all, delete-orphan")
+
+    # リレーションシップ: このユーザーが関係しているプロジェクト（コラボレーターとして）
+    collaborations = relationship("ProjectCollaborator", back_populates="user", cascade="all, delete-orphan")
 
 class Project(Base):
     """
@@ -57,6 +63,9 @@ class Project(Base):
     # リレーションシップ
     owner = relationship("User", back_populates="projects")
     todos = relationship("Todo", back_populates="project", cascade="all, delete-orphan")
+    
+    # リレーションシップ: このプロジェクトに参加している協力者
+    collaborators = relationship("ProjectCollaborator", back_populates="project", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Project(id={self.id}, name='{self.name}')>"

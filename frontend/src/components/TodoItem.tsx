@@ -123,13 +123,25 @@ export default function TodoItem({ todo, onChange }: Props) {
       </div>
 
       <div className="flex items-center gap-2 ml-4">
-        {/* 期限日表示：モバイルでは非表示にしてスッキリさせる */}
-        {todo.due_date && (
-          <div className="hidden md:flex items-center gap-1 text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg flex-shrink-0">
-            <Clock size={12} />
-            {new Date(todo.due_date).toLocaleDateString()}
-          </div>
-        )}
+        {/* 期限日表示：クリックして変更可能 */}
+        <div className="relative flex items-center gap-1 text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg flex-shrink-0 group/date">
+          <Clock size={12} />
+          <span>{todo.due_date ? new Date(todo.due_date).toLocaleDateString() : '期限なし'}</span>
+          <input
+            type="date"
+            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full [color-scheme:light] dark:[color-scheme:dark]"
+            value={todo.due_date ? todo.due_date.split('T')[0] : ""}
+            onChange={async (e) => {
+              try {
+                await updateTodo(todo.id, { due_date: e.target.value || undefined });
+                onChange();
+                toast.success("期限を更新しました");
+              } catch {
+                toast.error("期限の更新に失敗しました");
+              }
+            }}
+          />
+        </div>
         {/* 削除ボタン：ホバー時のみ表示 */}
         <button
           onClick={remove}

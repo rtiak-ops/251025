@@ -82,3 +82,38 @@ async def delete_project(
     if not deleted:
         raise HTTPException(status_code=404, detail="Project not found")
     return {"message": "Project deleted successfully"}
+
+@router.post("/{project_id}/collaborators", response_model=schemas.CollaboratorOut)
+async def add_collaborator(
+    project_id: int,
+    collaborator: schemas.CollaboratorCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: schemas.UserOut = Depends(get_current_user),
+):
+    """
+    プロジェクトにメンバーを追加します。
+    """
+    # 権限チェック: プロジェクトのオーナーのみがメンバーを追加可能
+    project = await crud.get_project_by_id(db, project_id=project_id, owner_id=current_user.id)
+    if not project:
+        raise HTTPException(status_code=403, detail="Only owners can add collaborators")
+    
+    return await crud.add_collaborator(db, project_id=project_id, collaborator=collaborator)
+
+@router.delete("/{project_id}/collaborators/{user_id}")
+async def remove_collaborator(
+    project_id: int,
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: schemas.UserOut = Depends(get_current_user),
+):
+    """
+    プロジェクトからメンバーを削除します。
+    """
+    # 権限チェック: プロジェクトのオーナーのみがメンバーを削除可能
+    project = await crud.get_project_by_id(db, project_id=project_id, owner_id=current_user.id)
+    if not project:
+        raise HTTPException(status_code=403, detail="Only owners can remove collaborators")
+    
+    await crud.remove_collaborator(db, project_id=project_id, user_id=user_id)
+    return {"message": "Collaborator removed"}

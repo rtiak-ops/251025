@@ -112,81 +112,91 @@ export default function TodoForm({ onAdd, initialProjectId }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div className="flex flex-col md:flex-row gap-4">
-        {/* 優先度選択ボタン群 */}
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      {/* 1段目: テキスト入力フィールド (タイトル) */}
+      <div className="relative group w-full">
+        <input
+          type="text"
+          className="w-full bg-white/70 dark:bg-slate-900/80 border-2 border-slate-300 dark:border-slate-500 rounded-2xl p-4 pl-12 text-lg focus:outline-none focus:border-indigo-500 transition-all placeholder:text-slate-400 dark:text-white"
+          placeholder={isAiLoading ? "AIがステップを生成しています..." : "新しいタスク名を入力..."} 
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          disabled={isLoading || isAiLoading}
+        />
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-6">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+        </div>
+      </div>
+
+      {/* 2段目: 優先度、締切、アクションボタンを横一列に配置 */}
+      <div className="flex flex-wrap items-center gap-3">
+        {/* 優先度選択 */}
+        <div className="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-xl border border-slate-300 dark:border-slate-600">
+          {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPriority(p)}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                priority === p
+                  ? 'bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-white'
+                  : 'text-slate-600 dark:text-white/70'
+              }`}
+            >
+              {p === 'LOW' && '低'}
+              {p === 'MEDIUM' && '中'}
+              {p === 'HIGH' && '高'}
+              {p === 'URGENT' && '至急'}
+            </button>
+          ))}
         </div>
 
-        {/* 期限入力（締切） */}
-        <div className="flex items-center bg-slate-200 dark:bg-slate-800 p-1.5 rounded-2xl md:w-auto h-fit border border-slate-300 dark:border-slate-600">
-          <div className="flex items-center gap-2 px-3 text-slate-500 dark:text-slate-400">
-            <Clock size={16} />
-            <span className="text-xs font-bold hidden sm:inline">締切:</span>
+        {/* 締切入力 */}
+        <div className="relative flex items-center bg-slate-200 dark:bg-slate-800 p-2 rounded-xl border border-slate-300 dark:border-slate-600 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors cursor-pointer min-w-[120px]">
+          <div className="flex items-center gap-2 px-1 text-slate-500 dark:text-slate-400 pointer-events-none w-full justify-center">
+            <Clock size={14} />
+            <span className="text-[10px] font-bold">
+              {dueDate ? new Date(dueDate).toLocaleDateString() : "締切を設定"}
+            </span>
           </div>
           <input
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className="bg-transparent text-xs font-bold text-slate-700 dark:text-white outline-none pr-2 [color-scheme:light] dark:[color-scheme:dark]"
+            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full [color-scheme:light] dark:[color-scheme:dark]"
           />
         </div>
 
-        {/* テキスト入力フィールド */}
-        <div className="relative group flex-1">
-          <input
-            type="text"
-            className="w-full bg-white/70 dark:bg-slate-900/80 border-2 border-slate-300 dark:border-slate-500 rounded-2xl p-4 pl-12 text-lg focus:outline-none focus:border-indigo-500 transition-all placeholder:text-slate-400 dark:text-white"
-            placeholder={isAiLoading ? "AIがステップを生成しています..." : "新しいタスク名を入力..."} 
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                // FormのonSubmit(handleSubmit)が自動で呼ばれるよう、デフォルトの動作に任せる
-                // (万が一のために明示的に何もしないことで標準挙動を担保)
-              }
-            }}
-            disabled={isLoading || isAiLoading}
-          />
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-            {/* プラスアイコン */}
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-          </div>
-        </div>
-      </div>
-      
-      {/* アクションボタンエリア */}
-      <div className="flex gap-3">
+        {/* スペーサー */}
+        <div className="flex-1 min-w-[10px]" />
+
         {/* AI分解ボタン */}
         <button
-            type="button"
-            onClick={handleAiBreakdown}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-4 rounded-2xl font-bold transition-all shadow-md ${
+          type="button"
+          onClick={handleAiBreakdown}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
             isInputEmpty || isLoading || isAiLoading
-                ? "bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:text-white/40 border border-transparent"
-                : "bg-white dark:bg-slate-800 text-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-500 hover:shadow-lg hover:scale-[1.02] active:scale-95"
-            }`}
-            disabled={isInputEmpty || isLoading || isAiLoading}
+              ? "bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-800"
+              : "bg-white dark:bg-slate-800 text-slate-700 dark:text-white border border-slate-200 dark:border-slate-500 hover:shadow-md"
+          }`}
+          disabled={isInputEmpty || isLoading || isAiLoading}
         >
-            {isAiLoading ? (
-              <span className="animate-pulse">✨ AIが思考中...</span>
-            ) : (
-              <><span className="text-xl">✨</span> AIで分解して追加</>
-            )}
+          {isAiLoading ? <span className="animate-pulse">✨ AI分解中...</span> : <><span className="text-sm">✨</span> AI分解</>}
         </button>
 
         {/* 通常追加ボタン */}
         <button
-            type="submit"
-            className={`flex-1 px-4 py-4 rounded-2xl font-bold transition-all shadow-md ${
+          type="submit"
+          className={`px-6 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
             isInputEmpty || isLoading || isAiLoading
-                ? "bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-white/40"
-                : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg hover:scale-[1.02] active:scale-95"
-            }`}
-            disabled={isInputEmpty || isLoading || isAiLoading}
+              ? "bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-700"
+              : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md"
+          }`}
+          disabled={isInputEmpty || isLoading || isAiLoading}
         >
-            {isLoading ? "送信中..." : "追加"}
+          {isLoading ? "中..." : "追加"}
         </button>
       </div>
     </form>

@@ -60,3 +60,19 @@ async def login(
     
     # 4. レスポンス：OAuth2 準拠の形式でトークンを返却
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/users", response_model=list[schemas.UserOut])
+async def search_users(
+    email: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: schemas.UserOut = Depends(auth.get_current_user)
+):
+    """
+    メンバー追加のためにユーザーをメールアドレスで検索します。
+    """
+    from sqlalchemy import select
+    from ..models import User
+    
+    stmt = select(User).where(User.email.ilike(f"%{email}%")).limit(5)
+    result = await db.execute(stmt)
+    return result.scalars().all()

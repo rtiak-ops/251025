@@ -76,6 +76,7 @@ jobs:
           echo "s3_bucket=$S3_BUCKET_NAME" >> $GITHUB_OUTPUT
 
           # 3. 配信ネットワークであるCloudFrontの情報を取得します。
+          echo "CloudFront の情報を取得中..."
           # 名前タグを使って確実にこのプロジェクトのCloudFrontを見つけます。
           CF_ARN=$(aws resourcegroupstaggingapi get-resources \
             --resource-type-filters cloudfront:distribution \
@@ -85,30 +86,36 @@ jobs:
           
           # タグで見つからない場合、または "None" という文字が返ってきた場合は、予備としてS3バケット名から検索します。
           if [ "$CF_ARN" == "None" ] || [ -z "$CF_ARN" ]; then
-            echo "警告: タグでCloudFrontが見つかりませんでした。S3バケット名から検索を試みます..."
+            echo "警告: タグ(Name=todo-app-cloudfront)でCloudFrontが見つかりませんでした。S3バケット名 ($S3_BUCKET_NAME) から検索を試みます..."
             CF_ID=$(aws cloudfront list-distributions \
               --query "DistributionList.Items[?Origins.Items[?contains(DomainName, '$S3_BUCKET_NAME')]].Id" \
               --output text | awk '{print $1}' | tr -d '\r\n ')
           else
             # ARN (arn:aws:cloudfront::...:distribution/ID) から ID 部分だけを取り出します。
-            # また、不要な改行や空白を削除（trim）します。
             CF_ID=$(echo "${CF_ARN##*/}" | tr -d '\r\n ')
+            echo "タグでCloudFrontを特定しました: $CF_ID"
           fi
           
           # CloudFrontの設定が見つからない場合はエラーにします。
           if [ "$CF_ID" == "None" ] || [ -z "$CF_ID" ] || [ "$CF_ID" == "null" ]; then
-            echo "エラー: 対象のCloudFrontが見つかりませんでした。タグ(todo-app-cloudfront) または S3バケット ($S3_BUCKET_NAME) のオリジン設定を確認してください。"
+            echo "エラー: 対象のCloudFrontが見つかりませんでした。"
+            echo "確認事項:"
+            echo "1. CloudFront に 'Name: todo-app-cloudfront' タグが設定されているか"
+            echo "2. S3バケット '$S3_BUCKET_NAME' が CloudFront のオリジンとして設定されているか"
             exit 1
           fi
           
-          echo "取得した CloudFront ID: [$CF_ID]"
+          echo "使用する CloudFront ID: [$CF_ID]"
           
-          # CloudFrontのドメイン名（URLの基になるもの）を取得します。
+          # CloudFrontのドメイン名を取得して存在確認を兼ねます。
           CF_DOMAIN=$(aws cloudfront get-distribution --id "$CF_ID" --query "Distribution.DomainName" --output text | tr -d '\r\n ')
           
-          # 取得したドメイン名とIDを後のステップで使えるように保存します。
+          if [ -z "$CF_DOMAIN" ] || [ "$CF_DOMAIN" == "None" ]; then
+            echo "エラー: CloudFront ID [$CF_ID] の情報を取得できませんでした。存在するか確認してください。"
+            exit 1
+          fi
+          
           echo "CloudFront Domain: $CF_DOMAIN"
-          echo "CloudFront ID: $CF_ID"
           echo "cf_domain=$CF_DOMAIN" >> $GITHUB_OUTPUT
           echo "cf_id=$CF_ID" >> $GITHUB_OUTPUT
 

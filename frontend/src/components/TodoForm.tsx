@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createTodo, breakdownTask } from "../api";
 import { toast } from "react-hot-toast";
+import { Clock } from "lucide-react";
 
 interface Props {
   /** 親コンポーネントでTODOリストを再取得（更新）するためのコールバック関数 */
@@ -33,6 +34,9 @@ export default function TodoForm({ onAdd, initialProjectId }: Props) {
   /** 優先度の選択状態 (デフォルトは「中」) */
   const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
 
+  /** 期限（締切）の選択状態 */
+  const [dueDate, setDueDate] = useState("");
+
   /** 入力バリデーション: 空文字、またはスペースのみの場合は操作を無効化する */
   const isInputEmpty = !title.trim();
 
@@ -52,11 +56,13 @@ export default function TodoForm({ onAdd, initialProjectId }: Props) {
         title, 
         priority, 
         project_id: initialProjectId, // どのプロジェクト配下に追加するか
-        status: 'TODO'
+        status: 'TODO',
+        due_date: dueDate || undefined
       });
       
       setTitle(""); // 入力欄のリセット
       setPriority('MEDIUM');
+      setDueDate("");
       onAdd();      // 親側のデータを再取得
       toast.success("タスクを追加しました！", { id: toastId });
     } catch (error) {
@@ -87,12 +93,14 @@ export default function TodoForm({ onAdd, initialProjectId }: Props) {
           title: subtaskTitle, 
           priority, 
           project_id: initialProjectId,
-          status: 'TODO'
+          status: 'TODO',
+          due_date: dueDate || undefined
         });
       }
       
       setTitle("");
       setPriority('MEDIUM');
+      setDueDate("");
       onAdd();
       toast.success("AIがタスクを分解しました！", { id: toastId });
     } catch (error) {
@@ -107,24 +115,20 @@ export default function TodoForm({ onAdd, initialProjectId }: Props) {
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row gap-4">
         {/* 優先度選択ボタン群 */}
-        <div className="flex bg-slate-200 dark:bg-slate-800 p-1.5 rounded-2xl md:w-auto h-fit border border-slate-300 dark:border-slate-600">
-          {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPriority(p)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                priority === p
-                  ? 'bg-white dark:bg-slate-600 shadow-md text-indigo-600 dark:text-white border border-slate-300 dark:border-slate-500'
-                  : 'text-slate-600 hover:text-slate-800 dark:text-white/70 dark:hover:text-white'
-              }`}
-            >
-              {p === 'LOW' && '低'}
-              {p === 'MEDIUM' && '中'}
-              {p === 'HIGH' && '高'}
-              {p === 'URGENT' && '至急'}
-            </button>
-          ))}
+        </div>
+
+        {/* 期限入力（締切） */}
+        <div className="flex items-center bg-slate-200 dark:bg-slate-800 p-1.5 rounded-2xl md:w-auto h-fit border border-slate-300 dark:border-slate-600">
+          <div className="flex items-center gap-2 px-3 text-slate-500 dark:text-slate-400">
+            <Clock size={16} />
+            <span className="text-xs font-bold hidden sm:inline">締切:</span>
+          </div>
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className="bg-transparent text-xs font-bold text-slate-700 dark:text-white outline-none pr-2 [color-scheme:light] dark:[color-scheme:dark]"
+          />
         </div>
 
         {/* テキスト入力フィールド */}

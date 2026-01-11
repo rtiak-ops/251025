@@ -235,6 +235,18 @@ GitHubのリポジトリ設定（Settings > Secrets and variables > Actions）�
 | `EC2_HOST` | EC2のパブリックIP（動的取得に失敗する場合の予備） |
 | `GOOGLE_API_KEY` | Gemini APIキー |
 
+#### 💡 運用時の Tips (CloudFront の IP 同期)
+このプロジェクトを個人の学習用などで **「毎日 EC2 と RDS を停止・起動」** して運用する場合、以下の点に注意してください。
+
+- **現象**: EC2 を再起動すると、パブリック IP アドレスが変わることがあります。このとき、CloudFront の接続先（Origin）が古い IP のままになり、サイトが表示されなくなる場合があります。
+- **解決策**: EC2 を起動した後、ローカルで以下のコマンドを 1 回実行してください。
+  ```bash
+  cd terraform
+  terraform apply
+  ```
+- **何が起きるか**: Terraform が最新の EC2 の IP アドレスを自動的に検知し、CloudFront の設定を現在の正しい IP へと更新してくれます。EC2 本体の再作成などは発生しません。
+- **もっと楽にするには**: 運用の頻度が高い場合は、EC2 に `Elastic IP`（固定 IP）を割り当てることで、この手動更新の手順を不要にできます（※AWS の追加料金がかかる場合があります）。
+
 #### ④ デプロイ
 `main` または `develop` ブランチにコードを `push` すると、自動的にフロントエンド（S3/CloudFront）とバックエンド（EC2/Docker）が更新されます。
 

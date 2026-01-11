@@ -91,6 +91,27 @@ resource "aws_cloudfront_distribution" "main" {              # 配信システ�
     max_ttl                = 0
   }                                                          # ルール2終了
 
+  ordered_cache_behavior {                                   # プロジェクトデータ用のルールです
+    path_pattern     = "/projects/*"                         # 「/projects/」で始まる通信です
+    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "EC2-${aws_instance.app.id}"          # サーバーに繋げます
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Authorization", "Content-Type", "Origin", "Host"]
+
+      cookies {
+        forward = "all"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+    min_ttl                = 0
+    default_ttl            = 0
+    max_ttl                = 0
+  }                                                          # ルール4終了
+
   ordered_cache_behavior {                                   # AI機能用のルールです
     path_pattern     = "/ai/*"                               # 「/ai/」で始まる通信です
     allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]

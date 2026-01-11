@@ -162,7 +162,7 @@ jobs:
 
       # バックエンドを動かしているEC2サーバーへ接続し、中身を更新します。
       - name: EC2へデプロイ
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.4
         # SSH先で使いたい値を環境変数として定義します。
         env:
           APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}

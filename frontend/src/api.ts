@@ -9,6 +9,7 @@ import type {
   CreateProjectData,
   UpdateProjectData,
   ProjectSummary,
+  Collaborator,
 } from "./types";
 
 // ============================================================================
@@ -314,7 +315,7 @@ export const deleteProject = async (id: number): Promise<void> => {
   await api.delete(`/projects/${id}`);
 };
 
-export const addCollaborator = async (projectId: number, userId: number, permission: string = "editor"): Promise<any> => {
+export const addCollaborator = async (projectId: number, userId: number, permission: string = "editor"): Promise<Collaborator> => {
   const res = await api.post(`/projects/${projectId}/collaborators`, { user_id: userId, permission });
   return res.data;
 };

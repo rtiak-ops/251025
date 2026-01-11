@@ -116,7 +116,7 @@ export default function ProjectTasksView({
             )}
 
             {/* メンバー追加（招待）フォーム */}
-            {project && (project as any).role === 'owner' && (
+            {project && (project as ProjectSummary).role === 'owner' && (
                 <div className="pt-4 flex items-center gap-2">
                     <input 
                         type="email" 

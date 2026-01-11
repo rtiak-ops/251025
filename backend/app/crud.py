@@ -369,10 +369,11 @@ async def get_projects(db: AsyncSession, owner_id: int) -> list[models.Project]:
     # 和集合的な取得 (実際にはSQLでUnionしたりできますが、ここではシンプルに)
     # SQLAlchemyのUnionを使用
     from sqlalchemy import union_all
+    from sqlalchemy.orm import selectinload
     complete_stmt = select(models.Project).where(
         (models.Project.owner_id == owner_id) | 
         (models.Project.id.in_(collab_stmt))
-    ).order_by(models.Project.created_at.desc())
+    ).options(selectinload(models.Project.collaborators).selectinload(models.ProjectCollaborator.user)).order_by(models.Project.created_at.desc())
 
     result = await db.execute(complete_stmt)
     return result.scalars().all()
@@ -443,6 +444,16 @@ async def get_project_summaries(db: AsyncSession, owner_id: int):
         # 自分の役割（オーナーかコラボレーターか）を判定
         role = "owner" if p.owner_id == owner_id else "collaborator"
 
+        # コラボレーター一覧を整形
+        collaborators_out = []
+        for c in p.collaborators:
+            collaborators_out.append({
+                "id": c.id,
+                "user_id": c.user_id,
+                "permission": c.permission,
+                "user_email": c.user.email if c.user else None
+            })
+
         # schemas.ProjectSummary に基づく辞書データを作成
         summary = {
             "id": p.id,
@@ -453,7 +464,8 @@ async def get_project_summaries(db: AsyncSession, owner_id: int):
             "owner_id": p.owner_id,
             "todo_count": todo_count,
             "completed_count": completed_count,
-            "role": role # 追加情報
+            "role": role,
+            "collaborators": collaborators_out
         }
         summaries.append(summary)
         

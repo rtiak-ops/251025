@@ -6,7 +6,6 @@ from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, T
 from sqlalchemy.orm import relationship
 
 from .database import Base  # Baseクラスが定義されている場所に応じてインポート
-# from your_project_name.database import Base # 例: プロジェクト名を使った絶対インポート推奨
 
 class User(Base):
     """
@@ -142,3 +141,21 @@ class Todo(Base):
     # デバッグやログ出力で役立つ表現メソッド
     def __repr__(self):
         return f"<Todo(id={self.id}, title='{self.title}', completed={self.completed})>"
+
+class ProjectCollaborator(Base):
+    """
+    プロジェクト協力者モデル（データベーステーブル: project_collaborators）
+    プロジェクトごとの細かい権限管理を行います。
+    """
+    __tablename__ = "project_collaborators"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    # 権限: 'viewer' (閲覧のみ), 'editor' (編集可能)
+    permission = Column(String(20), default="editor", nullable=False)
+
+    # リレーションシップ
+    project = relationship("Project", back_populates="collaborators")
+    user = relationship("User", back_populates="collaborations")

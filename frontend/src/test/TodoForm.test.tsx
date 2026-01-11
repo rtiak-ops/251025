@@ -65,8 +65,13 @@ describe('TodoForm', () => {
       </QueryClientProvider>
     )
 
-    const input = screen.getByPlaceholderText(/新しいタスク名を入力/i)
-    const button = screen.getByRole('button', { name: /^追加$/ })
+    const input = screen.getByPlaceholderText(/新しいタスクをクイック追加/i)
+    
+    // フォームを展開するためにインプットをフォーカス
+    await user.click(input)
+    
+    // 展開されるのを待つ（または展開後にボタンが表示される）
+    const button = screen.getByRole('button', { name: /タスクを追加/i })
 
     await user.type(input, 'テストタスク')
     await user.click(button)
@@ -89,7 +94,10 @@ describe('TodoForm', () => {
       </QueryClientProvider>
     )
 
-    const button = screen.getByRole('button', { name: /^追加$/ })
+    const input = screen.getByPlaceholderText(/新しいタスクをクイック追加/i)
+    await user.click(input)
+    
+    const button = screen.getByRole('button', { name: /タスクを追加/i })
     await user.click(button)
 
     expect(mockOnAdd).not.toHaveBeenCalled()
@@ -110,13 +118,16 @@ describe('TodoForm', () => {
       </QueryClientProvider>
     )
 
-    const input = screen.getByPlaceholderText(/新しいタスク名を入力/i)
-    const button = screen.getByRole('button', { name: /^追加$/ })
+    const input = screen.getByPlaceholderText(/新しいタスクをクイック追加/i)
+    await user.click(input)
+    
+    const button = screen.getByRole('button', { name: /タスクを追加/i })
 
     await user.type(input, '待機テスト')
     await user.click(button)
 
-    // ボタンが disabled になっていることを確認
-    expect(button).toBeDisabled()
+    // 送信中表示に切り替わり、disabled になっていることを確認
+    const loadingButton = screen.getByRole('button', { name: /保存中/i })
+    expect(loadingButton).toBeDisabled()
   })
 })

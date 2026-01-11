@@ -132,7 +132,7 @@ export default function ProjectTasksView({
                     <span className="text-xs font-bold">メンバー管理</span>
                     <div className="flex -space-x-2 ml-1">
                         <div className="w-6 h-6 rounded-full bg-indigo-500 border border-white dark:border-slate-800 flex items-center justify-center text-[8px] text-white font-bold" title="Owner">O</div>
-                        {project.collaborators?.slice(0, 3).map((c: any) => (
+                        {project.collaborators?.slice(0, 3).map((c: Collaborator) => (
                             <div key={c.id} className="w-6 h-6 rounded-full bg-slate-400 border border-white dark:border-slate-800 flex items-center justify-center text-[8px] text-white font-bold" title={c.user_email || 'Member'}>M</div>
                         ))}
                     </div>

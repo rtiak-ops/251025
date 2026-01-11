@@ -19,8 +19,13 @@ export default function TodoItem({ todo, onChange }: Props) {
   const handleDatePicker = () => {
     const input = dateInputRef.current;
     if (!input) return;
-    if ('showPicker' in input && typeof (input as any).showPicker === 'function') {
-      try { (input as any).showPicker(); } catch { input.click(); }
+    const pickerInput = input as HTMLInputElement & { showPicker?: () => void };
+    if (typeof pickerInput.showPicker === 'function') {
+      try {
+        pickerInput.showPicker();
+      } catch {
+        input.click();
+      }
     } else {
       input.click();
     }

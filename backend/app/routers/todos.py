@@ -16,7 +16,7 @@ from __future__ import annotations  # Python 3.10+: 型ヒントの前方参照�
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import crud, schemas
+from .. import crud, schemas, crud_audit
 from ..auth import get_current_user
 from ..database import get_db
 
@@ -88,6 +88,17 @@ async def create_todo(
     # crudモジュールの非同期関数を呼び出し、ToDoアイテムを作成
     # owner_idを指定することで、ログインユーザーのToDoとして作成
     new_todo = await crud.create_todo(db, todo=todo, owner_id=current_user.id)
+    
+    # 監査ログを記録
+    await crud_audit.create_audit_log(
+        db, 
+        user_id=current_user.id, 
+        action="CREATE", 
+        resource_type="TODO", 
+        resource_id=new_todo.id,
+        details={"title": new_todo.title}
+    )
+    
     return new_todo  # 作成されたToDoアイテムを返す
 
 
@@ -140,6 +151,17 @@ async def update_todo(
             status_code=status.HTTP_404_NOT_FOUND,  # 404 Not Found
             detail=f"Todo with id {todo_id} not found"  # 詳細なエラーメッセージ
         )
+    
+    # 監査ログを記録
+    await crud_audit.create_audit_log(
+        db, 
+        user_id=current_user.id, 
+        action="UPDATE", 
+        resource_type="TODO", 
+        resource_id=updated.id,
+        details=todo.model_dump(exclude_unset=True)
+    )
+
     return updated  # 更新されたToDoアイテムを返す
 
 
@@ -188,6 +210,16 @@ async def delete_todo(
             status_code=status.HTTP_404_NOT_FOUND,  # 404 Not Found
             detail=f"Todo with id {todo_id} not found"  # 詳細なエラーメッセージ
         )
+    
+    # 監査ログを記録
+    await crud_audit.create_audit_log(
+        db, 
+        user_id=current_user.id, 
+        action="DELETE", 
+        resource_type="TODO", 
+        resource_id=todo_id
+    )
+
     # 削除成功メッセージを返す
     return {"message": "Deleted successfully", "todo_id": todo_id}
 

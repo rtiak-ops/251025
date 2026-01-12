@@ -378,14 +378,55 @@ async def get_projects(db: AsyncSession, owner_id: int) -> list[models.Project]:
     result = await db.execute(complete_stmt)
     return result.scalars().all()
 
-async def get_project_by_id(db: AsyncSession, project_id: int, owner_id: int) -> models.Project | None:
+async def get_project_by_id(db: AsyncSession, project_id: int, user_id: int) -> models.Project | None:
     """
-    指定されたIDのプロジェクトを取得する関数
+    指定されたIDのプロジェクトを取得する関数。
+    閲覧権限（オーナーまたはコラボレーター）があるかを確認します。
     """
-    result = await db.execute(
-        select(models.Project).where(models.Project.id == project_id, models.Project.owner_id == owner_id)
+    from sqlalchemy.orm import selectinload
+    stmt = (
+        select(models.Project)
+        .where(models.Project.id == project_id)
+        .options(selectinload(models.Project.collaborators))
     )
-    return result.scalar_one_or_none()
+    result = await db.execute(stmt)
+    project = result.scalar_one_or_none()
+
+    if not project:
+        return None
+    
+    # オーナー確認
+    if project.owner_id == user_id:
+        return project
+    
+    # コラボレーター確認
+    is_collab = any(c.user_id == user_id for c in project.collaborators)
+    if is_collab:
+        return project
+        
+    return None
+
+async def is_project_editor(db: AsyncSession, project_id: int, user_id: int) -> bool:
+    """
+    ユーザーにプロジェクトの編集権限（オーナーまたは'editor'権限のコラボレーター）があるか確認します。
+    """
+    stmt = select(models.Project).where(models.Project.id == project_id)
+    result = await db.execute(stmt)
+    project = result.scalar_one_or_none()
+    
+    if not project:
+        return False
+    
+    if project.owner_id == user_id:
+        return True
+        
+    collab_stmt = select(models.ProjectCollaborator).where(
+        models.ProjectCollaborator.project_id == project_id,
+        models.ProjectCollaborator.user_id == user_id,
+        models.ProjectCollaborator.permission == "editor"
+    )
+    collab_result = await db.execute(collab_stmt)
+    return collab_result.scalar_one_or_none() is not None
 
 async def create_project(db: AsyncSession, project: schemas.ProjectCreate, owner_id: int) -> models.Project:
     """
@@ -397,11 +438,18 @@ async def create_project(db: AsyncSession, project: schemas.ProjectCreate, owner
     await db.refresh(db_project)
     return db_project
 
-async def update_project(db: AsyncSession, project_id: int, project: schemas.ProjectUpdate, owner_id: int) -> models.Project | None:
+async def update_project(db: AsyncSession, project_id: int, project: schemas.ProjectUpdate, user_id: int) -> models.Project | None:
     """
-    プロジェクトを更新する関数
+    プロジェクトを更新する関数（編集権限チェック付き）
     """
-    db_project = await get_project_by_id(db, project_id, owner_id)
+    # 編集権限があるか確認
+    if not await is_project_editor(db, project_id, user_id):
+        return None
+        
+    stmt = select(models.Project).where(models.Project.id == project_id)
+    result = await db.execute(stmt)
+    db_project = result.scalar_one_or_none()
+    
     if not db_project:
         return None
     
@@ -413,11 +461,14 @@ async def update_project(db: AsyncSession, project_id: int, project: schemas.Pro
     await db.refresh(db_project)
     return db_project
 
-async def delete_project(db: AsyncSession, project_id: int, owner_id: int) -> models.Project | None:
+async def delete_project(db: AsyncSession, project_id: int, user_id: int) -> models.Project | None:
     """
-    プロジェクトを削除する関数
+    プロジェクトを削除する関数（オーナーのみ許可）
     """
-    db_project = await get_project_by_id(db, project_id, owner_id)
+    stmt = select(models.Project).where(models.Project.id == project_id, models.Project.owner_id == user_id)
+    result = await db.execute(stmt)
+    db_project = result.scalar_one_or_none()
+    
     if db_project:
         await db.delete(db_project)
         await db.commit()

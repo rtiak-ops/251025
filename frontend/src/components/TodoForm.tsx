@@ -8,17 +8,27 @@ interface Props {
   initialProjectId?: number;
 }
 
+/**
+ * 【タスク作成フォーム】
+ * 新しいタスクを追加するためのフォームです。
+ * クイック追加（タイトルのみ）と、詳細入力（説明、優先度、期限）の2つのモードがあります。
+ * また、AIによるタスク分解機能（ひとつの大きなタスクを小分けにする）も搭載しています。
+ */
 export default function TodoForm({ onAdd, initialProjectId }: Props) {
+  // --- 状態管理 (State) ---
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
   const [dueDate, setDueDate] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);       // 通常の保存中フラグ
+  const [isAiLoading, setIsAiLoading] = useState(false);   // AI処理中フラグ
+  const [isExpanded, setIsExpanded] = useState(false);     // フォーム展開フラグ
   
   const dateInputRef = useRef<HTMLInputElement>(null);
 
+  /**
+   * ブラウザ標準のデイトピッカーを表示するためのヘルパー
+   */
   const handleDatePicker = () => {
     const input = dateInputRef.current;
     if (!input) return;
@@ -34,6 +44,9 @@ export default function TodoForm({ onAdd, initialProjectId }: Props) {
     }
   };
 
+  /**
+   * 通常のタスク保存処理
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || isLoading || isAiLoading) return;
@@ -42,6 +55,7 @@ export default function TodoForm({ onAdd, initialProjectId }: Props) {
     const toastId = toast.loading("タスクを保存中...");
 
     try {
+      // APIを介してDBに保存
       await createTodo({ 
         title: title.trim(), 
         description: description.trim() || undefined,
@@ -51,12 +65,13 @@ export default function TodoForm({ onAdd, initialProjectId }: Props) {
         due_date: dueDate || undefined
       });
       
+      // 保存成功後のリセット処理
       setTitle("");
       setDescription("");
       setPriority('MEDIUM');
       setDueDate("");
       setIsExpanded(false);
-      onAdd();
+      onAdd(); // 親コンポーネントに通知してリストを再描画
       toast.success("タスクを保存しました", { id: toastId });
     } catch {
       toast.error("保存に失敗しました", { id: toastId });
@@ -65,13 +80,20 @@ export default function TodoForm({ onAdd, initialProjectId }: Props) {
     }
   };
 
+  /**
+   * AIによるタスク分解処理
+   * 入力されたタイトルをもとに、具体的なサブタスクのリストを生成して保存します。
+   */
   const handleAiBreakdown = async () => {
     if (!title.trim() || isAiLoading) return;
     setIsAiLoading(true);
     const toastId = toast.loading("AIがタスクを分解中...", { icon: "✨" });
 
     try {
+      // 1. AI(Gemini)にタスクの分解を依頼
       const subtasks = await breakdownTask(title);
+      
+      // 2. 生成された各サブタスクを順次保存
       for (const subtaskTitle of subtasks) {
         await createTodo({ 
           title: subtaskTitle, 
@@ -82,6 +104,7 @@ export default function TodoForm({ onAdd, initialProjectId }: Props) {
         });
       }
       
+      // 3. フォームをクリアして最新状態を取得
       setTitle("");
       setDescription("");
       setDueDate("");

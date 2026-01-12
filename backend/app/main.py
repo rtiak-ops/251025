@@ -21,7 +21,7 @@ from slowapi.util import get_remote_address  # Rate Limiting
 
 # アプリケーション固有のモジュールをインポート
 from .database import Base, engine  # データベース接続エンジンと、モデルのベースクラスをインポート
-from .routers import ai, auth, todos, projects  # ToDo関連のエンドポイント（ルーター）をインポート
+from .routers import ai, auth, todos, projects, admin, monitor
 
 # ----------------------------------------------------------------------
 # 0. ロギングとセキュリティ設定
@@ -163,6 +163,29 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
+# 【パフォーマンス監視ミドルウェア】
+# 各リクエストの処理時間を計測し、ログに出力します。
+# どのAPIが重いのか、ボトルネックはどこかを特定するために非常に重要です。
+import time
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        start_time = time.time()
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        
+        # 構造化ログとして出力
+        logger.info(
+            f"API Request: {request.method} {request.url.path}",
+            extra={
+                "method": request.method,
+                "path": request.url.path,
+                "process_time_ms": round(process_time * 1000, 2),
+                "status_code": response.status_code
+            }
+        )
+        return response
+
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
 # 【CORS (Cross-Origin Resource Sharing) の設定】
@@ -203,3 +226,5 @@ app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(todos.router)
 app.include_router(ai.router)
+app.include_router(admin.router)
+app.include_router(monitor.router)

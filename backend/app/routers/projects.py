@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import crud, schemas
+from .. import crud, schemas, crud_audit
 from ..auth import get_current_user
 from ..database import get_db
 
@@ -35,10 +35,19 @@ async def create_project(
     db: AsyncSession = Depends(get_db),
     current_user: schemas.UserOut = Depends(get_current_user),
 ) -> schemas.ProjectOut:
-    """
-    新しいプロジェクトを作成します。
-    """
-    return await crud.create_project(db, project=project, owner_id=current_user.id)
+    new_project = await crud.create_project(db, project=project, owner_id=current_user.id)
+    
+    # 監査ログを記録
+    await crud_audit.create_audit_log(
+        db, 
+        user_id=current_user.id, 
+        action="CREATE", 
+        resource_type="PROJECT", 
+        resource_id=new_project.id,
+        details={"name": new_project.name}
+    )
+    
+    return new_project
 
 @router.get("/{project_id}", response_model=schemas.ProjectOut)
 async def read_project(
@@ -61,12 +70,20 @@ async def update_project(
     db: AsyncSession = Depends(get_db),
     current_user: schemas.UserOut = Depends(get_current_user),
 ) -> schemas.ProjectOut:
-    """
-    指定されたIDのプロジェクトを更新します。
-    """
     updated = await crud.update_project(db, project_id=project_id, project=project, owner_id=current_user.id)
     if updated is None:
         raise HTTPException(status_code=404, detail="Project not found")
+    
+    # 監査ログを記録
+    await crud_audit.create_audit_log(
+        db, 
+        user_id=current_user.id, 
+        action="UPDATE", 
+        resource_type="PROJECT", 
+        resource_id=updated.id,
+        details=project.model_dump(exclude_unset=True)
+    )
+    
     return updated
 
 @router.delete("/{project_id}")
@@ -75,12 +92,19 @@ async def delete_project(
     db: AsyncSession = Depends(get_db),
     current_user: schemas.UserOut = Depends(get_current_user),
 ):
-    """
-    指定されたIDのプロジェクトを削除します。
-    """
     deleted = await crud.delete_project(db, project_id=project_id, owner_id=current_user.id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Project not found")
+    
+    # 監査ログを記録
+    await crud_audit.create_audit_log(
+        db, 
+        user_id=current_user.id, 
+        action="DELETE", 
+        resource_type="PROJECT", 
+        resource_id=project_id
+    )
+    
     return {"message": "Project deleted successfully"}
 
 @router.post("/{project_id}/collaborators", response_model=schemas.CollaboratorOut)

@@ -356,3 +356,17 @@ class ProjectSummary(ProjectOut):
     todo_count: int = 0
     completed_count: int = 0
     role: str | None = None
+class AuditLogOut(BaseModel):
+    """
+    監査ログ出力用スキーマ
+    """
+    id: int
+    user_id: int | None
+    user_email: str | None = None
+    action: str
+    resource_type: str
+    resource_id: int | None
+    details: str | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

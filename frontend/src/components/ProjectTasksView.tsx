@@ -21,6 +21,11 @@ interface ProjectTasksViewProps {
   currentUser?: User;
 }
 
+/**
+ * 【プロジェクト＆タスク一覧ビュー】
+ * 特定のプロジェクトに所属するタスク、または全タスクを一覧表示するメインコンポーネントです。
+ * ドラッグ＆ドロップによる並び替え、メンバーの招待・削除、プロジェクトの編集・削除などの機能を持ちます。
+ */
 export default function ProjectTasksView({
   project,
   todos,
@@ -33,9 +38,14 @@ export default function ProjectTasksView({
   onClearFilter,
   currentUser
 }: ProjectTasksViewProps) {
+  // 招待するユーザーのメールアドレス入力状態
   const [inviteEmail, setInviteEmail] = useState("");
+  // メンバー管理パネルの表示/非表示状態
   const [showMembers, setShowMembers] = useState(false);
 
+  /**
+   * メンバーをプロジェクトに招待するハンドラ
+   */
   const handleInvite = async () => {
     if (!project) return;
     if (!inviteEmail.trim()) {
@@ -44,6 +54,7 @@ export default function ProjectTasksView({
     }
     
     try {
+      // 1. 入力されたメールアドレスでユーザーを検索
       const users = await searchUsers(inviteEmail);
       const user = users.find(u => u.email === inviteEmail);
       
@@ -52,15 +63,19 @@ export default function ProjectTasksView({
         return;
       }
 
+      // 2. 見つかったユーザーをコラボレーターとして追加
       await addCollaborator(project.id, user.id, 'editor');
       toast.success(`${inviteEmail} を招待しました`);
       setInviteEmail("");
-      onDataChange();
+      onDataChange(); // 親コンポーネントに通知してリストを更新
     } catch {
       toast.error("招待に失敗しました");
     }
   };
 
+  /**
+   * メンバーをプロジェクトから削除するハンドラ
+   */
   const handleRemoveMember = async (userId: number) => {
     if (!project) return;
     if (!window.confirm("このメンバーをプロジェクトから削除しますか？")) return;
@@ -74,10 +89,12 @@ export default function ProjectTasksView({
     }
   };
 
+  // 現在のユーザーがこのプロジェクトのオーナーかどうかを判定
   const isOwner = (project as ProjectSummary)?.role === 'owner';
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* プロジェクト詳細・操作セクション */}
       <div className="glass p-8 rounded-3xl">
         <div className="flex flex-col lg:flex-row gap-8 items-start">
           <div className="flex-1 space-y-4">
@@ -88,6 +105,7 @@ export default function ProjectTasksView({
               <div>
                 <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-1 flex items-center gap-3 flex-wrap">
                   {project ? project.name : 'すべてのタスク'}
+                  {/* アフィティブなフィルタ（ダッシュボード等から遷移時）がある場合に表示 */}
                   {activeFilter && (
                     <span className="text-sm font-medium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-800 flex items-center gap-2">
                       {activeFilter.label}
@@ -103,6 +121,7 @@ export default function ProjectTasksView({
 
             {project && (
               <div className="flex flex-wrap items-center gap-3 pt-2">
+                {/* オーナー権限がある場合のみ、編集・削除ボタンを表示 */}
                 {isOwner && (
                   <>
                     <button 
@@ -120,6 +139,7 @@ export default function ProjectTasksView({
                   </>
                 )}
 
+                {/* メンバー管理トグルボタン */}
                 <button 
                   onClick={() => setShowMembers(!showMembers)}
                   className={`flex items-center gap-2 ml-4 px-4 py-2 rounded-xl border transition-all ${
@@ -130,6 +150,7 @@ export default function ProjectTasksView({
                 >
                     <Users size={16} />
                     <span className="text-xs font-bold">メンバー管理</span>
+                    {/* メンバーのアイコンスタック */}
                     <div className="flex -space-x-2 ml-1">
                         <div className="w-6 h-6 rounded-full bg-indigo-500 border border-white dark:border-slate-800 flex items-center justify-center text-[8px] text-white font-bold" title="Owner">O</div>
                         {project.collaborators?.slice(0, 3).map((c: Collaborator) => (

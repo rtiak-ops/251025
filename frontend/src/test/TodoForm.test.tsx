@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import TodoForm from '../components/TodoForm'
 
-// 1. api.ts のモック化 (axios本体ではなく、作成したapiインスタンスと関数を操作)
+/**
+ * api.ts のモック化
+ * 実際のバックエンドAPIを呼び出さずに、テスト用の偽の動作（モック）を定義します。
+ */
 vi.mock('../api', () => {
   const mockApi = {
     post: vi.fn(),
@@ -33,9 +36,13 @@ vi.mock('../api', () => {
   }
 })
 
-// モック化された各関数を取得するためのヘルパー
+// モック化された api 関数の型安全なアクセスのためのインポート
 import { createTodo as mockCreateTodo } from '../api'
 
+/**
+ * テスト用の React Query クライアントを作成するヘルパー関数
+ * テスト間での状態干渉を避けるため、クエリの再試行（retry）をオフに設定しています。
+ */
 const createTestQueryClient = () =>
   new QueryClient({
     defaultOptions: {
@@ -44,20 +51,34 @@ const createTestQueryClient = () =>
     },
   })
 
-describe('TodoForm', () => {
+describe('TodoForm コンポーネントのテスト', () => {
   let queryClient: QueryClient
 
+  // 各テストの実行前にクリーンアップと初期化を行う
   beforeEach(() => {
     queryClient = createTestQueryClient()
-    vi.clearAllMocks()
+    vi.clearAllMocks() // 前のテストの呼び出し履歴をリセット
   })
 
   it('タスクを入力して送信できる', async () => {
+    // 成功時のコールバックのモック
     const mockOnAdd = vi.fn().mockResolvedValue({})
-    // 2. createTodo が成功するように設定
-    vi.mocked(mockCreateTodo).mockResolvedValue({ id: 1, title: 'テストタスク', description: '', completed: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), owner_id: 1, order: 0, status: 'TODO', priority: 'MEDIUM' })
+    
+    // API呼び出しの結果をあらかじめ定義（正常終了をシミュレート）
+    vi.mocked(mockCreateTodo).mockResolvedValue({ 
+      id: 1, 
+      title: 'テストタスク', 
+      description: '', 
+      completed: false, 
+      created_at: new Date().toISOString(), 
+      updated_at: new Date().toISOString(), 
+      owner_id: 1, 
+      order: 0, 
+      status: 'TODO', 
+      priority: 'MEDIUM' 
+    })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup() // ユーザー操作をシミュレートするためのセットアップ
 
     render(
       <QueryClientProvider client={queryClient}>
@@ -65,22 +86,25 @@ describe('TodoForm', () => {
       </QueryClientProvider>
     )
 
+    // 入力フィールドを取得
     const input = screen.getByPlaceholderText(/新しいタスクをクイック追加/i)
     
-    // フォームを展開するためにインプットをフォーカス
+    // フォームを展開するためにインプットをクリック（フォーカス）
     await user.click(input)
     
-    // 展開されるのを待つ（または展開後にボタンが表示される）
+    // 展開後に表示される「タスクを追加」ボタンを取得
     const button = screen.getByRole('button', { name: /タスクを追加/i })
 
+    // 文字を入力してボタンをクリック
     await user.type(input, 'テストタスク')
     await user.click(button)
 
-    // 送信ボタンが押された後の非同期処理を待つ
+    // 非同期処理（API呼び出しやコールバック）の完了を待機
     await waitFor(() => {
-      expect(mockOnAdd).toHaveBeenCalled()
+      expect(mockOnAdd).toHaveBeenCalled() // コールバックが呼ばれたことを確認
     })
 
+    // 入力フィールドが空に戻っていることを確認
     expect(input).toHaveValue('')
   })
 
@@ -98,15 +122,29 @@ describe('TodoForm', () => {
     await user.click(input)
     
     const button = screen.getByRole('button', { name: /タスクを追加/i })
+    
+    // 何も入力せずにクリック
     await user.click(button)
 
+    // コールバックが呼ばれていないことを確認
     expect(mockOnAdd).not.toHaveBeenCalled()
   })
 
   it('送信中はボタンが無効化される', async () => {
-    // 意図的に解決を遅らせるPromiseを返す
+    // APIのレスポンスを意図的に遅らせて（500ms）、送信中の状態を作る
     vi.mocked(mockCreateTodo).mockImplementation(() => 
-      new Promise(resolve => setTimeout(() => resolve({ id: 1, title: '待機テスト', description: '', completed: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), owner_id: 1, order: 0, status: 'TODO', priority: 'MEDIUM' }), 500))
+      new Promise(resolve => setTimeout(() => resolve({ 
+        id: 1, 
+        title: '待機テスト', 
+        description: '', 
+        completed: false, 
+        created_at: new Date().toISOString(), 
+        updated_at: new Date().toISOString(), 
+        owner_id: 1, 
+        order: 0, 
+        status: 'TODO', 
+        priority: 'MEDIUM' 
+      }), 500))
     )
     
     const mockOnAdd = vi.fn().mockResolvedValue({})
@@ -126,7 +164,7 @@ describe('TodoForm', () => {
     await user.type(input, '待機テスト')
     await user.click(button)
 
-    // 送信中表示に切り替わり、disabled になっていることを確認
+    // 保存中の表示に切り替わり、ボタンが disabled になっていることを確認
     const loadingButton = screen.getByRole('button', { name: /保存中/i })
     expect(loadingButton).toBeDisabled()
   })

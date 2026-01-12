@@ -10,6 +10,9 @@ import type {
   UpdateProjectData,
   ProjectSummary,
   Collaborator,
+  AuditLog,
+  SystemStats,
+  HealthStatus,
 } from "./types";
 
 // ============================================================================
@@ -356,4 +359,30 @@ export const breakdownTask = async (title: string): Promise<string[]> => {
 export const reorderTodos = async (todoIds: number[]): Promise<void> => {
     // 並び順だけをサーバーに送信して保存してもらう
     await api.post("/todos/reorder", { todo_ids: todoIds });
+};
+
+/**
+ * 監査ログの一覧を取得する関数
+ */
+export const getAuditLogs = async (skip: number = 0, limit: number = 100): Promise<AuditLog[]> => {
+    const res: AxiosResponse<AuditLog[]> = await api.get("/admin/audit-logs", {
+        params: { skip, limit }
+    });
+    return res.data;
+};
+
+/**
+ * システムの健康状態を取得する
+ */
+export const getHealth = async (): Promise<HealthStatus> => {
+    const res = await api.get("/monitor/health");
+    return res.data;
+};
+
+/**
+ * システム統計を取得する
+ */
+export const getSystemStats = async (): Promise<SystemStats> => {
+    const res = await api.get("/monitor/stats");
+    return res.data;
 };

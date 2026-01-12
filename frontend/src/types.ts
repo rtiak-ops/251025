@@ -105,3 +105,41 @@ export interface CreateProjectData {
 }
 
 export type UpdateProjectData = Partial<CreateProjectData>;
+
+// ----------------------------------------------------------------------------
+// 4. 監査ログ関連の型定義
+// ----------------------------------------------------------------------------
+
+/**
+ * 監査ログの構造を定義するインターフェース
+ */
+export interface AuditLog {
+  id: number;
+  user_id?: number | null;
+  user_email?: string | null;
+  action: string;
+  resource_type: string;
+  resource_id?: number | null;
+  details?: string | null;
+  created_at: string;
+}
+
+export interface SystemStats {
+  counts: {
+    users: number;
+    projects: number;
+    tasks: number;
+    audit_logs: number;
+  };
+}
+
+export interface HealthStatus {
+  status: string;
+  timestamp: number;
+  database: {
+    status: string;
+    latency_sec: number;
+  };
+  environment: string;
+  version: string;
+}

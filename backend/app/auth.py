@@ -8,7 +8,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from . import crud, schemas
+from . import crud, schemas, models
 from .database import get_db
 
 # ----------------------------------------------------------------------
@@ -200,3 +200,19 @@ async def get_current_user(
     
     # データベースのモデル（models.User）をAPIレスポンス用のスキーマ（schemas.UserOut）に変換して返す
     return schemas.UserOut.model_validate(user)
+
+def require_role(allowed_roles: list[str]):
+    """
+    特定のロールを持つユーザーのみを許可する依存関数を作成します。
+    """
+    async def role_checker(current_user: schemas.UserOut = Depends(get_current_user)):
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"この操作には {', '.join(allowed_roles)} の権限が必要です"
+            )
+        return current_user
+    return role_checker
+
+# 管理者のみ許可するためのショートカット
+admin_required = require_role(["admin"])

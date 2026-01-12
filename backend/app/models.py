@@ -159,3 +159,21 @@ class ProjectCollaborator(Base):
     # リレーションシップ
     project = relationship("Project", back_populates="collaborators")
     user = relationship("User", back_populates="collaborations")
+class AuditLog(Base):
+    """
+    監査ログモデル（データベーステーブル: audit_logs）
+    
+    「いつ、誰が、どのリソースに対し、どんな操作をしたか」を記録します。
+    """
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    action = Column(String(50), nullable=False)  # CREATE, UPDATE, DELETE, LOGIN, LOGIN_FAILED, etc.
+    resource_type = Column(String(50), nullable=False)  # TODO, PROJECT, USER, etc.
+    resource_id = Column(Integer, nullable=True) # 操作対象のID
+    details = Column(Text, nullable=True)  # 具体的な変更内容（JSON形式推奨）
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # リレーションシップ
+    user = relationship("User")

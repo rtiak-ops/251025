@@ -5,8 +5,8 @@ import { toast } from 'react-hot-toast';
 
 interface SidebarProps {
   projects: ProjectSummary[];
-  currentView: 'dashboard' | 'all' | number;
-  onViewChange: (view: 'dashboard' | 'all' | number) => void;
+  currentView: 'dashboard' | 'all' | 'audit' | 'monitor' | number;
+  onViewChange: (view: 'dashboard' | 'all' | 'audit' | 'monitor' | number) => void;
   onLogout: () => void;
   theme: 'light' | 'dark';
   onThemeToggle: () => void;
@@ -83,6 +83,30 @@ export default function Sidebar({
           }`}
         >
           <span className="text-lg">📅</span> すべてのタスク
+        </button>
+
+        {/* 監査ログボタン */}
+        <button
+          onClick={() => onViewChange('audit')}
+          className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
+            currentView === 'audit'
+              ? 'bg-indigo-600 text-white shadow-lg'
+              : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-white'
+          }`}
+        >
+          <span className="text-lg">📜</span> 監査ログ
+        </button>
+
+        {/* システムモニターボタン */}
+        <button
+          onClick={() => onViewChange('monitor')}
+          className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
+            currentView === 'monitor'
+              ? 'bg-indigo-600 text-white shadow-lg'
+              : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-white'
+          }`}
+        >
+          <span className="text-lg">📈</span> システム状況
         </button>
 
         {/* プロジェクトセクションヘッダー（追加ボタン付き） */}

@@ -33,10 +33,12 @@
 - [📊 データベース設計 (ER図)](#-データベース設計-er図)
 - [🎬 主要なシーケンス (Core Workflows)](#-主要なシーケンス-core-workflows)
 - [💡 解決した技術的課題](#-解決した技術的課題)
-- [🛠️ 技術スタック](#️-技術スタック)
+- [🛠️ 技術スタック & 選定理由](#️-技術スタック--選定理由)
+- [🧪 テスト & 品質管理](#-テスト--品質管理)
 - [🚀 セットアップガイド](#-セットアップガイド)
     - [1. 🏠 ローカル開発環境 (Docker)](#1--ローカル開発環境-docker)
     - [2. ☁️ クラウド展開 (AWS/Terraform)](#2--クラウド展開-awsterraform)
+- [📈 今後の展望 (Product Roadmap)](#-今後の展望-product-roadmap)
 
 ---
 
@@ -71,7 +73,14 @@
 ### 6. 👥 チームコラボレーション
 プロジェクトを共有し、協力してタスクを遂行。
 - **プロジェクト招待**: メールアドレスを使用して、他ユーザーをプロジェクトに招待。
-- **権限管理**: 招待されたメンバーに '閲覧者' や '編集者' などの権限を付与可能。
+- **詳細な権限管理 (Editor/Viewer)**: 招待されたユーザーに対して、編集権限または閲覧のみの権限を付与可能。
+
+### 🛡️ 高度なエンジニアリング機能 (Advanced Engineering)
+- **🧩 Role-Based Access Control (RBAC)**: システム全体の管理者（Admin）と一般ユーザー（User）を分離。Admin専用の分析・監視ダッシュボードを搭載。
+- **📜 監査ログ (Audit Log)**: データの作成・更新・削除の全履歴を「誰が・いつ・何をしたか」という形で記録し、可視化。
+- **📈 パフォーマンス監視 (Observability)**: 
+    - **Slow Query Detection**: SQLAlchemyのイベントリスナーによる100ms超のクエリ自動検知。
+    - **Health Dashboard**: DBレイテンシやシステム統計（ユーザー数、タスク数等）のリアルタイム表示。
 
 ---
 
@@ -175,16 +184,31 @@ erDiagram
 
 ---
 
-## 🛠️ 技術スタック
+## 🛠️ 技術スタック & 選定理由
 
-| カテゴリ | 技術 |
-|---|---|
-| **Frontend** | React 19, TypeScript, **Lucide-React**, Tailwind CSS |
-| **Backend** | Python 3.13, FastAPI, **SQLAlchemy (Async)** |
-| **Logic** | TanStack Query, React Hook Form |
-| **Database** | PostgreSQL 17, Alembic (Migration) |
-| **Infra/DevOps** | AWS, Terraform, GitHub Actions, Docker |
-| **AI** | **Google Gemini Pro / Flash**, OpenAI API |
+| カテゴリ | 技術 | 選定理由・トレードオフ |
+|---|---|---|
+| **Frontend** | React 19, TypeScript | 最新のAPI活用と型安全性の両立。Next.jsではなくSPA（Vite）を選んだのは、低コストなS3配信と、純粋なクライアントサイドのステート管理能力を誇示するため。 |
+| **Backend** | Python 3.13, FastAPI | 非同期処理（AsyncIO）による高パフォーマンスなI/O。型ヒントによる堅牢な開発とAPIドキュメント自動生成によるDX向上。 |
+| **Logic** | TanStack Query | 楽観的UI更新（Optimistic Update）の実装による圧倒的なUX。自前でのキャッシュ管理を避け、ライブラリに任せることでコードの抽象化を促進。 |
+| **Database** | PostgreSQL 17 | 複雑なリレーション、JSON型による将来的なAIスレッドの保存を視野に入れ、堅牢なRDBMSを選択。 |
+| **Infra** | AWS, Terraform | インフラのコード化（IaC）。手動設定を排除し、再現性とスケーラビリティを担保。 |
+| **AI** | Gemini Pro / Flash | テキスト生成速度とコストのバランス。Gemini 1.5 Flashを使用することで、タスク分解の高速な応答を実現。 |
+
+---
+
+## 🧪 テスト & 品質管理
+
+「動作すること」だけでなく「壊れないこと」を重視したテスト戦略を採用しています。
+
+- **Backend**: `pytest` による単体・統合テスト。異常系（権限のないアクセス、レートリミット超過、DB接続断）を重点的にカバー。
+- **Frontend**: `Vitest` + `React Testing Library` によるコンポーネントテスト。ローディング状態、エラー表示、フォームバリデーションを検証。
+- **CI/CD**:
+    - **カバレッジ目標**: 80%以上を維持。Codecovによる可視化。
+    - **セキュリティ**: `Trivy` スキャンを全プルリクエストで実行し、高リスクな脆弱性を抱えたままのデプロイを阻止。
+    - **自動化**: インフラからアプリまで、`main`へのマージのみで全て構築される完全なパイプライン。
+
+---
 
 ---
 
@@ -249,6 +273,16 @@ GitHubのリポジトリ設定（Settings > Secrets and variables > Actions）�
 
 #### ④ デプロイ
 `main` または `develop` ブランチにコードを `push` すると、自動的にフロントエンド（S3/CloudFront）とバックエンド（EC2/Docker）が更新されます。
+
+---
+
+## 📈 今後の展望 (Product Roadmap)
+
+ビジネスツールとしての完成度をさらに高めるため、以下の実装を予定しています。
+
+1.  **監査ログ (Audit Log)**: 「いつ、誰が、何を」変更したかを全件保存。エンタープライズ利用に必須な構成管理。
+2.  **高度なチーム権限 (RBAC)**: プロジェクト単位ではなく、より細かいリソース単位でのアクセス制御。
+3.  **パフォーマンスモニタリング**: CloudWatchと連携したカスタムメトリクスの収集とSLI/SLOの定義。
 
 ---
 

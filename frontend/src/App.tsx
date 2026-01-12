@@ -8,6 +8,8 @@ import Sidebar from "./components/Sidebar";
 import DashboardView from "./components/DashboardView";
 import ProjectTasksView from "./components/ProjectTasksView";
 import AuthForm from "./components/AuthForm";
+import AuditLogView from "./components/AuditLogView";
+import MonitorView from "./components/MonitorView";
 
 /**
  * App.tsx
@@ -19,8 +21,8 @@ export default function App() {
   
   // --- 状態管理 (State) ---
   const [token, setToken] = useState<string | null>(getStoredToken());
-  // 現在表示しているビュー（ダッシュボード、全タスク、または特定のプロジェクトID）
-  const [currentView, setCurrentView] = useState<'dashboard' | 'all' | number>('dashboard');
+  // 現在表示しているビュー（ダッシュボード、全タスク、監査ログ、モニター、または特定のプロジェクトID）
+  const [currentView, setCurrentView] = useState<'dashboard' | 'all' | 'audit' | 'monitor' | number>('dashboard');
   
   // フィルタータイプ
   type Filter = {
@@ -146,7 +148,7 @@ export default function App() {
     setCurrentView('all'); // フィルター時は「すべてのタスク」ビューに遷移
   };
 
-  const handleViewChange = (view: 'dashboard' | 'all' | number) => {
+  const handleViewChange = (view: 'dashboard' | 'all' | 'audit' | 'monitor' | number) => {
     setCurrentView(view);
     setActiveFilter(null); // ビュー切り替え時はフィルターをリセット
   };
@@ -193,7 +195,7 @@ export default function App() {
   // 現在のビューに合わせて表示するタスクをフィルタリング
   const filteredTodos = allTodos.filter(t => {
     // 1. ビューのチェック
-    const matchesView = currentView === 'all' || currentView === 'dashboard' || t.project_id === currentView;
+    const matchesView = currentView === 'all' || currentView === 'dashboard' || currentView === 'audit' || currentView === 'monitor' || t.project_id === currentView;
     if (!matchesView) return false;
 
     // 2. フィルターのチェック
@@ -272,6 +274,10 @@ export default function App() {
 
         {currentView === 'dashboard' ? (
           <DashboardView todos={allTodos} projects={projects} onFilterSelect={handleFilterSelect} />
+        ) : currentView === 'audit' ? (
+          <AuditLogView />
+        ) : currentView === 'monitor' ? (
+          <MonitorView />
         ) : (
           <ProjectTasksView 
             project={currentProject}

@@ -73,7 +73,29 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # システム全体の健康状態確認用
+    # 管理者用APIへのプロキシ (ユーザー管理、監査ログ)
+    location /admin {
+        proxy_pass ${BACKEND_URL};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+        proxy_pass_header Authorization;
+    }
+
+    # システム監視用APIへのプロキシ
+    location /monitor {
+        proxy_pass ${BACKEND_URL};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+        proxy_pass_header Authorization;
+    }
+
+    # システム全体の健康状態確認用 (レガシー)
     location /health {
         proxy_pass ${BACKEND_URL};
         proxy_set_header Host $host;

@@ -3,14 +3,19 @@ import { getAuditLogs } from "../api";
 import type { AuditLog } from "../types";
 
 export default function AuditLogView() {
-    const { data: logs, isLoading } = useQuery<AuditLog[]>({
+    const { data: logs, isLoading, isError } = useQuery<AuditLog[] | any>({
         queryKey: ["audit-logs"],
-        queryFn: () => getAuditLogs(0, 50),
+        queryFn: async () => {
+            const data = await getAuditLogs(0, 50);
+            return Array.isArray(data) ? data : [];
+        },
         refetchInterval: 10000, // 10秒おきに更新
     });
 
-    const formatDateTime = (dateStr: string) => {
+    const formatDateTime = (dateStr?: string) => {
+        if (!dateStr) return "-";
         const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return "-";
         return date.toLocaleString('ja-JP', {
             year: 'numeric',
             month: '2-digit',
@@ -25,6 +30,18 @@ export default function AuditLogView() {
         return (
             <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+            </div>
+        );
+    }
+
+    if (isError) {
+        return (
+            <div className="flex flex-col items-center justify-center h-64 space-y-4">
+                <div className="text-red-500 text-4xl">⚠️</div>
+                <div className="text-slate-600 dark:text-slate-300 font-medium text-center">
+                    監査ログを取得できませんでした。<br />
+                    管理者権限がないか、サーバーに接続できません。
+                </div>
             </div>
         );
     }
@@ -51,7 +68,7 @@ export default function AuditLogView() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 dark:divide-white/10 dark:text-slate-200">
-                            {logs?.map((log) => (
+                            {Array.isArray(logs) ? logs.map((log) => (
                                 <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
                                     <td className="p-4 text-xs whitespace-nowrap">
                                         {formatDateTime(log.created_at)}
@@ -76,8 +93,8 @@ export default function AuditLogView() {
                                         {log.details || "-"}
                                     </td>
                                 </tr>
-                            ))}
-                            {logs?.length === 0 && (
+                            )) : null}
+                            {Array.isArray(logs) && logs.length === 0 && (
                                 <tr>
                                     <td colSpan={5} className="p-8 text-center text-slate-500">
                                         ログがありません

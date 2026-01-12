@@ -137,6 +137,17 @@ export const getMe = async (): Promise<User> => {
   return res.data;
 };
 
+export const getUsers = async (): Promise<User[]> => {
+  const res = await api.get("/admin/users");
+  return res.data;
+};
+
+export const updateUserRole = async (userId: number, role: string): Promise<User> => {
+  const res = await api.patch(`/admin/users/${userId}/role`, { role });
+  return res.data;
+};
+
+
 // ----------------------------------------------------------------------------
 // 5. API関数: ToDo関連 (ToDo API)
 // ----------------------------------------------------------------------------

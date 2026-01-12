@@ -13,15 +13,18 @@ interface DashboardViewProps {
  * 全タスクの進捗状況やプロジェクト別の達成率を可視化します。
  */
 export default function DashboardView({ todos, projects, onFilterSelect }: DashboardViewProps) {
+  const safeTodos = Array.isArray(todos) ? todos : [];
+  const safeProjects = Array.isArray(projects) ? projects : [];
+
   // --- 統計データの計算 ---
-  const completedTasks = todos.filter(t => t.completed).length; // 完了済み
-  const inProgressTasks = todos.filter(t => !t.completed && t.status === 'IN_PROGRESS').length; // 進行中
-  const todoTasks = todos.filter(t => !t.completed && t.status === 'TODO').length; // 未着手
+  const completedTasks = safeTodos.filter(t => t.completed).length; // 完了済み
+  const inProgressTasks = safeTodos.filter(t => !t.completed && t.status === 'IN_PROGRESS').length; // 進行中
+  const todoTasks = safeTodos.filter(t => !t.completed && t.status === 'TODO').length; // 未着手
   // 全体達成率（％）
-  const completionRate = todos.length > 0 ? Math.round((completedTasks / todos.length) * 100) : 0;
+  const completionRate = safeTodos.length > 0 ? Math.round((completedTasks / safeTodos.length) * 100) : 0;
 
   // 「至急」優先度の未完了タスク件数
-  const urgentTasks = todos.filter(t => !t.completed && t.priority === 'URGENT').length;
+  const urgentTasks = safeTodos.filter(t => !t.completed && t.priority === 'URGENT').length;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -68,10 +71,10 @@ export default function DashboardView({ todos, projects, onFilterSelect }: Dashb
         <div className="lg:col-span-2 glass p-8 rounded-3xl">
           <h3 className="text-xl font-bold mb-6 text-slate-800 dark:text-white">プロジェクト別進捗</h3>
           <div className="space-y-6">
-            {!Array.isArray(projects) || projects.length === 0 ? (
+            {safeProjects.length === 0 ? (
               <p className="text-slate-500 text-center py-10">プロジェクトがありません</p>
             ) : (
-              projects.map(p => {
+              safeProjects.map(p => {
                 // プロジェクトごとの達成率計算
                 const rate = p.todo_count > 0 ? Math.round((p.completed_count / p.todo_count) * 100) : 0;
                 return (
@@ -101,10 +104,10 @@ export default function DashboardView({ todos, projects, onFilterSelect }: Dashb
         <div className="glass p-8 rounded-3xl">
           <h3 className="text-xl font-bold mb-6 text-slate-800 dark:text-white">ステータス分布</h3>
           <div className="space-y-4">
-            <StatusRow label="未着手" count={todoTasks} total={todos.length} color="bg-slate-400" />
-            <StatusRow label="進行中" count={inProgressTasks} total={todos.length} color="bg-amber-400" />
-            <StatusRow label="レビュー中" count={todos.filter(t => t.status === 'REVIEW').length} total={todos.length} color="bg-indigo-400" />
-            <StatusRow label="完了" count={completedTasks} total={todos.length} color="bg-green-400" />
+            <StatusRow label="未着手" count={todoTasks} total={safeTodos.length} color="bg-slate-400" />
+            <StatusRow label="進行中" count={inProgressTasks} total={safeTodos.length} color="bg-amber-400" />
+            <StatusRow label="レビュー中" count={safeTodos.filter(t => t.status === 'REVIEW').length} total={safeTodos.length} color="bg-indigo-400" />
+            <StatusRow label="完了" count={completedTasks} total={safeTodos.length} color="bg-green-400" />
           </div>
         </div>
       </div>

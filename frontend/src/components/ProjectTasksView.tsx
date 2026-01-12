@@ -153,7 +153,7 @@ export default function ProjectTasksView({
                     {/* メンバーのアイコンスタック */}
                     <div className="flex -space-x-2 ml-1">
                         <div className="w-6 h-6 rounded-full bg-indigo-500 border border-white dark:border-slate-800 flex items-center justify-center text-[8px] text-white font-bold" title="Owner">O</div>
-                        {project.collaborators?.slice(0, 3).map((c: Collaborator) => (
+                        {project && Array.isArray(project.collaborators) && project.collaborators.slice(0, 3).map((c: Collaborator) => (
                             <div key={c.id} className="w-6 h-6 rounded-full bg-slate-400 border border-white dark:border-slate-800 flex items-center justify-center text-[8px] text-white font-bold" title={c.user_email || 'Member'}>M</div>
                         ))}
                     </div>
@@ -187,7 +187,7 @@ export default function ProjectTasksView({
                   </div>
 
                   {/* コラボレーターのリスト */}
-                  {project.collaborators?.map((c: Collaborator) => {
+                  {project && Array.isArray(project.collaborators) && project.collaborators.map((c: Collaborator) => {
                     const isMe = currentUser?.id === c.user_id;
                     return (
                       <div key={c.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
@@ -270,7 +270,7 @@ export default function ProjectTasksView({
             <Droppable droppableId="todos">
               {(provided) => (
                 <div {...provided.droppableProps} ref={provided.innerRef} className="p-4">
-                  {todos.map((t, index) => (
+                  {Array.isArray(todos) && todos.map((t, index) => (
                     <Draggable key={t.id} draggableId={t.id.toString()} index={index}>
                       {(provided, snapshot) => (
                         <div

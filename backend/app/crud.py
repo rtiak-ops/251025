@@ -88,6 +88,14 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate) -> models.User
     # email と hashed_password を持つ User オブジェクトを生成
     db_user = models.User(email=user.email, hashed_password=hashed_password)
     
+    # 【最初のユーザー（管理者）の自動設定】
+    # データベースにユーザーが一人もいない場合に限り、最初の登録者を管理者に設定します。
+    # これにより、初期構築時のコマンド操作が不要になります。
+    from sqlalchemy import func
+    user_count = (await db.execute(select(func.count(models.User.id)))).scalar()
+    if user_count == 0:
+        db_user.role = "admin"
+    
     # 3. セッションに追加（INSERT操作の準備）
     # この時点ではまだデータベースには保存されていない
     db.add(db_user)

@@ -10,6 +10,7 @@ import ProjectTasksView from "./components/ProjectTasksView";
 import AuthForm from "./components/AuthForm";
 import AuditLogView from "./components/AuditLogView";
 import MonitorView from "./components/MonitorView";
+import UserManagementView from "./components/UserManagementView";
 
 /**
  * App.tsx
@@ -21,8 +22,8 @@ export default function App() {
   
   // --- 状態管理 (State) ---
   const [token, setToken] = useState<string | null>(getStoredToken());
-  // 現在表示しているビュー（ダッシュボード、全タスク、監査ログ、モニター、または特定のプロジェクトID）
-  const [currentView, setCurrentView] = useState<'dashboard' | 'all' | 'audit' | 'monitor' | number>('dashboard');
+  // 現在表示しているビュー（ダッシュボード、全タスク、監査ログ、モニター、ユーザー管理、または特定のプロジェクトID）
+  const [currentView, setCurrentView] = useState<'dashboard' | 'all' | 'audit' | 'monitor' | 'users' | number>('dashboard');
   
   // フィルタータイプ
   type Filter = {
@@ -113,6 +114,8 @@ export default function App() {
     toast.success("ログアウトしました");
   };
 
+
+
   /** 
    * データが変更された際にキャッシュを無効化して再取得を促す
    */
@@ -148,7 +151,7 @@ export default function App() {
     setCurrentView('all'); // フィルター時は「すべてのタスク」ビューに遷移
   };
 
-  const handleViewChange = (view: 'dashboard' | 'all' | 'audit' | 'monitor' | number) => {
+  const handleViewChange = (view: 'dashboard' | 'all' | 'audit' | 'monitor' | 'users' | number) => {
     setCurrentView(view);
     setActiveFilter(null); // ビュー切り替え時はフィルターをリセット
   };
@@ -195,7 +198,7 @@ export default function App() {
   // 現在のビューに合わせて表示するタスクをフィルタリング
   const filteredTodos = allTodos.filter(t => {
     // 1. ビューのチェック
-    const matchesView = currentView === 'all' || currentView === 'dashboard' || currentView === 'audit' || currentView === 'monitor' || t.project_id === currentView;
+    const matchesView = currentView === 'all' || currentView === 'dashboard' || currentView === 'audit' || currentView === 'monitor' || currentView === 'users' || t.project_id === currentView;
     if (!matchesView) return false;
 
     // 2. フィルターのチェック
@@ -248,6 +251,7 @@ export default function App() {
         theme={theme}
         onThemeToggle={() => setTheme(theme === "dark" ? "light" : "dark")}
         onProjectCreated={handleDataChange}
+        currentUser={currentUser}
       />
 
       {/* メインコンテンツ: ビューに応じて切り替え */}
@@ -278,6 +282,8 @@ export default function App() {
           <AuditLogView />
         ) : currentView === 'monitor' ? (
           <MonitorView />
+        ) : currentView === 'users' ? (
+          <UserManagementView currentUser={currentUser} />
         ) : (
           <ProjectTasksView 
             project={currentProject}

@@ -4,13 +4,13 @@ import { Activity, Server, Database, Globe, Users, FolderKanban, ListChecks, His
 import type { HealthStatus, SystemStats } from "../types";
 
 export default function MonitorView() {
-    const { data: health, isLoading: isHealthLoading } = useQuery<HealthStatus>({
+    const { data: health, isLoading: isHealthLoading, isError: isHealthError } = useQuery<HealthStatus>({
         queryKey: ["health"],
         queryFn: getHealth,
         refetchInterval: 5000,
     });
 
-    const { data: stats, isLoading: isStatsLoading } = useQuery<SystemStats>({
+    const { data: stats, isLoading: isStatsLoading, isError: isStatsError } = useQuery<SystemStats>({
         queryKey: ["system-stats"],
         queryFn: getSystemStats,
         refetchInterval: 30000,
@@ -24,6 +24,18 @@ export default function MonitorView() {
         );
     }
 
+    if (isHealthError || isStatsError) {
+        return (
+            <div className="flex flex-col items-center justify-center h-64 space-y-4">
+                <div className="text-red-500 text-4xl">⚠️</div>
+                <div className="text-slate-600 dark:text-slate-300 font-medium text-center">
+                    システム統計情報を取得できませんでした。<br />
+                    管理者権限がないか、サーバーに接続できません。
+                </div>
+            </div>
+        );
+    }
+
     const StatCard = ({ icon: Icon, label, value, colorClass }: any) => (
         <div className="glass p-6 rounded-2xl border border-slate-200 dark:border-white/10 flex items-center gap-4">
             <div className={`p-3 rounded-xl ${colorClass}`}>
@@ -31,7 +43,7 @@ export default function MonitorView() {
             </div>
             <div>
                 <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
-                <p className="text-2xl font-bold dark:text-white">{value}</p>
+                <p className="text-2xl font-bold dark:text-white">{value ?? '-'}</p>
             </div>
         </div>
     );
@@ -63,7 +75,11 @@ export default function MonitorView() {
                             <Database size={16} /> DB Latency
                         </span>
                     </div>
-                    <p className="text-xl font-bold dark:text-white">{health?.database.latency_sec ? `${(health.database.latency_sec * 1000).toFixed(1)}ms` : '-'}</p>
+                    <p className="text-xl font-bold dark:text-white">
+                        {health?.database?.latency_sec != null 
+                            ? `${(Number(health?.database?.latency_sec) * 1000).toFixed(1)}ms` 
+                            : '-'}
+                    </p>
                     <p className="text-[10px] text-green-500 mt-1">Excellent Performance</p>
                 </div>
 
@@ -73,7 +89,7 @@ export default function MonitorView() {
                             <Globe size={16} /> Environment
                         </span>
                     </div>
-                    <p className="text-xl font-bold dark:text-white uppercase">{health?.environment}</p>
+                    <p className="text-xl font-bold dark:text-white uppercase">{health?.environment || '-'}</p>
                 </div>
 
                 <div className="glass p-6 rounded-2xl border border-slate-200 dark:border-white/10">
@@ -82,7 +98,7 @@ export default function MonitorView() {
                             <Activity size={16} /> Build Version
                         </span>
                     </div>
-                    <p className="text-xl font-bold dark:text-white">v{health?.version}</p>
+                    <p className="text-xl font-bold dark:text-white">{health?.version ? `v${health?.version}` : '-'}</p>
                 </div>
             </div>
 
@@ -91,25 +107,25 @@ export default function MonitorView() {
                 <StatCard 
                     icon={Users} 
                     label="総ユーザー数" 
-                    value={stats?.counts.users} 
+                    value={stats?.counts?.users} 
                     colorClass="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" 
                 />
                 <StatCard 
                     icon={FolderKanban} 
                     label="総プロジェクト数" 
-                    value={stats?.counts.projects} 
+                    value={stats?.counts?.projects} 
                     colorClass="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400" 
                 />
                 <StatCard 
                     icon={ListChecks} 
                     label="総タスク数" 
-                    value={stats?.counts.tasks} 
+                    value={stats?.counts?.tasks} 
                     colorClass="bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400" 
                 />
                 <StatCard 
                     icon={History} 
                     label="監査ログ蓄積数" 
-                    value={stats?.counts.audit_logs} 
+                    value={stats?.counts?.audit_logs} 
                     colorClass="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" 
                 />
             </div>

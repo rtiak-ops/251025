@@ -15,12 +15,27 @@ async def create_audit_log(
     """
     監査ログを記録します。
     """
+    # detailsにdatetimeが含まれる場合、json.dumpsでエラーになるため文字列に変換
+    if isinstance(details, dict):
+        processed_details = {}
+        for k, v in details.items():
+            if isinstance(v, datetime):
+                processed_details[k] = v.isoformat()
+            else:
+                processed_details[k] = v
+        details_str = json.dumps(processed_details, ensure_ascii=False)
+    elif details is not None:
+        # すでに文字列（またはその他の型）の場合はそのまま文字列化を試みる
+        details_str = str(details)
+    else:
+        details_str = None
+
     db_log = AuditLog(
         user_id=user_id,
         action=action,
         resource_type=resource_type,
         resource_id=resource_id,
-        details=json.dumps(details, ensure_ascii=False) if details else None
+        details=details_str
     )
     db.add(db_log)
     await db.commit()

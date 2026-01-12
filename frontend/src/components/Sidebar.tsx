@@ -1,16 +1,17 @@
-import type { ProjectSummary } from '../types';
+import type { ProjectSummary, User } from '../types';
 import { Plus } from 'lucide-react';
 import { createProject } from '../api';
 import { toast } from 'react-hot-toast';
 
 interface SidebarProps {
   projects: ProjectSummary[];
-  currentView: 'dashboard' | 'all' | 'audit' | 'monitor' | number;
-  onViewChange: (view: 'dashboard' | 'all' | 'audit' | 'monitor' | number) => void;
+  currentView: 'dashboard' | 'all' | 'audit' | 'monitor' | 'users' | number;
+  onViewChange: (view: 'dashboard' | 'all' | 'audit' | 'monitor' | 'users' | number) => void;
   onLogout: () => void;
   theme: 'light' | 'dark';
   onThemeToggle: () => void;
   onProjectCreated: () => void;
+  currentUser?: User;
 }
 
 /**
@@ -25,7 +26,8 @@ export default function Sidebar({
   onLogout,
   theme,
   onThemeToggle,
-  onProjectCreated
+  onProjectCreated,
+  currentUser,
 }: SidebarProps) {
   /**
    * 新規プロジェクト作成のハンドラー
@@ -85,29 +87,47 @@ export default function Sidebar({
           <span className="text-lg">📅</span> すべてのタスク
         </button>
 
-        {/* 監査ログボタン */}
-        <button
-          onClick={() => onViewChange('audit')}
-          className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
-            currentView === 'audit'
-              ? 'bg-indigo-600 text-white shadow-lg'
-              : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-white'
-          }`}
-        >
-          <span className="text-lg">📜</span> 監査ログ
-        </button>
+        {/* 監査ログボタン（管理者のみ） */}
+        {currentUser?.role === 'admin' && (
+          <button
+            onClick={() => onViewChange('audit')}
+            className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
+              currentView === 'audit'
+                ? 'bg-indigo-600 text-white shadow-lg'
+                : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-white'
+            }`}
+          >
+            <span className="text-lg">📜</span> 監査ログ
+          </button>
+        )}
 
-        {/* システムモニターボタン */}
-        <button
-          onClick={() => onViewChange('monitor')}
-          className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
-            currentView === 'monitor'
-              ? 'bg-indigo-600 text-white shadow-lg'
-              : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-white'
-          }`}
-        >
-          <span className="text-lg">📈</span> システム状況
-        </button>
+        {/* システムモニターボタン（管理者のみ） */}
+        {currentUser?.role === 'admin' && (
+          <button
+            onClick={() => onViewChange('monitor')}
+            className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
+              currentView === 'monitor'
+                ? 'bg-indigo-600 text-white shadow-lg'
+                : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-white'
+            }`}
+          >
+            <span className="text-lg">📈</span> システム状況
+          </button>
+        )}
+
+        {/* ユーザー管理ボタン（管理者のみ） */}
+        {currentUser?.role === 'admin' && (
+          <button
+            onClick={() => onViewChange('users')}
+            className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
+              currentView === 'users'
+                ? 'bg-indigo-600 text-white shadow-lg'
+                : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-white'
+            }`}
+          >
+            <span className="text-lg">👥</span> ユーザー管理
+          </button>
+        )}
 
         {/* プロジェクトセクションヘッダー（追加ボタン付き） */}
         <div className="pt-6 flex items-center justify-between mb-2 px-2">
@@ -162,6 +182,7 @@ export default function Sidebar({
         >
           🚪 ログアウト
         </button>
+
       </div>
     </aside>
   );

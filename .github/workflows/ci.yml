@@ -1,5 +1,5 @@
 # ワークフローの名前を定義します。GitHubのActionsタブにこの名前が表示されます。
-name: CI/CD Pipeline
+name: CI Pipeline
 
 # ワークフローが実行される条件（トリガー）を設定します。
 on:

@@ -12,7 +12,7 @@
 
 - **`backend/app/models.py`**
   - DBテーブルの定義 (SQLAlchemy)。
-  - `User`, `Todo` といったエンティティの関係性が分かります。
+  - `User`, `Todo` に加え、操作履歴を記録する `AuditLog` (監査ログ) の定義が含まれます。
 - **`frontend/src/types.ts`**
   - フロントエンドで扱うデータの型定義 (TypeScript)。
   - DBモデルがフロントエンドでどう表現されるかを確認できます。
@@ -25,14 +25,14 @@
   - どのAPIにどんなデータを送ればいいか、何が返ってくるかが定義されています。
 - **`backend/app/routers/`**
   - 各エンドポイントの実装。
-  - AIによるタスク分解 (`Magic Breakdown`) のエンドポイントなどに注目です。
+  - AIタスク分解 (`ai.py`)、管理機能 (`admin.py`)、システム監視 (`monitor.py`) など機能ごとに分割されています。
 
 ### Step 3: ビジネスロジックを理解する (Business Logic)
 データの処理、保存、変換のルールを確認します。
 
 - **`backend/app/crud.py`**
   - DB操作の具体的なロジック。
-  - 「タスクを追加する」「ステータスを更新する」といった基本操作が集まっています。
+  - 「タスクを追加する」等の基本操作に加え、`crud_audit.py` では監査ログの記録ロジックが定義されています。
 - **`backend/app/main.py`**
   - アプリ全体の起動設定、CORS、エラーハンドリング、ミドルウェアの設定。
 
@@ -46,6 +46,7 @@
   - **TanStack Query** によるデータの取得とキャッシュ、**Beautiful DnD** による操作が分かります。
 - **`frontend/src/components/`**
   - UIの各パーツ（Todoアイテム、AIボタンなど）の責務が分かれます。
+  - **`AuditLogView.tsx`** (監査ログ) や **`MonitorView.tsx`** (システム状況) など、管理者向け機能もここに実装されています。
 
 ### Step 5: インフラと運用を理解する (Infra & DevOps)
 アプリがどう動き、どう守られ、どうデプロイされるかを確認します。

@@ -1,0 +1,98 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.11, pytest-9.0.2, pluggy-1.6.0 -- /usr/local/bin/python3.13
+cachedir: .pytest_cache
+rootdir: /app
+configfile: pytest.ini
+plugins: cov-7.0.0, asyncio-1.3.0, anyio-4.12.1
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=function
+collecting ... collected 4 items / 3 deselected / 1 selected
+
+tests/test_multi_tenancy.py::test_multi_tenancy_isolation FAILED         [100%]
+
+=================================== FAILURES ===================================
+_________________________ test_multi_tenancy_isolation _________________________
+
+client = <httpx.AsyncClient object at 0x7f05fe6bc980>
+
+    @pytest.mark.asyncio
+    async def test_multi_tenancy_isolation(client: AsyncClient):
+        """
+        重要: 組織間のデータ隔離（マルチテナント）を確認。
+        組織Aのユーザーは、組織Bのプロジェクトを見ることができない。
+        """
+        # --- 組織Aの準備 ---
+        user_a_email = "user_a@org_a.com"
+        await client.post("/auth/register", json={"email": user_a_email, "password": "password"})
+        login_a = await client.post("/auth/login", json={"email": user_a_email, "password": "password"})
+>       token_a = login_a.json()["access_token"]
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'access_token'
+
+tests/test_multi_tenancy.py:43: KeyError
+----------------------------- Captured stdout call -----------------------------
+{"timestamp": null, "level": null, "name": "app.main", "message": "API Request: POST /auth/register", "method": "POST", "path": "/auth/register", "process_time_ms": 30.11, "status_code": 422}
+{"timestamp": null, "level": null, "name": "httpx", "message": "HTTP Request: POST http://test/auth/register \"HTTP/1.1 422 Unprocessable Entity\""}
+{"timestamp": null, "level": null, "name": "app.main", "message": "API Request: POST /auth/login", "method": "POST", "path": "/auth/login", "process_time_ms": 11.61, "status_code": 422}
+{"timestamp": null, "level": null, "name": "httpx", "message": "HTTP Request: POST http://test/auth/login \"HTTP/1.1 422 Unprocessable Entity\""}
+----------------------------- Captured stderr call -----------------------------
+INFO:app.main:API Request: POST /auth/register
+INFO:httpx:HTTP Request: POST http://test/auth/register "HTTP/1.1 422 Unprocessable Entity"
+INFO:app.main:API Request: POST /auth/login
+INFO:httpx:HTTP Request: POST http://test/auth/login "HTTP/1.1 422 Unprocessable Entity"
+------------------------------ Captured log call -------------------------------
+INFO     app.main:main.py:177 API Request: POST /auth/register
+INFO     httpx:_client.py:1740 HTTP Request: POST http://test/auth/register "HTTP/1.1 422 Unprocessable Entity"
+INFO     app.main:main.py:177 API Request: POST /auth/login
+INFO     httpx:_client.py:1740 HTTP Request: POST http://test/auth/login "HTTP/1.1 422 Unprocessable Entity"
+=============================== warnings summary ===============================
+../usr/local/lib/python3.13/site-packages/httplib2/auth.py:19
+  /usr/local/lib/python3.13/site-packages/httplib2/auth.py:19: DeprecationWarning: 'setName' deprecated - use 'set_name'
+    token = pp.Word(tchar).setName("token")
+
+../usr/local/lib/python3.13/site-packages/httplib2/auth.py:20
+  /usr/local/lib/python3.13/site-packages/httplib2/auth.py:20: DeprecationWarning: 'leaveWhitespace' deprecated - use 'leave_whitespace'
+    token68 = pp.Combine(pp.Word("-._~+/" + pp.nums + pp.alphas) + pp.Optional(pp.Word("=").leaveWhitespace())).setName(
+
+../usr/local/lib/python3.13/site-packages/httplib2/auth.py:20
+  /usr/local/lib/python3.13/site-packages/httplib2/auth.py:20: DeprecationWarning: 'setName' deprecated - use 'set_name'
+    token68 = pp.Combine(pp.Word("-._~+/" + pp.nums + pp.alphas) + pp.Optional(pp.Word("=").leaveWhitespace())).setName(
+
+../usr/local/lib/python3.13/site-packages/httplib2/auth.py:24
+  /usr/local/lib/python3.13/site-packages/httplib2/auth.py:24: DeprecationWarning: 'setName' deprecated - use 'set_name'
+    quoted_string = pp.dblQuotedString.copy().setName("quoted-string").setParseAction(unquote)
+
+../usr/local/lib/python3.13/site-packages/httplib2/auth.py:24
+  /usr/local/lib/python3.13/site-packages/httplib2/auth.py:24: DeprecationWarning: 'setParseAction' deprecated - use 'set_parse_action'
+    quoted_string = pp.dblQuotedString.copy().setName("quoted-string").setParseAction(unquote)
+
+../usr/local/lib/python3.13/site-packages/httplib2/auth.py:25
+  /usr/local/lib/python3.13/site-packages/httplib2/auth.py:25: DeprecationWarning: 'setName' deprecated - use 'set_name'
+    auth_param_name = token.copy().setName("auth-param-name").addParseAction(downcaseTokens)
+
+../usr/local/lib/python3.13/site-packages/httplib2/auth.py:25
+  /usr/local/lib/python3.13/site-packages/httplib2/auth.py:25: DeprecationWarning: 'addParseAction' deprecated - use 'add_parse_action'
+    auth_param_name = token.copy().setName("auth-param-name").addParseAction(downcaseTokens)
+
+../usr/local/lib/python3.13/site-packages/httplib2/auth.py:27
+  /usr/local/lib/python3.13/site-packages/httplib2/auth.py:27: DeprecationWarning: 'delimitedList' deprecated - use 'DelimitedList'
+    params = pp.Dict(pp.delimitedList(pp.Group(auth_param)))
+
+../usr/local/lib/python3.13/site-packages/httplib2/auth.py:33
+  /usr/local/lib/python3.13/site-packages/httplib2/auth.py:33: DeprecationWarning: 'delimitedList' deprecated - use 'DelimitedList'
+    www_authenticate = pp.delimitedList(pp.Group(challenge))
+
+app/routers/ai.py:11
+  /app/app/routers/ai.py:11: FutureWarning: 
+  
+  All support for the `google.generativeai` package has ended. It will no longer be receiving 
+  updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+  See README for more details:
+  
+  https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+  
+    import google.generativeai as genai
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_multi_tenancy.py::test_multi_tenancy_isolation - KeyError: 'access_token'
+================= 1 failed, 3 deselected, 10 warnings in 0.66s =================

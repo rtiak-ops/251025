@@ -474,7 +474,13 @@ async def create_project(db: AsyncSession, project: schemas.ProjectCreate, owner
     db_project = models.Project(**project.model_dump(), owner_id=owner_id, organization_id=org_id)
     db.add(db_project)
     await db.commit()
-    await db.refresh(db_project)
+    
+    from sqlalchemy.orm import selectinload
+    stmt = select(models.Project).where(models.Project.id == db_project.id).options(
+        selectinload(models.Project.collaborators)
+    )
+    result = await db.execute(stmt)
+    db_project = result.scalar_one()
     return db_project
 
 async def update_project(db: AsyncSession, project_id: int, project: schemas.ProjectUpdate, user_id: int) -> models.Project | None:
@@ -513,14 +519,14 @@ async def delete_project(db: AsyncSession, project_id: int, user_id: int) -> mod
         await db.commit()
     return db_project
 
-async def get_project_summaries(db: AsyncSession, owner_id: int):
+async def get_project_summaries(db: AsyncSession, user_id: int):
     """
     各プロジェクトのタスク統計（総数、完了数）を含むサマリーを取得する
     """
     from sqlalchemy import func
     
     # 閲覧可能な全プロジェクトを取得
-    projects = await get_projects(db, owner_id)
+    projects = await get_projects(db, user_id)
     
     summaries = []
     for p in projects:
@@ -532,7 +538,7 @@ async def get_project_summaries(db: AsyncSession, owner_id: int):
         completed_count = (await db.execute(completed_stmt)).scalar() or 0
         
         # 自分の役割（オーナーかコラボレーターか）を判定
-        role = "owner" if p.owner_id == owner_id else "collaborator"
+        role = "owner" if p.owner_id == user_id else "collaborator"
 
         # コラボレーター一覧を整形
         collaborators_out = []

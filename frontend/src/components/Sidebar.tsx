@@ -53,15 +53,25 @@ export default function Sidebar({
    * 新規組織作成のハンドラー
    */
   const handleCreateOrganization = async () => {
-    const name = window.prompt("組織名（会社名）を入力してください:");
+    const name = window.prompt("【正式名称】組織名（会社名）を入力してください:");
     if (!name || !name.trim()) return;
 
+    const corporate_id = window.prompt("【任意】13桁の法人番号を入力してください（入力すると認証マークが付与されます）:") || undefined;
+    const website = window.prompt("【任意】会社ウェブサイトURLを入力してください:") || undefined;
+
     try {
-      await createOrganization({ name });
-      toast.success("組織を作成しました");
+      await createOrganization({ 
+        name, 
+        corporate_id: corporate_id?.trim(), 
+        website: website?.trim() 
+      });
+      toast.success("組織を正式に登録しました");
       onProjectCreated(); // データ再取得
-    } catch {
-      toast.error("組織の作成に失敗しました");
+    } catch (error: any) {
+      const message = error.response?.status === 409 
+        ? "その名称または法人番号は既に登録されています" 
+        : "組織の作成に失敗しました";
+      toast.error(message);
     }
   };
 
@@ -73,11 +83,18 @@ export default function Sidebar({
           BizFlow
         </h1>
         {organization ? (
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">
-              {organization.plan}
-            </span>
-            <p className="text-xs text-slate-500 dark:text-white font-bold truncate">
+          <div className="flex flex-col gap-1 mt-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">
+                {organization.plan}
+              </span>
+              {organization.is_verified && (
+                <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
+                  ✓ 認証済
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-white font-bold truncate" title={organization.name}>
               🏢 {organization.name}
             </p>
           </div>

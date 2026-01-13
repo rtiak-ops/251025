@@ -67,6 +67,7 @@ TestingSessionLocal = sessionmaker(
     class_=AsyncSession,  # 非同期処理用のセッション
     autocommit=False,     # 自動コミットしない（明示的にcommitを呼ぶまで確定しない）
     autoflush=False,      # 自動フラッシュしない（明示的にflushを呼ぶまでDBに送らない）
+    expire_on_commit=False, # コミット後にオブジェクトを無効化しない（非同期での属性アクセスエラーを防ぐ）
     bind=engine           # 上で作ったエンジンに紐づける
 )
 
@@ -98,20 +99,16 @@ async def db_session():
     前のテストのデータが残っていると、次のテストに影響が出てしまいます。
     毎回削除することで、テストの独立性を保ちます。
     """
-    # ステップ1: テーブルを作成
-    # engine.begin() で接続を開始し、Base.metadata.create_all でテーブルを作ります
+    # ステップ1: テーブルを作成（念のため既存のものを一度消す）
     async with engine.begin() as conn:
-        # run_sync: 非同期コンテキストで同期関数を実行するためのヘルパー
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     
     # ステップ2: セッションを作成してテストに渡す
     async with TestingSessionLocal() as session:
-        # yield: ここでテスト関数にセッションを渡します
-        # テスト関数が終わるまで、ここで処理が一時停止します
         yield session
-        # テスト終了後、ここから処理が再開されます
         
-    # ステップ3: テーブルを削除（次のテストのためにクリーンアップ）
+    # ステップ3: テーブルを削除
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 

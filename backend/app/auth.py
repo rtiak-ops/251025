@@ -158,7 +158,7 @@ def _decode_token(token: str) -> str:
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
-) -> schemas.UserOut:
+) -> models.User:
     """
     リクエストに含まれるJWTトークンから現在ログインしているユーザーを取得する依存関数
     
@@ -198,14 +198,14 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
     
-    # データベースのモデル（models.User）をAPIレスポンス用のスキーマ（schemas.UserOut）に変換して返す
-    return schemas.UserOut.model_validate(user)
+    # データベースのモデル（models.User）をそのまま返す
+    return user
 
 def require_role(allowed_roles: list[str]):
     """
     特定のロールを持つユーザーのみを許可する依存関数を作成します。
     """
-    async def role_checker(current_user: schemas.UserOut = Depends(get_current_user)):
+    async def role_checker(current_user: models.User = Depends(get_current_user)):
         if current_user.role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

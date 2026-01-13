@@ -18,13 +18,26 @@ async def create_organization(
     if current_user.organization_id:
         raise HTTPException(status_code=400, detail="すでに組織に所属しています。")
     
-    db_org = await crud.create_organization(db, org)
+    from sqlalchemy.exc import IntegrityError
+    try:
+        db_org = await crud.create_organization(db, org)
+        
+        # 簡易的な法人確認シミュレーション: 法人番号が入力されていれば Verified にする
+        if org.corporate_id and len(org.corporate_id) == 13:
+            db_org.is_verified = True
+            db.add(db_org)
+            await db.commit()
+            await db.refresh(db_org)
+            
+    except IntegrityError:
+        raise HTTPException(status_code=409, detail="その名称または法人番号は既に登録されています。")
+    except Exception as e:
+        raise e
     
     # ユーザーを組織に紐付ける
     current_user.organization_id = db_org.id
     db.add(current_user)
     await db.commit()
-    await db.refresh(current_user)
     
     return db_org
 

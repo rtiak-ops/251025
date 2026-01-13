@@ -66,12 +66,17 @@ export interface User {
 export interface Organization {
   id: number;
   name: string;
+  corporate_id: string | null;
+  website: string | null;
+  is_verified: boolean;
   plan: 'free' | 'pro' | 'enterprise';
   created_at: string;
 }
 
 export interface CreateOrganizationData {
   name: string;
+  corporate_id?: string;
+  website?: string;
 }
 
 /**

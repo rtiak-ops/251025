@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from .. import schemas, crud_audit, auth
+from .. import schemas, crud_audit, auth, models
 from ..auth import admin_required
 from ..database import get_db
 
@@ -11,7 +11,7 @@ async def read_audit_logs(
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
-    current_user: schemas.UserOut = Depends(admin_required),
+    current_user: models.User = Depends(admin_required),
 ):
     """
     所属組織の監査ログを取得します。
@@ -23,7 +23,7 @@ async def list_users(
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
-    current_user: schemas.UserOut = Depends(admin_required),
+    current_user: models.User = Depends(admin_required),
 ):
     """
     所属組織のユーザーリストを取得します。
@@ -41,7 +41,7 @@ async def update_user_role(
     user_id: int,
     role_data: schemas.UserRoleUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: schemas.UserOut = Depends(admin_required),
+    current_user: models.User = Depends(admin_required),
 ):
     """
     ユーザーの権限を変更し、その操作を監査ログに記録します。

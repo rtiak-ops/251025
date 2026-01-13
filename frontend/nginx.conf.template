@@ -101,6 +101,17 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
+
+    # バックエンドAPIへのプロキシ (組織・テナント操作)
+    location /organizations {
+        proxy_pass ${BACKEND_URL};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+        proxy_pass_header Authorization;
+    }
 }
 
 # 【HTTPS設定 (将来用)】

@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_db, engine
 from ..auth import admin_required
+from .. import models, schemas
 
 router = APIRouter(prefix="/monitor", tags=["Monitoring"])
 
@@ -38,18 +39,31 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 @router.get("/stats")
 async def get_system_stats(
     db: AsyncSession = Depends(get_db),
-    current_user = Depends(admin_required)
+    current_user: models.User = Depends(admin_required)
 ):
     """
     管理者向けのシステム統計情報を取得します。
+    所属組織のデータのみを取得します。
     """
     from ..models import User, Project, Todo, AuditLog
     from sqlalchemy import func, select
 
-    user_count = (await db.execute(select(func.count(User.id)))).scalar()
-    project_count = (await db.execute(select(func.count(Project.id)))).scalar()
-    todo_count = (await db.execute(select(func.count(Todo.id)))).scalar()
-    audit_count = (await db.execute(select(func.count(AuditLog.id)))).scalar()
+    user_stmt = select(func.count(User.id))
+    project_stmt = select(func.count(Project.id))
+    todo_stmt = select(func.count(Todo.id))
+    audit_stmt = select(func.count(AuditLog.id))
+
+    if current_user.organization_id:
+        user_stmt = user_stmt.where(User.organization_id == current_user.organization_id)
+        project_stmt = project_stmt.where(Project.organization_id == current_user.organization_id)
+        # Todo is linked via Project or Owner. 
+        todo_stmt = todo_stmt.join(User, Todo.owner_id == User.id).where(User.organization_id == current_user.organization_id)
+        audit_stmt = audit_stmt.where(AuditLog.organization_id == current_user.organization_id)
+
+    user_count = (await db.execute(user_stmt)).scalar()
+    project_count = (await db.execute(project_stmt)).scalar()
+    todo_count = (await db.execute(todo_stmt)).scalar()
+    audit_count = (await db.execute(audit_stmt)).scalar()
 
     return {
         "counts": {

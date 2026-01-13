@@ -129,6 +129,8 @@ export default function App() {
    * データが変更された際にキャッシュを無効化して再取得を促す
    */
   const handleDataChange = () => {
+    queryClient.invalidateQueries({ queryKey: ["me"] });
+    queryClient.invalidateQueries({ queryKey: ["organization"] });
     queryClient.invalidateQueries({ queryKey: ["todos"] });
     queryClient.invalidateQueries({ queryKey: ["projects"] });
   };

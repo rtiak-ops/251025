@@ -15,7 +15,10 @@ class Organization(Base):
     __tablename__ = "organizations"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False)
+    name = Column(String(255), unique=True, nullable=False, index=True)
+    corporate_id = Column(String(13), unique=True, nullable=True, index=True) # 日本の法人番号（13桁）
+    website = Column(String(255), nullable=True)
+    is_verified = Column(Boolean, default=False, nullable=False)
     plan = Column(String(50), default="free", nullable=False) # 'free', 'pro', 'enterprise'
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 

@@ -14,6 +14,8 @@ from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 class OrganizationBase(BaseModel):
     name: str
+    corporate_id: str | None = None
+    website: str | None = None
     plan: str = "free"
 
 class OrganizationCreate(OrganizationBase):
@@ -21,6 +23,7 @@ class OrganizationCreate(OrganizationBase):
 
 class OrganizationOut(OrganizationBase):
     id: int
+    is_verified: bool
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)

@@ -16,7 +16,7 @@ from __future__ import annotations  # Python 3.10+: 型ヒントの前方参照�
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import crud, schemas, crud_audit
+from .. import crud, schemas, crud_audit, models
 from ..auth import get_current_user
 from ..database import get_db
 
@@ -40,7 +40,7 @@ router = APIRouter(prefix="/todos", tags=["Todos"])
 async def read_todos(
     q: str | None = None, # 検索クエリ
     db: AsyncSession = Depends(get_db),  # DBセッションを依存性注入で取得
-    current_user: schemas.UserOut = Depends(get_current_user),  # 認証済みユーザー情報を取得
+    current_user: models.User = Depends(get_current_user),  # 認証済みユーザー情報を取得
 ) -> list[schemas.TodoOut]:
     """
     ログインユーザーの全ToDoアイテムを取得します（検索対応）。
@@ -62,7 +62,7 @@ async def read_todos(
 async def create_todo(
     todo: schemas.TodoCreate,  # リクエストボディをschemas.TodoCreateモデルで検証
     db: AsyncSession = Depends(get_db),  # DBセッションを依存性注入で取得
-    current_user: schemas.UserOut = Depends(get_current_user),  # 認証済みユーザー情報を取得
+    current_user: models.User = Depends(get_current_user),  # 認証済みユーザー情報を取得
 ) -> schemas.TodoOut:
     """
     新しいToDoアイテムを作成します。
@@ -114,7 +114,7 @@ async def update_todo(
     todo_id: int,  # URLパスから更新対象のToDoのIDを取得
     todo: schemas.TodoUpdate,  # リクエストボディをschemas.TodoUpdateモデルで検証
     db: AsyncSession = Depends(get_db),  # DBセッションを依存性注入で取得
-    current_user: schemas.UserOut = Depends(get_current_user),  # 認証済みユーザー情報を取得
+    current_user: models.User = Depends(get_current_user),  # 認証済みユーザー情報を取得
 ) -> schemas.TodoOut:
     """
     指定されたIDのToDoアイテムを更新します（部分更新対応）。
@@ -176,7 +176,7 @@ async def update_todo(
 async def delete_todo(
     todo_id: int,  # URLパスから削除対象のToDoのIDを取得
     db: AsyncSession = Depends(get_db),  # DBセッションを依存性注入で取得
-    current_user: schemas.UserOut = Depends(get_current_user),  # 認証済みユーザー情報を取得
+    current_user: models.User = Depends(get_current_user),  # 認証済みユーザー情報を取得
 ) -> dict:  # 辞書型（JSONオブジェクト）を返すことを示唆
     """
     指定されたIDのToDoアイテムを削除します。

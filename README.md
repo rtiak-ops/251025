@@ -34,6 +34,7 @@
 - [🎬 主要なシーケンス (Core Workflows)](#-主要なシーケンス-core-workflows)
 - [💡 解決した技術的課題](#-解決した技術的課題)
 - [🛠️ 技術スタック & 選定理由](#️-技術スタック--選定理由)
+- [🏢 B2B マルチテナント設計の根幹](#-b2b-マルチテナント設計の根幹)
 - [🧪 テスト & 品質管理](#-テスト--品質管理)
 - [🚀 セットアップガイド](#-セットアップガイド)
     - [1. 🏠 ローカル開発環境 (Docker)](#1--ローカル開発環境-docker)
@@ -120,16 +121,27 @@ graph TD
 
 ```mermaid
 erDiagram
+    ORGANIZATIONS ||--o{ USERS : "contains"
+    ORGANIZATIONS ||--o{ PROJECTS : "owns"
+    ORGANIZATIONS ||--o{ AUDIT_LOGS : "logs"
     USERS ||--o{ PROJECTS : "owns"
     USERS ||--o{ TODOS : "owns"
     PROJECTS ||--o{ TODOS : "contains"
     USERS ||--o{ PROJECT_COLLABORATORS : "participates"
     PROJECTS ||--o{ PROJECT_COLLABORATORS : "has"
 
+    ORGANIZATIONS {
+        int id PK
+        string name UK "Unique Brand Name"
+        string corporate_id UK "Japan Corporate ID (13 digits)"
+        boolean is_verified "Official verification badge"
+        string plan "free, pro, enterprise"
+    }
     USERS {
         int id PK
         string email UK
         string hashed_password
+        int organization_id FK
         string role "admin, user"
         datetime created_at
     }
@@ -138,6 +150,7 @@ erDiagram
         string name
         text description
         int owner_id FK
+        int organization_id FK
         datetime created_at
     }
     PROJECT_COLLABORATORS {
@@ -196,6 +209,21 @@ erDiagram
 | **AI** | Gemini Pro / Flash | テキスト生成速度とコストのバランス。Gemini 2.5 Flashを使用することで、タスク分解の高速な応答を実現。 |
 
 ---
+
+## 🏢 B2B マルチテナント設計の根幹
+
+SaaSプロダクトの核心である「データ隔離」と「信頼性」について、本プロジェクトでは以下の設計思想を採用しています。
+
+### 1. 論理分離 (Logical Isolation) によるマルチテナント
+ポートフォリオとして、運用コスト（RDSコスト）とスケーラビリティのバランスを考慮し、**「共有スキーマ・行レベル分離」**方式を採用しています。
+- **実装**: 全ての主要テーブル（`Projects`, `AuditLogs`等）に `organization_id` を付与。
+- **セキュリティ**: APIクエリ時、認証された `current_user` の `organization_id` を強制的に WHERE 句へバインド。これにより、他組織のデータへのアクセスを物理的・構造的に遮断しています。
+
+### 2. 「なりすまし」と「ブランド占有」への対策
+B2B SaaSにおいて「勝手に他社を名乗る」プロトコル上のリスクに対し、以下のガードレールを実装・設計しています。
+- **名称/法人番号のユニーク制約**: データベースレベルで同一社名・同一法人番号の重複登録を排除。早い者勝ちによるブランド占有を技術的に防止。
+- **法人確認プロセス (Mock Verification)**: 入力された法人番号が13桁の有効な形式である場合に限り、UI上に「✓ 認証済」バッジを表示。
+- **今後の展望（フェーズ2）**: 実運用に向けては、**「メールドメイン認証」**（例：sony.comのメアドを持つ者のみがその組織を扱える）の導入を設計済みです。あえて現状を自由登録にしているのは、レビュアーが即座に複数組織の切り替え挙動を確認できるようにするためという意図があります。
 
 ## 🧪 テスト & 品質管理
 
@@ -278,11 +306,24 @@ GitHubのリポジトリ設定（Settings > Secrets and variables > Actions）�
 
 ## 📈 今後の展望 (Product Roadmap)
 
-ビジネスツールとしての完成度をさらに高めるため、以下の実装を予定しています。
+本プロジェクトは、個人タスク管理から「エンタープライズ向けSaaS」への進化を続けています。
 
-1.  **モバイル対応 (Mobile Optimization)**: PWA対応またはネイティブアプリ化による機動力の向上。
-2.  **通知システムの強化**: Slack/Email連携による、緊急タスクやメンションのリアルタイム通知。
-3.  **分析機能の拡充**: チーム全体のベロシティ計測や、AIによる業務改善提案レポートの生成。
+### ✅ 実装済み (B2B Foundation)
+- [x] **マルチテナント (Multi-tenancy) 対応**: 組織（Organization）単位での完全なデータ隔離を実装。
+- [x] **エンタープライズ・メンタリティ**: 監査ログ (Audit Log) やロールベースの権限管理 (RBAC) の基盤構築。
+
+### 🚀 ロードマップ
+1.  **高度なセキュリティ (Secure Enterprise)**:
+    - **SSO連携**: Google Workspace / Azure AD (Microsoft Entra ID) とのSAML/OIDC連携。
+    - **2FA/MFA**: 二要素認証によるアカウントセキュリティの強化。
+2.  **外部連携 & オートメーション (Integrations)**:
+    - **Slack / Teams 連携**: タスク状況のリアルタイム通知。
+    - **Public API & Webhook**: 外部システムからの操作・データ連携の解放。
+3.  **収益化基盤 (Monetization)**:
+    - **決済連携 (Stripe)**: 組織単位のサブスクリプション決済管理。
+    - **プラン制限機能**: プランに応じた機能・リソース制限の動的制御。
+4.  **AI分析 (AI-Driven Insights)**:
+    - AIによる業務ベロシティの分析と、組織全体の業務改善提案レポートの自動生成。
 
 ---
 

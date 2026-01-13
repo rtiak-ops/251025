@@ -1,7 +1,7 @@
-import type { ProjectSummary, User } from '../types';
-import { Plus } from 'lucide-react';
-import { createProject } from '../api';
+import { createProject, createOrganization } from '../api';
 import { toast } from 'react-hot-toast';
+import { Plus } from 'lucide-react';
+import type { ProjectSummary, User, Organization } from '../types';
 
 interface SidebarProps {
   projects: ProjectSummary[];
@@ -12,6 +12,7 @@ interface SidebarProps {
   onThemeToggle: () => void;
   onProjectCreated: () => void;
   currentUser?: User;
+  organization?: Organization;
 }
 
 /**
@@ -28,6 +29,7 @@ export default function Sidebar({
   onThemeToggle,
   onProjectCreated,
   currentUser,
+  organization,
 }: SidebarProps) {
   /**
    * 新規プロジェクト作成のハンドラー
@@ -47,6 +49,22 @@ export default function Sidebar({
     }
   };
 
+  /**
+   * 新規組織作成のハンドラー
+   */
+  const handleCreateOrganization = async () => {
+    const name = window.prompt("組織名（会社名）を入力してください:");
+    if (!name || !name.trim()) return;
+
+    try {
+      await createOrganization({ name });
+      toast.success("組織を作成しました");
+      onProjectCreated(); // データ再取得
+    } catch {
+      toast.error("組織の作成に失敗しました");
+    }
+  };
+
   return (
     <aside className="w-64 glass h-[calc(100vh-2rem)] sticky top-4 flex flex-col p-6 rounded-3xl">
       {/* ロゴセクション */}
@@ -54,7 +72,23 @@ export default function Sidebar({
         <h1 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">
           BizFlow
         </h1>
-        <p className="text-xs text-slate-500 dark:text-white font-medium">Enterprise Task Manager</p>
+        {organization ? (
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">
+              {organization.plan}
+            </span>
+            <p className="text-xs text-slate-500 dark:text-white font-bold truncate">
+              🏢 {organization.name}
+            </p>
+          </div>
+        ) : (
+          <button 
+            onClick={handleCreateOrganization}
+            className="mt-2 text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline font-bold"
+          >
+            ＋ 組織を作成して法人利用を開始
+          </button>
+        )}
       </div>
 
       {/* ナビゲーションメニュー */}

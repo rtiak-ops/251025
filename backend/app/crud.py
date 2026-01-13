@@ -31,6 +31,24 @@ from . import models, schemas
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # ==============================================================================
+# 組織（テナント）関連の CRUD 操作
+# ==============================================================================
+
+async def create_organization(db: AsyncSession, org: schemas.OrganizationCreate) -> models.Organization:
+    """
+    新しい組織を作成する関数
+    """
+    db_org = models.Organization(**org.model_dump())
+    db.add(db_org)
+    await db.commit()
+    await db.refresh(db_org)
+    return db_org
+
+async def get_organization(db: AsyncSession, org_id: int) -> models.Organization | None:
+    result = await db.execute(select(models.Organization).where(models.Organization.id == org_id))
+    return result.scalar_one_or_none()
+
+# ==============================================================================
 # ユーザー関連の CRUD 操作
 # ==============================================================================
 # CRUD = Create（作成）、Read（読み取り）、Update（更新）、Delete（削除）
@@ -363,27 +381,35 @@ async def reorder_todos(db: AsyncSession, todo_ids: list[int], owner_id: int):
 # プロジェクト関連の CRUD 操作
 # ==============================================================================
 
-async def get_projects(db: AsyncSession, owner_id: int) -> list[models.Project]:
+async def get_projects(db: AsyncSession, user_id: int) -> list[models.Project]:
     """
-    特定ユーザーが閲覧可能な全てのプロジェクトを取得する関数（自分が作成したもの + 招待されたもの）
+    特定ユーザーが閲覧可能な全てのプロジェクトを取得する関数。
+    B2B構成案: 所属する組織の全プロジェクトを取得可能にする。
     """
-    # 自分がオーナーのプロジェクト
-    owner_stmt = select(models.Project).where(models.Project.owner_id == owner_id)
+    # ユーザーの所属組織を取得
+    user_result = await db.execute(select(models.User).where(models.User.id == user_id))
+    user = user_result.scalar_one_or_none()
     
-    # 招待されているプロジェクトのIDを取得
-    collab_stmt = select(models.ProjectCollaborator.project_id).where(models.ProjectCollaborator.user_id == owner_id)
-    invited_stmt = select(models.Project).where(models.Project.id.in_(collab_stmt))
-    
-    # 和集合的な取得 (実際にはSQLでUnionしたりできますが、ここではシンプルに)
-    # SQLAlchemyのUnionを使用
-    from sqlalchemy import union_all
-    from sqlalchemy.orm import selectinload
-    complete_stmt = select(models.Project).where(
-        (models.Project.owner_id == owner_id) | 
-        (models.Project.id.in_(collab_stmt))
-    ).options(selectinload(models.Project.collaborators).selectinload(models.ProjectCollaborator.user)).order_by(models.Project.created_at.desc())
+    if not user or not user.organization_id:
+        # 組織に属していない場合は、自分がオーナーのものと招待されたもののみ
+        collab_stmt = select(models.ProjectCollaborator.project_id).where(models.ProjectCollaborator.user_id == user_id)
+        stmt = select(models.Project).where(
+            (models.Project.owner_id == user_id) | 
+            (models.Project.id.in_(collab_stmt))
+        )
+    else:
+        # 組織に属している場合は、組織の全プロジェクトを取得（または組織+個別招待）
+        stmt = select(models.Project).where(
+            (models.Project.organization_id == user.organization_id)
+        )
 
-    result = await db.execute(complete_stmt)
+    from sqlalchemy.orm import selectinload
+    stmt = stmt.options(
+        selectinload(models.Project.collaborators)
+        .selectinload(models.ProjectCollaborator.user)
+    ).order_by(models.Project.created_at.desc())
+
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 async def get_project_by_id(db: AsyncSession, project_id: int, user_id: int) -> models.Project | None:
@@ -438,9 +464,14 @@ async def is_project_editor(db: AsyncSession, project_id: int, user_id: int) -> 
 
 async def create_project(db: AsyncSession, project: schemas.ProjectCreate, owner_id: int) -> models.Project:
     """
-    新しいプロジェクトを作成する関数
+    新しいプロジェクトを作成する関数。
+    所有者の組織IDを自動的に引き継ぎます。
     """
-    db_project = models.Project(**project.model_dump(), owner_id=owner_id)
+    user_result = await db.execute(select(models.User).where(models.User.id == owner_id))
+    user = user_result.scalar_one_or_none()
+    org_id = user.organization_id if user else None
+
+    db_project = models.Project(**project.model_dump(), owner_id=owner_id, organization_id=org_id)
     db.add(db_project)
     await db.commit()
     await db.refresh(db_project)

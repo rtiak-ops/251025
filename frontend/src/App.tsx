@@ -11,6 +11,8 @@ import AuthForm from "./components/AuthForm";
 import AuditLogView from "./components/AuditLogView";
 import MonitorView from "./components/MonitorView";
 import UserManagementView from "./components/UserManagementView";
+import { getMyOrganization } from "./api";
+import type { Organization } from "./types";
 
 /**
  * App.tsx
@@ -62,6 +64,13 @@ export default function App() {
     queryKey: ["me"],
     queryFn: getMe,
     enabled: !!token,
+  });
+
+  // 組織情報を取得
+  const { data: organization } = useQuery<Organization>({
+    queryKey: ["organization"],
+    queryFn: getMyOrganization,
+    enabled: !!token && !!currentUser?.organization_id,
   });
 
   // すべてのタスクを取得
@@ -252,6 +261,7 @@ export default function App() {
         onThemeToggle={() => setTheme(theme === "dark" ? "light" : "dark")}
         onProjectCreated={handleDataChange}
         currentUser={currentUser}
+        organization={organization}
       />
 
       {/* メインコンテンツ: ビューに応じて切り替え */}

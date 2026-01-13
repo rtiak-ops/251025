@@ -13,6 +13,8 @@ import type {
   AuditLog,
   SystemStats,
   HealthStatus,
+  Organization,
+  CreateOrganizationData,
 } from "./types";
 
 // ============================================================================
@@ -144,6 +146,22 @@ export const getUsers = async (): Promise<User[]> => {
 
 export const updateUserRole = async (userId: number, role: string): Promise<User> => {
   const res = await api.patch(`/admin/users/${userId}/role`, { role });
+  return res.data;
+};
+
+/**
+ * 所属組織の情報を取得
+ */
+export const getMyOrganization = async (): Promise<Organization> => {
+  const res = await api.get("/organizations/me");
+  return res.data;
+};
+
+/**
+ * 新しい組織を作成
+ */
+export const createOrganization = async (data: CreateOrganizationData): Promise<Organization> => {
+  const res = await api.post("/organizations/", data);
   return res.data;
 };
 

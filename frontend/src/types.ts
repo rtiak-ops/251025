@@ -52,15 +52,26 @@ export type UpdateTodoData = Partial<Omit<Todo, "id">>;
 // 2. ユーザー・認証関連の型定義
 // ----------------------------------------------------------------------------
 
-/**
- * ユーザー情報の構造を定義するインターフェース
- * ログインしているユーザーの情報を扱うときに使います。
- */
 export interface User {
   id: number;           // ユーザーID
   email: string;        // メールアドレス (ログインIDとして使用)
   created_at: string;   // アカウント作成日時
   role: 'admin' | 'user'; // 役割
+  organization_id?: number | null; // 所属組織ID
+}
+
+/**
+ * 組織情報の構造を定義するインターフェース
+ */
+export interface Organization {
+  id: number;
+  name: string;
+  plan: 'free' | 'pro' | 'enterprise';
+  created_at: string;
+}
+
+export interface CreateOrganizationData {
+  name: string;
 }
 
 /**

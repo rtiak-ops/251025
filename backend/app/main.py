@@ -21,7 +21,7 @@ from slowapi.util import get_remote_address  # Rate Limiting
 
 # アプリケーション固有のモジュールをインポート
 from .database import Base, engine  # データベース接続エンジンと、モデルのベースクラスをインポート
-from .routers import ai, auth, todos, projects, admin, monitor
+from .routers import ai, auth, todos, projects, admin, monitor, organizations
 
 # ----------------------------------------------------------------------
 # 0. ロギングとセキュリティ設定
@@ -228,3 +228,4 @@ app.include_router(todos.router)
 app.include_router(ai.router)
 app.include_router(admin.router)
 app.include_router(monitor.router)
+app.include_router(organizations.router)

@@ -14,10 +14,9 @@ async def read_audit_logs(
     current_user: schemas.UserOut = Depends(admin_required),
 ):
     """
-    全ユーザーの監査ログを取得します。
-    実運用では管理者権限チェックが必要ですが、ポートフォリオ公開用に全認証ユーザーに開放しています。
+    所属組織の監査ログを取得します。
     """
-    return await crud_audit.get_audit_logs(db, skip=skip, limit=limit)
+    return await crud_audit.get_audit_logs(db, organization_id=current_user.organization_id, skip=skip, limit=limit)
 
 @router.get("/users", response_model=list[schemas.UserOut])
 async def list_users(
@@ -27,11 +26,14 @@ async def list_users(
     current_user: schemas.UserOut = Depends(admin_required),
 ):
     """
-    全ユーザーのリストを取得します。
+    所属組織のユーザーリストを取得します。
     """
     from ..models import User
     from sqlalchemy import select
-    result = await db.execute(select(User).offset(skip).limit(limit).order_by(User.id))
+    stmt = select(User).offset(skip).limit(limit).order_by(User.id)
+    if current_user.organization_id:
+        stmt = stmt.where(User.organization_id == current_user.organization_id)
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 @router.patch("/users/{user_id}/role", response_model=schemas.UserOut)
@@ -83,7 +85,8 @@ async def update_user_role(
         action="UPDATE_ROLE",
         resource_type="USER",
         resource_id=user_id,
-        details=f"Role changed from {old_role} to {new_role}"
+        details=f"Role changed from {old_role} to {new_role}",
+        organization_id=current_user.organization_id
     )
     
     return db_user

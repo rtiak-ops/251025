@@ -9,6 +9,23 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 # ======================================================================
+# 組織（テナント）関連のスキーマ
+# ======================================================================
+
+class OrganizationBase(BaseModel):
+    name: str
+    plan: str = "free"
+
+class OrganizationCreate(OrganizationBase):
+    pass
+
+class OrganizationOut(OrganizationBase):
+    id: int
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+# ======================================================================
 # ユーザー認証関連のスキーマ
 # ======================================================================
 
@@ -76,6 +93,9 @@ class UserOut(UserBase):
     
     # 役割
     role: str
+
+    # 所属組織のID
+    organization_id: int | None = None
 
     # Pydantic V2方式: orm_modeの代替としてmodel_configを使用
     # これにより、SQLAlchemyのモデルオブジェクトから直接データを取得できる
@@ -351,6 +371,7 @@ class ProjectOut(ProjectBase):
     created_at: datetime
     updated_at: datetime
     owner_id: int
+    organization_id: int | None = None
     collaborators: list[CollaboratorOut] = []
     
     model_config = ConfigDict(from_attributes=True)

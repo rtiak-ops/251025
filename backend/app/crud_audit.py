@@ -10,7 +10,8 @@ async def create_audit_log(
     action: str,
     resource_type: str,
     resource_id: int | None = None,
-    details: dict | None = None
+    details: dict | None = None,
+    organization_id: int | None = None
 ):
     """
     監査ログを記録します。
@@ -35,25 +36,29 @@ async def create_audit_log(
         action=action,
         resource_type=resource_type,
         resource_id=resource_id,
-        details=details_str
+        details=details_str,
+        organization_id=organization_id
     )
     db.add(db_log)
     await db.commit()
     await db.refresh(db_log)
     return db_log
 
-async def get_audit_logs(db: AsyncSession, skip: int = 0, limit: int = 100):
+async def get_audit_logs(db: AsyncSession, organization_id: int | None = None, skip: int = 0, limit: int = 100):
     """
-    監査ログを取得します。
+    監査ログを取得します。組織IDが指定された場合はその組織のログのみ取得します。
     """
     from sqlalchemy import select
     from .models import User
     
     # ユーザー情報も一緒に取得（email表示用）
+    stmt = select(AuditLog, User.email).outerjoin(User, AuditLog.user_id == User.id)
+    
+    if organization_id:
+        stmt = stmt.where(AuditLog.organization_id == organization_id)
+        
     result = await db.execute(
-        select(AuditLog, User.email)
-        .outerjoin(User, AuditLog.user_id == User.id)
-        .order_by(AuditLog.created_at.desc())
+        stmt.order_by(AuditLog.created_at.desc())
         .offset(skip)
         .limit(limit)
     )

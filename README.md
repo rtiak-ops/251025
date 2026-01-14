@@ -10,12 +10,32 @@
 <table align="center">
   <tr>
     <td align="center" width="50%">
-      <img src="docs/images/todo-auth.png" alt="認証ページ" style="max-width:100%;"><br>
+      <img src="docs/images/auth.png" alt="認証ページ" style="max-width:100%;"><br>
       <sub>認証画面</sub>
     </td>
     <td align="center" width="50%">
-      <img src="docs/images/todo-todos.png" alt="ダッシュボード" style="max-width:100%;"><br>
+      <img src="docs/images/dashBoard.png" alt="ダッシュボード" style="max-width:100%;"><br>
       <sub>ダッシュボード</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/images/auditLog.png" alt="監査ログ" style="max-width:100%;"><br>
+      <sub>監査ログ</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/images/monitor.png" alt="監視ダッシュボード" style="max-width:100%;"><br>
+      <sub>パフォーマンス監視</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/images/userAdmin.png" alt="ユーザー管理" style="max-width:100%;"><br>
+      <sub>ユーザー管理</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/images/project.png" alt="プロジェクト管理" style="max-width:100%;"><br>
+      <sub>プロジェクト管理</sub>
     </td>
   </tr>
 </table>
@@ -71,10 +91,14 @@
 - **リアルタイム検索**: タイトルや説明文から、プロジェクト横断でタスクを高速に検索。
 - **動的フィルタリング**: 検索結果をさらに優先度やステータスで絞り込み可能。
 
-### 6. 👥 チームコラボレーション
-プロジェクトを共有し、協力してタスクを遂行。
-- **プロジェクト招待**: メールアドレスを使用して、他ユーザーをプロジェクトに招待。
-- **詳細な権限管理 (Editor/Viewer)**: 招待されたユーザーに対して、編集権限または閲覧のみの権限を付与可能。
+### 6. 👥 チーム・組織管理 (Governance & Collaboration)
+プロジェクト共有から組織レベルのガバナンスまで対応。
+- **組織メンバー招待**: 管理者は既存ユーザーをメールアドレスで検索し、自組織へ招待・追加が可能。
+- **プロジェクト共有**: 特定のプロジェクトに対して、他ユーザーを招待し、階層的なタスク管理を共同で実施。
+- **詳細な権限管理 (RBAC)**: 
+    - **Roles**: システム管理者(Admin) と 一般ユーザー(User) を定義。
+    - **Permissions**: プロジェクト単位で 編集権限(Editor) または 閲覧のみ(Viewer) を付与可能。
+- **管理者保護**: 組織内に管理者が不在になるのを防ぐため、最後の管理者の権限降格を制限するバリデーションを実装。
 
 ### 🛡️ 高度なエンジニアリング機能 (Advanced Engineering)
 - **🧩 Role-Based Access Control (RBAC)**: システム全体の管理者（Admin）と一般ユーザー（User）を分離。Admin専用の分析・監視ダッシュボードを搭載。
@@ -124,6 +148,7 @@ erDiagram
     ORGANIZATIONS ||--o{ USERS : "contains"
     ORGANIZATIONS ||--o{ PROJECTS : "owns"
     ORGANIZATIONS ||--o{ AUDIT_LOGS : "logs"
+    USERS ||--o{ AUDIT_LOGS : "generates"
     USERS ||--o{ PROJECTS : "owns"
     USERS ||--o{ TODOS : "owns"
     PROJECTS ||--o{ TODOS : "contains"
@@ -229,7 +254,9 @@ B2B SaaSにおいて「勝手に他社を名乗る」プロトコル上のリス
 
 「動作すること」だけでなく「壊れないこと」を重視したテスト戦略を採用しています。
 
-- **Backend**: `pytest` による単体・統合テスト。異常系（権限のないアクセス、レートリミット超過、DB接続断）を重点的にカバー。
+- **Backend**: `pytest` による単体・統合テスト。
+    - **マルチテナント隔離テスト**: 組織Aのユーザーが組織Bのデータにアクセスできないことを保証する厳格な隔離テスト（`test_multi_tenancy_isolation`）を実装。
+    - **異常系テスト**: 権限のないアクセス、レートリミット超過、DB接続断などを重点的にカバー。
 - **Frontend**: `Vitest` + `React Testing Library` によるコンポーネントテスト。ローディング状態、エラー表示、フォームバリデーションを検証。
 - **CI/CD**:
     - **カバレッジ目標**: 80%以上を維持。Codecovによる可視化。
@@ -328,8 +355,8 @@ GitHubのリポジトリ設定（Settings > Secrets and variables > Actions）�
 ---
 
 ## 📖 詳細ドキュメント
-- [🔐 認証フローの徹底解説](AUTH_FLOW.md)
-- [📘 コードリーディング・ガイド](CODE_READING_GUIDE.md)
+- [🔐 認証フローの徹底解説](memo/AUTH_FLOW.md)
+- [📘 コードリーディング・ガイド](memo/CODE_READING_GUIDE.md)
 
 ---
 **Developed by [rtiak-ops]**  

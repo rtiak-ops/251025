@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getUsers, updateUserRole } from "../api";
-import { Users, Shield, User as UserIcon, Loader2 } from "lucide-react";
+import { getUsers, updateUserRole, assignUserToOrganization } from "../api";
+import { Users, Shield, User as UserIcon, Loader2, UserPlus, Search } from "lucide-react";
+import { useState } from "react";
 import { toast } from "react-hot-toast";
 import type { User } from "../types";
 
@@ -10,6 +11,7 @@ import type { User } from "../types";
  */
 export default function UserManagementView({ currentUser }: { currentUser?: User }) {
     const queryClient = useQueryClient();
+    const [inviteEmail, setInviteEmail] = useState("");
 
     // ユーザー一覧の取得
     const { data: users, isLoading, isError } = useQuery<User[]>({
@@ -35,6 +37,26 @@ export default function UserManagementView({ currentUser }: { currentUser?: User
             toast.error(message);
         }
     });
+
+    // 組織へのアサイン用ミューテーション
+    const assignMutation = useMutation({
+        mutationFn: (email: string) => assignUserToOrganization(email),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+            toast.success("メンバーを組織に追加しました");
+            setInviteEmail("");
+        },
+        onError: (err: any) => {
+            const message = err.response?.data?.detail || "追加に失敗しました。ユーザーが存在しないか、既に別の組織に所属している可能性があります。";
+            toast.error(message);
+        }
+    });
+
+    const handleAssignUser = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!inviteEmail.trim()) return;
+        assignMutation.mutate(inviteEmail.trim());
+    };
 
     const handleRoleChange = (userId: number, currentRole: string) => {
         const newRole = currentRole === 'admin' ? 'user' : 'admin';
@@ -81,6 +103,37 @@ export default function UserManagementView({ currentUser }: { currentUser?: User
                         システム利用者の権限設定とアカウント管理を行います。
                     </p>
                 </div>
+            </div>
+
+            {/* メンバー招待セクション */}
+            <div className="glass rounded-3xl border border-slate-200 dark:border-white/10 p-6">
+                <h3 className="text-sm font-bold text-slate-700 dark:text-white mb-4 flex items-center gap-2">
+                    <UserPlus size={16} className="text-indigo-500" /> メンバーを組織に追加
+                </h3>
+                <form onSubmit={handleAssignUser} className="flex gap-3">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input
+                            type="email"
+                            placeholder="追加したいユーザーのメールアドレス..."
+                            value={inviteEmail}
+                            onChange={(e) => setInviteEmail(e.target.value)}
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium dark:text-white text-sm"
+                            required
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={assignMutation.isPending || !inviteEmail.trim()}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        {assignMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : null}
+                        追加する
+                    </button>
+                </form>
+                <p className="text-[10px] text-slate-400 mt-2">
+                    ※ 既にシステムに登録されているユーザーのみ追加できます。
+                </p>
             </div>
 
             <div className="glass rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden">

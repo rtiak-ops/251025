@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from .. import schemas, crud_audit, auth, models
 from ..auth import admin_required
 from ..database import get_db
+from ..limiter import limiter
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -89,4 +90,53 @@ async def update_user_role(
         organization_id=current_user.organization_id
     )
     
+    return db_user
+
+@router.post("/users/assign", response_model=schemas.UserOut)
+@limiter.limit("5/minute")
+async def add_user_to_organization(
+    request: Request,
+    data: schemas.UserOrganizationUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(admin_required),
+):
+    """
+    既存のユーザーをメールアドレスで検索し、自分の組織に追加します。
+    """
+    from ..models import User
+    from sqlalchemy import select
+    from fastapi import HTTPException
+
+    if not current_user.organization_id:
+        raise HTTPException(status_code=400, detail="あなたは組織に所属していないため、メンバーを追加できません。先に組織を作成してください。")
+
+    # 対象ユーザーを取得
+    result = await db.execute(select(User).where(User.email == data.email))
+    db_user = result.scalar_one_or_none()
+
+    if not db_user:
+        raise HTTPException(status_code=404, detail="指定されたメールアドレスのユーザーが見つかりません。")
+
+    if db_user.organization_id:
+        if db_user.organization_id == current_user.organization_id:
+            raise HTTPException(status_code=400, detail="このユーザーは既にあなたの組織に所属しています。")
+        else:
+            raise HTTPException(status_code=400, detail="このユーザーは既に別の組織に所属しています。")
+
+    # 組織を紐付け
+    db_user.organization_id = current_user.organization_id
+    await db.commit()
+    await db.refresh(db_user)
+
+    # 監査ログに記録
+    await crud_audit.create_audit_log(
+        db,
+        user_id=current_user.id,
+        action="ADD_TO_ORG",
+        resource_type="USER",
+        resource_id=db_user.id,
+        details=f"User {db_user.email} added to organization {current_user.organization_id}",
+        organization_id=current_user.organization_id
+    )
+
     return db_user

@@ -61,19 +61,29 @@ async def breakdown_task(
     if not success and google_api_key and google_api_key != "dummy":
         try:
             genai.configure(api_key=google_api_key)
-            available_models = ["models/gemini-2.0-flash-exp", "models/gemini-1.5-flash"]
+            # より広範なモデル名を試行するように拡張
+            available_models = [
+                "gemini-2.5-flash-light", 
+                "gemini-2.5-flash", 
+                "gemini-3.0-flash",
+                "gemini-flash-latest"
+            ]
             
             for model_name in available_models:
                 try:
+                    logger.info(f"Trying Gemini model: {model_name}")
                     model = genai.GenerativeModel(model_name)
                     response = await model.generate_content_async(prompt)
                     content = response.text
-                    success = True
-                    break
-                except Exception:
+                    if content:
+                        logger.info(f"Successfully generated content using {model_name}")
+                        success = True
+                        break
+                except Exception as model_err:
+                    logger.warning(f"Model {model_name} failed: {model_err}")
                     continue
         except Exception as e:
-            logger.warning(f"Gemini API Error: {e}")
+            logger.error(f"Gemini Configuration/API Error: {e}")
 
     if not success and openai_api_key and openai_api_key != "dummy":
         try:

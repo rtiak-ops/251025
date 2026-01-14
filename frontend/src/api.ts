@@ -149,6 +149,11 @@ export const updateUserRole = async (userId: number, role: string): Promise<User
   return res.data;
 };
 
+export const assignUserToOrganization = async (email: string): Promise<User> => {
+    const res = await api.post("/admin/users/assign", { email });
+    return res.data;
+};
+
 /**
  * 所属組織の情報を取得
  */

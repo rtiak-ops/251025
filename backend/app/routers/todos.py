@@ -96,7 +96,8 @@ async def create_todo(
         action="CREATE", 
         resource_type="TODO", 
         resource_id=new_todo.id,
-        details={"title": new_todo.title}
+        details={"title": new_todo.title},
+        organization_id=current_user.organization_id
     )
     
     return new_todo  # 作成されたToDoアイテムを返す
@@ -159,7 +160,8 @@ async def update_todo(
         action="UPDATE", 
         resource_type="TODO", 
         resource_id=updated.id,
-        details=todo.model_dump(exclude_unset=True)
+        details=todo.model_dump(exclude_unset=True),
+        organization_id=current_user.organization_id
     )
 
     return updated  # 更新されたToDoアイテムを返す
@@ -217,7 +219,8 @@ async def delete_todo(
         user_id=current_user.id, 
         action="DELETE", 
         resource_type="TODO", 
-        resource_id=todo_id
+        resource_id=todo_id,
+        organization_id=current_user.organization_id
     )
 
     # 削除成功メッセージを返す

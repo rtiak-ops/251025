@@ -231,7 +231,7 @@ erDiagram
 | **Logic** | TanStack Query | 楽観的UI更新（Optimistic Update）の実装による圧倒的なUX。自前でのキャッシュ管理を避け、ライブラリに任せることでコードの抽象化を促進。 |
 | **Database** | PostgreSQL 17 | 複雑なリレーション、JSON型による将来的なAIスレッドの保存を視野に入れ、堅牢なRDBMSを選択。 |
 | **Infra** | AWS, Terraform | インフラのコード化（IaC）。手動設定を排除し、再現性とスケーラビリティを担保。 |
-| **AI** | Gemini Pro / Flash | テキスト生成速度とコストのバランス。Gemini 2.5 Flashを使用することで、タスク分解の高速な応答を実現。 |
+| **AI** | Gemini Flash | テキスト生成速度とコストのバランス。Gemini 2.5/3.0 Flashを使用することで、タスク分解の高速な応答を実現。 |
 
 ---
 

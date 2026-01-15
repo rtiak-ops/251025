@@ -25,7 +25,7 @@ dist/
 Thumbs.db
 
 # other 
-memo/
+secret/
 certbot/
 
 # Terraform

@@ -11,7 +11,7 @@ export default function AuditLogView() {
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
 
-    const { data: logs, isLoading, isError } = useQuery<AuditLog[] | any>({
+    const { data: logs, isLoading, isError } = useQuery<AuditLog[]>({
         queryKey: ["audit-logs", searchQuery, userEmail, action, resourceType, startDate, endDate],
         queryFn: async () => {
             const data = await getAuditLogs(0, 50, {
@@ -65,13 +65,20 @@ export default function AuditLogView() {
      */
     const renderLogDescription = (log: AuditLog) => {
         const { action, resource_type, details } = log;
-        let detailObj: any = {};
+        let detailObj: {
+            title?: string;
+            name?: string;
+            completed?: boolean;
+            status?: string;
+            priority?: string;
+            role?: string;
+        } = {};
         
         try {
             if (details) {
                 detailObj = typeof details === 'string' ? JSON.parse(details) : details;
             }
-        } catch (e) {
+        } catch {
             // 文字列の場合もあるので無視
         }
 
@@ -92,11 +99,11 @@ export default function AuditLogView() {
                     changes.push(detailObj.completed ? '「完了」に更新' : '「未完了」に戻しました');
                 }
                 if (detailObj.status) {
-                    const statusNames: any = { 'TODO': '未着手', 'IN_PROGRESS': '進行中', 'REVIEW': 'レビュー中', 'DONE': '完了' };
+                    const statusNames: Record<string, string> = { 'TODO': '未着手', 'IN_PROGRESS': '進行中', 'REVIEW': 'レビュー中', 'DONE': '完了' };
                     changes.push(`ステータスを「${statusNames[detailObj.status] || detailObj.status}」に変更`);
                 }
                 if (detailObj.priority) {
-                    const priorityNames: any = { 'LOW': '低', 'MEDIUM': '中', 'HIGH': '高', 'URGENT': '緊急' };
+                    const priorityNames: Record<string, string> = { 'LOW': '低', 'MEDIUM': '中', 'HIGH': '高', 'URGENT': '緊急' };
                     changes.push(`優先度を「${priorityNames[detailObj.priority] || detailObj.priority}」に変更`);
                 }
                 return changes.length > 0 ? `${subject}の${changes.join('、')}` : `${subject}の情報を更新しました`;

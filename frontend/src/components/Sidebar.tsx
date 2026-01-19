@@ -67,8 +67,9 @@ export default function Sidebar({
       });
       toast.success("組織を正式に登録しました");
       onProjectCreated(); // データ再取得
-    } catch (error: any) {
-      const message = error.response?.status === 409 
+    } catch (error) {
+      const err = error as { response?: { status?: number } };
+      const message = err.response?.status === 409 
         ? "その名称または法人番号は既に登録されています" 
         : "組織の作成に失敗しました";
       toast.error(message);

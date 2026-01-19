@@ -3,6 +3,25 @@ import { getHealth, getSystemStats } from "../api";
 import { Activity, Server, Database, Globe, Users, FolderKanban, ListChecks, History } from "lucide-react";
 import type { HealthStatus, SystemStats } from "../types";
 
+interface StatCardProps {
+    icon: React.ElementType;
+    label: string;
+    value: number | string | undefined | null;
+    colorClass: string;
+}
+
+const StatCard = ({ icon: Icon, label, value, colorClass }: StatCardProps) => (
+    <div className="glass p-6 rounded-2xl border border-slate-200 dark:border-white/10 flex items-center gap-4">
+        <div className={`p-3 rounded-xl ${colorClass}`}>
+            <Icon size={24} />
+        </div>
+        <div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
+            <p className="text-2xl font-bold dark:text-white">{value ?? '-'}</p>
+        </div>
+    </div>
+);
+
 export default function MonitorView() {
     const { data: health, isLoading: isHealthLoading, isError: isHealthError } = useQuery<HealthStatus>({
         queryKey: ["health"],
@@ -35,18 +54,6 @@ export default function MonitorView() {
             </div>
         );
     }
-
-    const StatCard = ({ icon: Icon, label, value, colorClass }: any) => (
-        <div className="glass p-6 rounded-2xl border border-slate-200 dark:border-white/10 flex items-center gap-4">
-            <div className={`p-3 rounded-xl ${colorClass}`}>
-                <Icon size={24} />
-            </div>
-            <div>
-                <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
-                <p className="text-2xl font-bold dark:text-white">{value ?? '-'}</p>
-            </div>
-        </div>
-    );
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">

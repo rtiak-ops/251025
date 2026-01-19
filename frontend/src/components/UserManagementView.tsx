@@ -32,7 +32,8 @@ export default function UserManagementView({ currentUser }: { currentUser?: User
             queryClient.invalidateQueries({ queryKey: ["admin-users"] });
             toast.success("ユーザー権限を更新しました");
         },
-        onError: (err: any) => {
+        onError: (error) => {
+            const err = error as { response?: { data?: { detail?: string } } };
             const message = err.response?.data?.detail || "権限の更新に失敗しました";
             toast.error(message);
         }
@@ -46,7 +47,8 @@ export default function UserManagementView({ currentUser }: { currentUser?: User
             toast.success("メンバーを組織に追加しました");
             setInviteEmail("");
         },
-        onError: (err: any) => {
+        onError: (error) => {
+            const err = error as { response?: { data?: { detail?: string } } };
             const message = err.response?.data?.detail || "追加に失敗しました。ユーザーが存在しないか、既に別の組織に所属している可能性があります。";
             toast.error(message);
         }

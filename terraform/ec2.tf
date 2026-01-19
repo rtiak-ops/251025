@@ -76,9 +76,13 @@ resource "aws_instance" "app" {                  # サーバー本体（イン�
               POSTGRES_USER=postgresMaster
               POSTGRES_PASSWORD=${var.db_password}
               POSTGRES_DB=todo_db
-              SECRET_KEY=REPLACE_ME_DURING_DEPLOY
+              SECRET_KEY=9a2f64b8e8c1a5d09f7e2c4b6a8d0f1e2c3a4b5d6e7f8a9b0c1d2e3f4a5b6c7d
               ENV=production
-              CORS_ORIGINS=*
+              DEBUG=false
+              CORS_ORIGINS=http://3.114.50.110,http://localhost,http://localhost:5173
+              VITE_API_BASE_URL=http://3.114.50.110
+              DOMAIN_NAME=3.114.50.110
+              GOOGLE_API_KEY=AIzaSyCOSgPe--iuCusfdKicdmbxllz_GdXIcDU
               EOT
               chown ec2-user:ec2-user /home/ec2-user/251025/.env # 設定ファイルの持ち主も操作ユーザーにします
 

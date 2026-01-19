@@ -44,11 +44,23 @@ async def create_audit_log(
     await db.refresh(db_log)
     return db_log
 
-async def get_audit_logs(db: AsyncSession, organization_id: int | None = None, skip: int = 0, limit: int = 100):
+async def get_audit_logs(
+    db: AsyncSession, 
+    organization_id: int | None = None, 
+    skip: int = 0, 
+    limit: int = 100,
+    user_email: str | None = None,
+    action: str | None = None,
+    resource_type: str | None = None,
+    query: str | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None
+):
     """
     監査ログを取得します。組織IDが指定された場合はその組織のログのみ取得します。
+    フィルター条件が指定された場合は、それらで絞り込みを行います。
     """
-    from sqlalchemy import select
+    from sqlalchemy import select, or_
     from .models import User
     
     # ユーザー情報も一緒に取得（email表示用）
@@ -56,6 +68,30 @@ async def get_audit_logs(db: AsyncSession, organization_id: int | None = None, s
     
     if organization_id:
         stmt = stmt.where(AuditLog.organization_id == organization_id)
+    
+    if user_email:
+        stmt = stmt.where(User.email.ilike(f"%{user_email}%"))
+    
+    if action:
+        stmt = stmt.where(AuditLog.action == action)
+        
+    if resource_type:
+        stmt = stmt.where(AuditLog.resource_type == resource_type)
+        
+    if query:
+        from sqlalchemy import cast, String
+        stmt = stmt.where(or_(
+            AuditLog.details.ilike(f"%{query}%"),
+            AuditLog.resource_type.ilike(f"%{query}%"),
+            AuditLog.action.ilike(f"%{query}%"),
+            cast(AuditLog.created_at, String).ilike(f"%{query}%")
+        ))
+    
+    if start_date:
+        stmt = stmt.where(AuditLog.created_at >= start_date)
+    
+    if end_date:
+        stmt = stmt.where(AuditLog.created_at <= end_date)
         
     result = await db.execute(
         stmt.order_by(AuditLog.created_at.desc())

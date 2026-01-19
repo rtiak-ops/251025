@@ -398,9 +398,20 @@ export const reorderTodos = async (todoIds: number[]): Promise<void> => {
 /**
  * 監査ログの一覧を取得する関数
  */
-export const getAuditLogs = async (skip: number = 0, limit: number = 100): Promise<AuditLog[]> => {
+export const getAuditLogs = async (
+    skip: number = 0, 
+    limit: number = 100,
+    filters: {
+        user_email?: string;
+        action?: string;
+        resource_type?: string;
+        query?: string;
+        start_date?: string;
+        end_date?: string;
+    } = {}
+): Promise<AuditLog[]> => {
     const res: AxiosResponse<AuditLog[]> = await api.get("/admin/audit-logs", {
-        params: { skip, limit }
+        params: { skip, limit, ...filters }
     });
     return res.data;
 };

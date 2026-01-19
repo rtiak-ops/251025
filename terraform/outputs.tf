@@ -7,7 +7,7 @@
 # ① サーバー（EC2）の住所：SSH接続などで使います
 output "ec2_public_ip" {                         # サーバーの公開IPアドレスを出力します
   description = "Public IP of the EC2 instance" # 説明書きです
-  value       = aws_instance.app.public_ip      # 実際に作成されたサーバーのIPを渡します
+  value       = aws_eip.app.public_ip           # 固定されたIPアドレスを渡します
 }                                               # 出力設定終了
 
 # ② データベース（RDS）の接続先：アプリの設定で使います

@@ -231,8 +231,10 @@ jobs:
               printf 'SECRET_KEY=%s\n' "$CLEAN_SECRET_KEY"
               # 実行環境設定
               echo "ENV=production"
-              # CORS許可設定（フロントエンドのURL）
-              echo "CORS_ORIGINS=https://${CF_DOMAIN}"
+              # ドメイン名設定
+              echo "DOMAIN_NAME=${{ steps.infra-info.outputs.ec2_ip }}"
+              # CORS許可設定（フロントエンドのURLとEC2のIP）
+              echo "CORS_ORIGINS=https://${CF_DOMAIN},http://${{ steps.infra-info.outputs.ec2_ip }}"
             } >> .env.tmp
             # 書き換えたファイルを正式な .env として反映します。
             mv .env.tmp .env

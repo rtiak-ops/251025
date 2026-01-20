@@ -44,20 +44,25 @@ jobs:
         # 他のステップでこの結果を使えるようにIDを付けます。
         id: infra-info
         run: |
-          # 1. バックエンドを動かすEC2サーバーのIPアドレスを取得します。
-          IP=$(aws ec2 describe-instances \
+          # 1. バックエンドを動かすEC2サーバーの情報を取得します。
+          INSTANCE_INFO=$(aws ec2 describe-instances \
             --filters "Name=tag:Name,Values=todo-app-ec2" "Name=instance-state-name,Values=running" \
-            --query "Reservations[0].Instances[0].PublicIpAddress" \
+            --query "Reservations[0].Instances[0].[PublicIpAddress,InstanceId]" \
             --output text)
+          
+          IP=$(echo "$INSTANCE_INFO" | awk '{print $1}')
+          ID=$(echo "$INSTANCE_INFO" | awk '{print $2}')
           
           # IPアドレスが取得できなかった場合はエラーで終了します。
           if [ "$IP" == "None" ] || [ -z "$IP" ]; then
             echo "エラー: 起動中のEC2インスタンスが見つかりませんでした。"
             exit 1
           fi
-          # 取得したIPを画面に表示し、後のステップで使える変数として保存します。
+          # 取得した情報を後のステップで使える変数として保存します。
           echo "EC2 IP: $IP"
+          echo "EC2 ID: $ID"
           echo "ec2_ip=$IP" >> $GITHUB_OUTPUT
+          echo "instance_id=$ID" >> $GITHUB_OUTPUT
 
           # 2. フロントエンドのファイルを置くS3バケット名を取得します。
           S3_ARN=$(aws resourcegroupstaggingapi get-resources \
@@ -160,104 +165,84 @@ jobs:
           # 全てのパス (/*) のキャッシュを無効化します。
           aws cloudfront create-invalidation --distribution-id ${{ steps.infra-info.outputs.cf_id }} --paths "/*"
 
-      # バックエンドを動かしているEC2サーバーへ接続し、中身を更新します。
-      - name: EC2へデプロイ
-        uses: appleboy/ssh-action@v1.0.3
-        # SSH先で使いたい値を環境変数として定義します。
-        env:
-          APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}
-          CF_DOMAIN: ${{ steps.infra-info.outputs.cf_domain }}
-          RDS_ENDPOINT: ${{ steps.infra-info.outputs.rds_endpoint }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-        with:
-          # 接続先は先ほど取得したEC2のIPアドレスです。
-          host: ${{ steps.infra-info.outputs.ec2_ip }}
-          username: ${{ secrets.EC2_USER }}
-          # 接続に使用する秘密鍵です。
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          timeout: 60s
-          command_timeout: 10m
-          # 上記 env で定義した変数を SSH 先の環境に渡します。
-          envs: APP_SECRET_KEY,CF_DOMAIN,RDS_ENDPOINT,DB_PASSWORD
-          # SSH接続後に実行する一連のコマンドです。
-          script: |
-            # プロジェクトを配置するディレクトリを指定します。
-            PROJECT_DIR="$HOME/251025"
-            # 1. 初めての場合はフォルダを準備（クローン）します。
-            if [ ! -d "$PROJECT_DIR" ]; then
-              git clone https://github.com/${{ github.repository }}.git "$PROJECT_DIR"
-            fi
-            # 作業ディレクトリへ移動します。
-            cd "$PROJECT_DIR"
-            
-            # 2. 既存の環境設定ファイル (.env) を一時的にバックアップします。
-            if [ -f ".env" ]; then
-              cp .env ../.env.bak
-            fi
-            
-            # 3. GitHubから最新のコードを取得し、強制的に最新状態にします。
-            git fetch origin ${{ github.ref_name }}
-            git reset --hard origin/${{ github.ref_name }}
-            
-            # 4. 環境設定ファイル (.env) を復元または新規作成します。
-            if [ -f "../.env.bak" ]; then
-              mv ../.env.bak .env
-            else
-              touch .env
-            fi
- 
-            # 5. 最新のAWSインフラ情報を .env ファイルに書き込みます。
-            echo "Updating .env with latest infrastructure values..."
-            # 既存の対象設定行を一旦削除します。
-            grep -v -E "^(DATABASE_URL|POSTGRES_USER|POSTGRES_PASSWORD|POSTGRES_DB|SECRET_KEY|ENV|CORS_ORIGINS)=" .env > .env.tmp || true
-            
-            # 秘密鍵から不要な空白や改行を取り除きます。
-            CLEAN_SECRET_KEY=$(echo "$APP_SECRET_KEY" | tr -d '\r\n ')
-            # 秘密鍵が短すぎる場合は警告を表示します。
-            if [ -z "$CLEAN_SECRET_KEY" ] || [ ${#CLEAN_SECRET_KEY} -lt 32 ]; then
-              echo "WARNING: APP_SECRET_KEY is too short or empty. Production auth will likely fail."
-            fi
- 
-            # 最新の接続情報を .env.tmp に追記します。
-            {
-              # データベースの接続URL（パスワードとエンドポイントを含む）
-              printf 'DATABASE_URL=postgresql+asyncpg://postgresMaster:%s@%s/todo_db?ssl=require\n' "$DB_PASSWORD" "$RDS_ENDPOINT"
-              echo "POSTGRES_USER=postgresMaster"
-              # データベースパスワード
-              printf 'POSTGRES_PASSWORD=%s\n' "$DB_PASSWORD"
-              echo "POSTGRES_DB=todo_db"
-              # アプリの秘密鍵
-              printf 'SECRET_KEY=%s\n' "$CLEAN_SECRET_KEY"
-              # 実行環境設定
-              echo "ENV=production"
-              # ドメイン名設定
-              echo "DOMAIN_NAME=${{ steps.infra-info.outputs.ec2_ip }}"
-              # CORS許可設定（フロントエンドのURLとEC2のIP）
-              echo "CORS_ORIGINS=https://${CF_DOMAIN},http://${{ steps.infra-info.outputs.ec2_ip }}"
-            } >> .env.tmp
-            # 書き換えたファイルを正式な .env として反映します。
-            mv .env.tmp .env
-            echo "Done. CORS_ORIGINS is set to https://${CF_DOMAIN}"
-            
-            # 6. Docker Compose が入っていない場合はインストールします。
-            if ! command -v docker-compose &> /dev/null; then
-              echo "Installing Docker Compose standalone..."
-              sudo curl -SL https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-x86_64 -o /usr/bin/docker-compose
-              sudo chmod +x /usr/bin/docker-compose
-            fi
-            
-            # 7. Docker サービスが停止している場合は開始します。
-            sudo systemctl start docker
-            
-            # 8. Dockerコンテナを最新コードでビルドし、再起動します。
-            echo "Starting containers..."
-            sudo /usr/bin/docker-compose up -d --build
-            
-            # 9. データベースのテーブル構造を最新に更新します。
-            echo "Waiting for app to start..."
-            # アプリが起動するのを少し待ちます。
-            sleep 20
-            # alembic を使ってマイグレーションを実行します。
-            sudo /usr/bin/docker-compose exec -T backend alembic upgrade head
+      # バックエンドを動かしているEC2サーバーへSSM経由で接続し、中身を更新します。
+      - name: EC2へデプロイ (SSM経由)
+        run: |
+          # 1. 実行するスクリプトをファイルとして生成
+          # 注意: 変数はGitHub Actionsによってこの時点で展開されます
+          cat << 'EOF_DEPLOY' > deploy_script.sh
+          #!/bin/bash
+          set -e
+          PROJECT_DIR="/home/ec2-user/251025"
+          
+          # プロジェクトフォルダがない場合はクローン、ある場合は移動
+          if [ ! -d "$PROJECT_DIR" ]; then
+            sudo -u ec2-user git clone https://github.com/${{ github.repository }}.git "$PROJECT_DIR"
+          fi
+          cd "$PROJECT_DIR"
+          
+          # 最新のソースを取得
+          sudo -u ec2-user git fetch origin ${{ github.ref_name }}
+          sudo -u ec2-user git reset --hard origin/${{ github.ref_name }}
+          
+          # 環境変数ファイル (.env) を作成
+          # printf を使ってパスワードなどの特殊文字を安全に扱います
+          {
+            printf 'DATABASE_URL=postgresql+asyncpg://postgresMaster:%s@%s/todo_db?ssl=require\n' "${{ secrets.DB_PASSWORD }}" "${{ steps.infra-info.outputs.rds_endpoint }}"
+            echo "POSTGRES_USER=postgresMaster"
+            printf 'POSTGRES_PASSWORD=%s\n' "${{ secrets.DB_PASSWORD }}"
+            echo "POSTGRES_DB=todo_db"
+            printf 'SECRET_KEY=%s\n' "${{ secrets.APP_SECRET_KEY }}"
+            echo "ENV=production"
+            echo "DOMAIN_NAME=${{ steps.infra-info.outputs.ec2_ip }}"
+            echo "CORS_ORIGINS=https://${{ steps.infra-info.outputs.cf_domain }},http://${{ steps.infra-info.outputs.ec2_ip }}"
+          } > .env
+          chown ec2-user:ec2-user .env
+          
+          # Dockerコンテナの起動
+          sudo systemctl start docker
+          sudo docker compose up -d --build
+          
+          # データベースのマイグレーション
+          echo "Waiting for app to start..."
+          sleep 20
+          sudo docker compose exec -T backend alembic upgrade head
+          EOF_DEPLOY
+
+          # 2. SSMコマンドを送信してスクリプトを実行
+          echo "SSMコマンドを送信中 (InstanceId: ${{ steps.infra-info.outputs.instance_id }})..."
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ steps.infra-info.outputs.instance_id }}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters "commands=$(cat deploy_script.sh | jq -R -s .)" \
+            --query "Command.CommandId" \
+            --output text)
+          
+          echo "コマンド送信完了。Command ID: $COMMAND_ID"
+          
+          # 3. コマンドの完了を待機 (最大10分)
+          echo "実行完了を待機しています..."
+          aws ssm wait command-executed \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ steps.infra-info.outputs.instance_id }}"
+          
+          # 4. 実行結果の確認
+          INVOCATION=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ steps.infra-info.outputs.instance_id }}" \
+            --output json)
+          
+          STATUS=$(echo "$INVOCATION" | jq -r '.Status')
+          echo "最終ステータス: $STATUS"
+          
+          if [ "$STATUS" != "Success" ]; then
+            echo "!!! エラー: デプロイコマンドが失敗しました !!!"
+            echo "--- 標準エラー出力 ---"
+            echo "$INVOCATION" | jq -r '.StandardErrorContent'
+            echo "--- 標準出力 ---"
+            echo "$INVOCATION" | jq -r '.StandardOutputContent'
+            exit 1
+          fi
+          
+          echo "デプロイが正常に完了しました。"
 

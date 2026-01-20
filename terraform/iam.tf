@@ -63,6 +63,8 @@ resource "aws_iam_role_policy" "github_actions_policy" { # 具体的に「何を
           "cloudfront:ListDistributions",       # CloudFrontの一覧を取得する
           "cloudfront:GetDistribution",        # CloudFrontの詳細設定を取得する
           "ec2:DescribeInstances",              # EC2サーバーの情報を取得する
+          "ssm:SendCommand",                    # SSM経由でコマンドを実行する
+          "ssm:GetCommandInvocation",            # コマンドの実行結果を取得する
           "rds:DescribeDBInstances",            # データベースの情報を取得する
           "resourcegroupstaggingapi:GetResources" # タグを使ってリソースを探す
         ]                                       # 操作リスト終了

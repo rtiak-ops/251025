@@ -28,6 +28,7 @@ resource "aws_instance" "app" {                  # サーバー本体（イン�
 
   subnet_id              = aws_subnet.public[0].id         # 公開エリア（パブリックサブネット）の1つ目に設置します
   vpc_security_group_ids      = [aws_security_group.ec2.id]     # サーバー用の「門番（セキュリティグループ）」を指定します
+  iam_instance_profile   = aws_iam_instance_profile.ec2_ssm_profile.name # SSMログイン用の権限を付与します
   user_data_replace_on_change = true                # 自動セットアップの内容を変えたらサーバーを作り直します
 
   # 記憶装置（SSD）：パソコンのCドライブのようなもの
@@ -76,13 +77,13 @@ resource "aws_instance" "app" {                  # サーバー本体（イン�
               POSTGRES_USER=postgresMaster
               POSTGRES_PASSWORD=${var.db_password}
               POSTGRES_DB=todo_db
-              SECRET_KEY=9a2f64b8e8c1a5d09f7e2c4b6a8d0f1e2c3a4b5d6e7f8a9b0c1d2e3f4a5b6c7d
+              SECRET_KEY=${var.secret_key}
               ENV=production
               DEBUG=false
-              CORS_ORIGINS=http://3.114.50.110,http://localhost,http://localhost:5173
-              VITE_API_BASE_URL=http://3.114.50.110
-              DOMAIN_NAME=3.114.50.110
-              GOOGLE_API_KEY=AIzaSyCOSgPe--iuCusfdKicdmbxllz_GdXIcDU
+              CORS_ORIGINS=http://${aws_eip.app.public_ip},http://localhost,http://localhost:5173
+              VITE_API_BASE_URL=http://${aws_eip.app.public_ip}
+              DOMAIN_NAME=${aws_eip.app.public_ip}
+              GOOGLE_API_KEY=${var.google_api_key}
               EOT
               chown ec2-user:ec2-user /home/ec2-user/251025/.env # 設定ファイルの持ち主も操作ユーザーにします
 
@@ -103,11 +104,16 @@ resource "aws_instance" "app" {                  # サーバー本体（イン�
 # --------------------------------------------------------------------------------------------------
 # サーバーを再起動しても住所（IPアドレス）が変わらないように固定します。
 resource "aws_eip" "app" {
-  instance = aws_instance.app.id
   domain   = "vpc"
 
   tags = {
     Name = "${var.project_name}-eip"
   }
+}
+
+# インスタンスとEIPを紐付けます（循環参照を避けるために分離しています）
+resource "aws_eip_association" "eip_assoc" {
+  instance_id   = aws_instance.app.id
+  allocation_id = aws_eip.app.id
 }
 

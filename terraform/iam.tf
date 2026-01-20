@@ -74,6 +74,39 @@ resource "aws_iam_role_policy" "github_actions_policy" { # 具体的に「何を
 }                                               # 許可証設定終了
 
 # --------------------------------------------------------------------------------------------------
+# ⑤ EC2用IAMロール (SSM経由のログイン用)
+# --------------------------------------------------------------------------------------------------
+# サーバー（EC2）がAWSの他のサービス（SSMなど）と安全に通信するための設定です。
+resource "aws_iam_role" "ec2_ssm_role" {
+  name = "${var.project_name}-ec2-ssm-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# SSMを利用するための標準的な許可証をロールに貼り付けます
+resource "aws_iam_role_policy_attachment" "ssm_managed_core" {
+  role       = aws_iam_role.ec2_ssm_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+# インスタンスプロフィール（EC2にロールを渡すための入れ物）を作成します
+resource "aws_iam_instance_profile" "ec2_ssm_profile" {
+  name = "${var.project_name}-ec2-ssm-profile"
+  role = aws_iam_role.ec2_ssm_role.name
+}
+
+# --------------------------------------------------------------------------------------------------
 # ④ 結果の出力 (Output)
 # --------------------------------------------------------------------------------------------------
 # 作成した「役割の名前（ARN）」を後で使えるように表示します。

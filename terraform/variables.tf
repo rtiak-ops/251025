@@ -31,3 +31,15 @@ variable "key_name" {                       # 「ログイン用の鍵の名前�
   type        = string                      # 文字列の箱です
   default     = "app-key"                   # 何も入れなかったら「app-key」という鍵を使います
 }                                           # key_nameの設定を閉じます
+
+variable "secret_key" {                     # 「アプリケーションの秘密鍵」という箱を用意します
+  description = "Secret key for application security"  # 箱の説明です
+  type        = string                      # 文字列の箱です
+  sensitive   = true                        # 重要：この箱の中身は画面やログに見せないようにします（秘密！）
+}                                           # secret_keyの設定を閉じます
+
+variable "google_api_key" {                 # 「Google APIキー」という箱を用意します
+  description = "Google API key for services"  # 箱の説明です
+  type        = string                      # 文字列の箱です
+  sensitive   = true                        # 重要：この箱の中身は画面やログに見せないようにします（秘密！）
+}                                           # google_api_keyの設定を閉じます

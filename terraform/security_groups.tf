@@ -7,12 +7,13 @@ resource "aws_security_group" "ec2" {        # サーバー（EC2）用の門番
   description = "Security group for EC2 instance" # どんな門番か、説明書きをします
   vpc_id      = aws_vpc.main.id              # この門番を配置する街（VPC）を指定します
 
-  ingress {                                  # 入口のルール（外から中へ）を決めます
-    from_port   = 22                         # 22番ポート（SSH）から
-    to_port     = 22                         # 22番ポートまでを開けます
-    protocol    = "tcp"                      # TCPという通信方式を使います
-    cidr_blocks = ["0.0.0.0/0"]              # 世界中のどこからでもアクセスOKにします
-  }                                          # SSHルールの終了
+  # ingress {                                  # 入口のルール（外から中へ）を決めます
+  #   from_port   = 22                         # 22番ポート（SSH）から
+  #   to_port     = 22                         # 22番ポートまでを開けます
+  #   protocol    = "tcp"                      # TCPという通信方式を使います
+  #   # 【セキュリティ】SSM経由でのログインに変更したため、直接のSSHは閉じます
+  #   cidr_blocks = ["0.0.0.0/0"]              
+  # }                                          # SSHルールの終了
 
   ingress {                                  # 次の入口ルールを決めます
     from_port   = 80                         # 80番ポート（HTTP）から
@@ -22,11 +23,11 @@ resource "aws_security_group" "ec2" {        # サーバー（EC2）用の門番
   }                                          # HTTPルールの終了
 
   ingress {                                  # 次の入口ルールを決めます
-    from_port   = 8000                       # 8000番ポート（API用）から
-    to_port     = 8000                       # 8000番ポートまでを開けます
+    from_port   = 443                        # 443番ポート（HTTPS）から
+    to_port     = 443                        # 443番ポートまでを開けます
     protocol    = "tcp"                      # TCP通信です
-    cidr_blocks = ["0.0.0.0/0"]              # 世界中からAPIを使えるようにします
-  }                                          # APIルールの終了
+    cidr_blocks = ["0.0.0.0/0"]              # 安全な接続（HTTPS）を許可します
+  }                                          # HTTPSルールの終了
 
   egress {                                   # 出口のルール（中から外へ）を決めます
     from_port   = 0                          # 全てのポートから

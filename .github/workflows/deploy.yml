@@ -170,7 +170,7 @@ jobs:
         run: |
           # 1. 実行するスクリプトをファイルとして生成
           # 注意: 変数はGitHub Actionsによってこの時点で展開されます
-          cat << 'EOF_DEPLOY' > deploy_script.sh
+          cat << 'EOF_DEPLOY' | tr -d '\r' > deploy_script.sh
           #!/bin/bash
           set -e
           PROJECT_DIR="/home/ec2-user/251025"

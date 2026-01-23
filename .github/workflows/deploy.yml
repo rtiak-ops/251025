@@ -41,97 +41,8 @@ jobs:
 
       # 現在稼働しているAWSインフラの最新情報を動的に取得します。
       - name: 最新のインフラ情報を取得
-        # 他のステップでこの結果を使えるようにIDを付けます。
         id: infra-info
-        run: |
-          # 1. バックエンドを動かすEC2サーバーの情報を取得します。
-          INSTANCE_INFO=$(aws ec2 describe-instances \
-            --filters "Name=tag:Name,Values=todo-app-ec2" "Name=instance-state-name,Values=running" \
-            --query "Reservations[0].Instances[0].[PublicIpAddress,InstanceId]" \
-            --output text)
-          
-          IP=$(echo "$INSTANCE_INFO" | awk '{print $1}')
-          ID=$(echo "$INSTANCE_INFO" | awk '{print $2}')
-          
-          # IPアドレスが取得できなかった場合はエラーで終了します。
-          if [ "$IP" == "None" ] || [ -z "$IP" ]; then
-            echo "エラー: 起動中のEC2インスタンスが見つかりませんでした。"
-            exit 1
-          fi
-          # 取得した情報を後のステップで使える変数として保存します。
-          echo "EC2 IP: $IP"
-          echo "EC2 ID: $ID"
-          echo "ec2_ip=$IP" >> $GITHUB_OUTPUT
-          echo "instance_id=$ID" >> $GITHUB_OUTPUT
-
-          # 2. フロントエンドのファイルを置くS3バケット名を取得します。
-          S3_ARN=$(aws resourcegroupstaggingapi get-resources \
-            --tag-filters Key=Name,Values=todo-app-frontend-bucket \
-            --query "ResourceTagMappingList[0].ResourceARN" \
-            --output text)
-          
-          # バケットが見つからない場合はエラーにします。
-          if [ "$S3_ARN" == "None" ] || [ -z "$S3_ARN" ]; then
-            echo "エラー: S3バケットが見つかりませんでした。"
-            exit 1
-          fi
-          # ARN（識別子）からバケット名だけを取り出します。
-          S3_BUCKET_NAME=${S3_ARN##*:}
-          echo "S3 Bucket: $S3_BUCKET_NAME"
-          echo "s3_bucket=$S3_BUCKET_NAME" >> $GITHUB_OUTPUT
-
-          # 3. 配信ネットワークであるCloudFrontの情報を取得します。
-          echo "CloudFront の情報を取得中..."
-          # 名前タグを使って確実にこのプロジェクトのCloudFrontを見つけます。
-          CF_ARN=$(aws resourcegroupstaggingapi get-resources \
-            --resource-type-filters cloudfront:distribution \
-            --tag-filters Key=Name,Values=todo-app-cloudfront \
-            --query "ResourceTagMappingList[0].ResourceARN" \
-            --output text)
-          
-          # タグで見つからない場合、または "None" という文字が返ってきた場合は、予備としてS3バケット名から検索します。
-          if [ "$CF_ARN" == "None" ] || [ -z "$CF_ARN" ]; then
-            echo "警告: タグ(Name=todo-app-cloudfront)でCloudFrontが見つかりませんでした。S3バケット名 ($S3_BUCKET_NAME) から検索を試みます..."
-            CF_ID=$(aws cloudfront list-distributions \
-              --query "DistributionList.Items[?Origins.Items[?contains(DomainName, '$S3_BUCKET_NAME')]].Id" \
-              --output text | awk '{print $1}' | tr -d '\r\n ')
-          else
-            # ARN (arn:aws:cloudfront::...:distribution/ID) から ID 部分だけを取り出します。
-            CF_ID=$(echo "${CF_ARN##*/}" | tr -d '\r\n ')
-            echo "タグでCloudFrontを特定しました: $CF_ID"
-          fi
-          
-          # CloudFrontの設定が見つからない場合はエラーにします。
-          if [ "$CF_ID" == "None" ] || [ -z "$CF_ID" ] || [ "$CF_ID" == "null" ]; then
-            echo "エラー: 対象のCloudFrontが見つかりませんでした。"
-            echo "確認事項:"
-            echo "1. CloudFront に 'Name: todo-app-cloudfront' タグが設定されているか"
-            echo "2. S3バケット '$S3_BUCKET_NAME' が CloudFront のオリジンとして設定されているか"
-            exit 1
-          fi
-          
-          echo "使用する CloudFront ID: [$CF_ID]"
-          
-          # CloudFrontのドメイン名を取得して存在確認を兼ねます。
-          CF_DOMAIN=$(aws cloudfront get-distribution --id "$CF_ID" --query "Distribution.DomainName" --output text | tr -d '\r\n ')
-          
-          if [ -z "$CF_DOMAIN" ] || [ "$CF_DOMAIN" == "None" ]; then
-            echo "エラー: CloudFront ID [$CF_ID] の情報を取得できませんでした。存在するか確認してください。"
-            exit 1
-          fi
-          
-          echo "CloudFront Domain: $CF_DOMAIN"
-          echo "cf_domain=$CF_DOMAIN" >> $GITHUB_OUTPUT
-          echo "cf_id=$CF_ID" >> $GITHUB_OUTPUT
-
-          # 4. データベース(RDS)の接続先アドレスを取得します。
-          RDS_ENDPOINT=$(aws rds describe-db-instances \
-            --filters "Name=db-instance-id,Values=todo-app-db" \
-            --query "DBInstances[0].Endpoint.Address" \
-            --output text)
-          # 接続先アドレスを保存します。
-          echo "RDS Endpoint: $RDS_ENDPOINT"
-          echo "rds_endpoint=$RDS_ENDPOINT" >> $GITHUB_OUTPUT
+        run: bash scripts/get-infra-info.sh
 
       # フロントエンドをビルドするためにNode.jsをセットアップします。
       - name: Node.js セットアップ
@@ -145,71 +56,35 @@ jobs:
       - name: フロントエンドのビルド
         working-directory: ./frontend
         env:
-          # APIの接続先として、先ほど取得したCloudFrontのドメインを設定します。
           VITE_API_BASE_URL: https://${{ steps.infra-info.outputs.cf_domain }}
         run: |
-          # 依存ライブラリをインストールします。
           npm ci
-          # ビルドを実行して dist フォルダにファイルを出力します。
           npm run build
 
       # ビルドされたファイルを S3 バケットにアップロード（同期）します。
       - name: S3へ同期
         run: |
-          # 内容を同期させ、リポジトリに存在しない古いファイルは削除（--delete）します。
           aws s3 sync ./frontend/dist s3://${{ steps.infra-info.outputs.s3_bucket }} --delete
 
       # 世界中のキャッシュサーバーに残っている古いデータを消去して即時反映させます。
-      - name: CloudFrontキャッシュクリア (Invalidation)
+      - name: CloudFrontキャッシュクリア
         run: |
-          # 全てのパス (/*) のキャッシュを無効化します。
           aws cloudfront create-invalidation --distribution-id ${{ steps.infra-info.outputs.cf_id }} --paths "/*"
 
       # バックエンドを動かしているEC2サーバーへSSM経由で接続し、中身を更新します。
       - name: EC2へデプロイ (SSM経由)
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          RDS_ENDPOINT: ${{ steps.infra-info.outputs.rds_endpoint }}
+          APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}
+          EC2_IP: ${{ steps.infra-info.outputs.ec2_ip }}
+          CF_DOMAIN: ${{ steps.infra-info.outputs.cf_domain }}
         run: |
-          # 1. 実行するスクリプトをファイルとして生成
-          # 注意: 変数はGitHub Actionsによってこの時点で展開されます
-          cat << 'EOF_DEPLOY' | tr -d '\r' > deploy_script.sh
-          #!/bin/bash
-          set -e
-          PROJECT_DIR="/home/ec2-user/251025"
+          # テンプレートに変数を埋め込んで実行用スクリプトを生成
+          envsubst < scripts/deploy-ec2.sh.template > deploy_script.sh
           
-          # プロジェクトフォルダがない場合はクローン、ある場合は移動
-          if [ ! -d "$PROJECT_DIR" ]; then
-            sudo -u ec2-user git clone https://github.com/${{ github.repository }}.git "$PROJECT_DIR"
-          fi
-          cd "$PROJECT_DIR"
-          
-          # 最新のソースを取得
-          sudo -u ec2-user git fetch origin ${{ github.ref_name }}
-          sudo -u ec2-user git reset --hard origin/${{ github.ref_name }}
-          
-          # 環境変数ファイル (.env) を作成
-          # printf を使ってパスワードなどの特殊文字を安全に扱います
-          {
-            printf 'DATABASE_URL=postgresql+asyncpg://postgresMaster:%s@%s/todo_db?ssl=require\n' "${{ secrets.DB_PASSWORD }}" "${{ steps.infra-info.outputs.rds_endpoint }}"
-            echo "POSTGRES_USER=postgresMaster"
-            printf 'POSTGRES_PASSWORD=%s\n' "${{ secrets.DB_PASSWORD }}"
-            echo "POSTGRES_DB=todo_db"
-            printf 'SECRET_KEY=%s\n' "${{ secrets.APP_SECRET_KEY }}"
-            echo "ENV=production"
-            echo "DOMAIN_NAME=${{ steps.infra-info.outputs.ec2_ip }}"
-            echo "CORS_ORIGINS=https://${{ steps.infra-info.outputs.cf_domain }},http://${{ steps.infra-info.outputs.ec2_ip }}"
-          } > .env
-          chown ec2-user:ec2-user .env
-          
-          # Dockerコンテナの起動
-          sudo systemctl start docker
-          sudo docker compose up -d --build
-          
-          # データベースのマイグレーション
-          echo "Waiting for app to start..."
-          sleep 20
-          sudo docker compose exec -T backend alembic upgrade head
-          EOF_DEPLOY
-
-          # 2. SSMコマンドを送信してスクリプトを実行
           echo "SSMコマンドを送信中 (InstanceId: ${{ steps.infra-info.outputs.instance_id }})..."
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${{ steps.infra-info.outputs.instance_id }}" \
@@ -218,31 +93,18 @@ jobs:
             --query "Command.CommandId" \
             --output text)
           
-          echo "コマンド送信完了。Command ID: $COMMAND_ID"
+          echo "コマンド送信完了。ID: $COMMAND_ID. 完了を待機中..."
+          aws ssm wait command-executed --command-id "$COMMAND_ID" --instance-id "${{ steps.infra-info.outputs.instance_id }}"
           
-          # 3. コマンドの完了を待機 (最大10分)
-          echo "実行完了を待機しています..."
-          aws ssm wait command-executed \
-            --command-id "$COMMAND_ID" \
-            --instance-id "${{ steps.infra-info.outputs.instance_id }}"
-          
-          # 4. 実行結果の確認
-          INVOCATION=$(aws ssm get-command-invocation \
-            --command-id "$COMMAND_ID" \
-            --instance-id "${{ steps.infra-info.outputs.instance_id }}" \
-            --output json)
-          
+          INVOCATION=$(aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "${{ steps.infra-info.outputs.instance_id }}" --output json)
           STATUS=$(echo "$INVOCATION" | jq -r '.Status')
           echo "最終ステータス: $STATUS"
           
           if [ "$STATUS" != "Success" ]; then
-            echo "!!! エラー: デプロイコマンドが失敗しました !!!"
+            echo "!!! エラー: デプロイが失敗しました !!!"
             echo "--- 標準エラー出力 ---"
             echo "$INVOCATION" | jq -r '.StandardErrorContent'
-            echo "--- 標準出力 ---"
-            echo "$INVOCATION" | jq -r '.StandardOutputContent'
             exit 1
           fi
-          
           echo "デプロイが正常に完了しました。"
 

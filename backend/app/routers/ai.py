@@ -12,8 +12,7 @@ import google.generativeai as genai
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from ..auth import get_current_user
-from .. import schemas, models
+from .. import schemas, models, dependencies
 
 # ----------------------------------------------------------------------
 # AI (LLM) 連携用のルーター
@@ -31,7 +30,7 @@ class AIResponse(BaseModel):
 @router.post("/breakdown", response_model=AIResponse)
 async def breakdown_task(
     req: AIRequest,
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(dependencies.get_current_user)
 ):
     """
     タスク分解API:
@@ -43,8 +42,9 @@ async def breakdown_task(
             detail="タスクのタイトルが長すぎます(200文字以内)"
         )
     
-    openai_api_key = os.getenv("OPENAI_API_KEY")
-    google_api_key = os.getenv("GOOGLE_API_KEY")
+    from ..core import config
+    openai_api_key = config.OPENAI_API_KEY
+    google_api_key = config.GOOGLE_API_KEY
     
     prompt = f"""
     あなたは優秀なタスク管理アシスタントです。

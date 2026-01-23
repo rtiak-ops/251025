@@ -1,8 +1,7 @@
 from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from .. import crud, schemas, crud_audit, models
-from ..auth import get_current_user
+from .. import crud, schemas, models, dependencies
 from ..database import get_db
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
@@ -10,7 +9,7 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 @router.get("/", response_model=list[schemas.ProjectOut])
 async def read_projects(
     db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(dependencies.get_current_user),
 ) -> list[schemas.ProjectOut]:
     """
     ログインユーザーのプロジェクト一覧を取得します。
@@ -20,7 +19,7 @@ async def read_projects(
 @router.get("/summary", response_model=list[schemas.ProjectSummary])
 async def read_project_summaries(
     db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(dependencies.get_current_user),
 ):
     """
     各プロジェクトのタスク統計を含むサマリーを取得します。
@@ -31,14 +30,14 @@ async def read_project_summaries(
 async def create_project(
     project: schemas.ProjectCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(dependencies.get_current_user),
 ) -> schemas.ProjectOut:
     user_id = current_user.id
     org_id = current_user.organization_id
     new_project = await crud.create_project(db, project=project, owner_id=user_id)
     
     # 監査ログを記録
-    await crud_audit.create_audit_log(
+    await crud.create_audit_log(
         db, 
         user_id=user_id, 
         action="CREATE", 
@@ -54,7 +53,7 @@ async def create_project(
 async def read_project(
     project_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(dependencies.get_current_user),
 ) -> schemas.ProjectOut:
     """
     指定されたIDのプロジェクトを取得します。
@@ -69,7 +68,7 @@ async def update_project(
     project_id: int,
     project: schemas.ProjectUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(dependencies.get_current_user),
 ) -> schemas.ProjectOut:
     user_id = current_user.id
     org_id = current_user.organization_id
@@ -78,7 +77,7 @@ async def update_project(
         raise HTTPException(status_code=404, detail="Project not found")
     
     # 監査ログを記録
-    await crud_audit.create_audit_log(
+    await crud.create_audit_log(
         db, 
         user_id=user_id, 
         action="UPDATE", 
@@ -94,7 +93,7 @@ async def update_project(
 async def delete_project(
     project_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(dependencies.get_current_user),
 ):
     user_id = current_user.id
     org_id = current_user.organization_id
@@ -103,7 +102,7 @@ async def delete_project(
         raise HTTPException(status_code=404, detail="Project not found")
     
     # 監査ログを記録
-    await crud_audit.create_audit_log(
+    await crud.create_audit_log(
         db, 
         user_id=user_id, 
         action="DELETE", 
@@ -119,7 +118,7 @@ async def add_collaborator(
     project_id: int,
     collaborator: schemas.CollaboratorCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(dependencies.get_current_user),
 ):
     """
     プロジェクトにメンバーを追加します。
@@ -136,7 +135,7 @@ async def remove_collaborator(
     project_id: int,
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(dependencies.get_current_user),
 ):
     """
     プロジェクトからメンバーを削除します。

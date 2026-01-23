@@ -1,8 +1,9 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from .models import AuditLog
-from .schemas import AuditLogOut
-from datetime import datetime, timezone
+from datetime import datetime
 import json
+from sqlalchemy import select, or_, cast, String
+from sqlalchemy.ext.asyncio import AsyncSession
+from ..models import AuditLog, User
+from ..schemas import AuditLogOut
 
 async def create_audit_log(
     db: AsyncSession,
@@ -16,7 +17,6 @@ async def create_audit_log(
     """
     監査ログを記録します。
     """
-    # detailsにdatetimeが含まれる場合、json.dumpsでエラーになるため文字列に変換
     if isinstance(details, dict):
         processed_details = {}
         for k, v in details.items():
@@ -26,7 +26,6 @@ async def create_audit_log(
                 processed_details[k] = v
         details_str = json.dumps(processed_details, ensure_ascii=False)
     elif details is not None:
-        # すでに文字列（またはその他の型）の場合はそのまま文字列化を試みる
         details_str = str(details)
     else:
         details_str = None
@@ -57,13 +56,8 @@ async def get_audit_logs(
     end_date: datetime | None = None
 ):
     """
-    監査ログを取得します。組織IDが指定された場合はその組織のログのみ取得します。
-    フィルター条件が指定された場合は、それらで絞り込みを行います。
+    監査ログを取得します。
     """
-    from sqlalchemy import select, or_
-    from .models import User
-    
-    # ユーザー情報も一緒に取得（email表示用）
     stmt = select(AuditLog, User.email).outerjoin(User, AuditLog.user_id == User.id)
     
     if organization_id:
@@ -79,7 +73,6 @@ async def get_audit_logs(
         stmt = stmt.where(AuditLog.resource_type == resource_type)
         
     if query:
-        from sqlalchemy import cast, String
         stmt = stmt.where(or_(
             AuditLog.details.ilike(f"%{query}%"),
             AuditLog.resource_type.ilike(f"%{query}%"),

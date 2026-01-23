@@ -1,8 +1,7 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from .. import schemas, crud_audit, auth, models
-from ..auth import admin_required
+from .. import schemas, models, crud, dependencies
 from ..database import get_db
 from ..limiter import limiter
 
@@ -19,12 +18,12 @@ async def read_audit_logs(
     start_date: datetime | None = None,
     end_date: datetime | None = None,
     db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(admin_required),
+    current_user: models.User = Depends(dependencies.admin_required),
 ):
     """
     所属組織の監査ログを取得します。
     """
-    return await crud_audit.get_audit_logs(
+    return await crud.get_audit_logs(
         db, 
         organization_id=current_user.organization_id, 
         skip=skip, 
@@ -42,7 +41,7 @@ async def list_users(
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(admin_required),
+    current_user: models.User = Depends(dependencies.admin_required),
 ):
     """
     所属組織のユーザーリストを取得します。
@@ -60,7 +59,7 @@ async def update_user_role(
     user_id: int,
     role_data: schemas.UserRoleUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(admin_required),
+    current_user: models.User = Depends(dependencies.admin_required),
 ):
     """
     ユーザーの権限を変更し、その操作を監査ログに記録します。
@@ -98,7 +97,7 @@ async def update_user_role(
     await db.refresh(db_user)
     
     # 監査ログに記録
-    await crud_audit.create_audit_log(
+    await crud.create_audit_log(
         db,
         user_id=current_user.id,
         action="UPDATE_ROLE",
@@ -116,7 +115,7 @@ async def add_user_to_organization(
     request: Request,
     data: schemas.UserOrganizationUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(admin_required),
+    current_user: models.User = Depends(dependencies.admin_required),
 ):
     """
     既存のユーザーをメールアドレスで検索し、自分の組織に追加します。
@@ -147,7 +146,7 @@ async def add_user_to_organization(
     await db.refresh(db_user)
 
     # 監査ログに記録
-    await crud_audit.create_audit_log(
+    await crud.create_audit_log(
         db,
         user_id=current_user.id,
         action="ADD_TO_ORG",

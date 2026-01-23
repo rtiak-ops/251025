@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Body, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from .. import crud, schemas, auth, models
+from .. import crud, schemas, models, dependencies
+from ..core.security import create_access_token
 from ..database import get_db
 from ..limiter import limiter
 
@@ -56,7 +57,7 @@ async def login(
         )
     
     # 3. トークン生成：認証成功後、ユーザーの識別子（email等）を含めた JWT を作成
-    access_token = auth.create_access_token(data={"sub": user.email})
+    access_token = create_access_token(data={"sub": user.email})
     
     # 4. レスポンス：OAuth2 準拠の形式でトークンを返却
     return {"access_token": access_token, "token_type": "bearer"}
@@ -65,7 +66,7 @@ async def login(
 async def search_users(
     email: str,
     db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
+    current_user: models.User = Depends(dependencies.get_current_user)
 ):
     """
     メンバー追加のためにユーザーをメールアドレスで検索します。
@@ -104,7 +105,7 @@ async def search_users(
     return result.scalars().all()
 
 @router.get("/me", response_model=schemas.UserOut)
-async def read_users_me(current_user: schemas.UserOut = Depends(auth.get_current_user)):
+async def read_users_me(current_user: schemas.UserOut = Depends(dependencies.get_current_user)):
     """
     ログイン中の自分の情報を取得します。
     """

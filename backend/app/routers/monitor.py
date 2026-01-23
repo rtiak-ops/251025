@@ -5,8 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_db, engine
-from ..auth import admin_required
-from .. import models, schemas
+from .. import models, schemas, dependencies
 
 router = APIRouter(prefix="/monitor", tags=["Monitoring"])
 
@@ -32,14 +31,14 @@ async def health_check(db: AsyncSession = Depends(get_db)):
             "status": db_status,
             "latency_sec": round(db_latency, 4)
         },
-        "environment": os.getenv("ENV", "development"),
+        "environment": dependencies.config.ENV,
         "version": "1.1.0"
     }
 
 @router.get("/stats")
 async def get_system_stats(
     db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(admin_required)
+    current_user: models.User = Depends(dependencies.admin_required)
 ):
     """
     管理者向けのシステム統計情報を取得します。

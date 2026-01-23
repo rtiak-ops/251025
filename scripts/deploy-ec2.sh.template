@@ -1,0 +1,35 @@
+#!/bin/bash
+set -e
+PROJECT_DIR="/home/ec2-user/251025"
+
+# プロジェクトフォルダがない場合はクローン、ある場合は移動
+if [ ! -d "$PROJECT_DIR" ]; then
+  sudo -u ec2-user git clone https://github.com/${GITHUB_REPOSITORY}.git "$PROJECT_DIR"
+fi
+cd "$PROJECT_DIR"
+
+# 最新のソースを取得
+sudo -u ec2-user git fetch origin ${GITHUB_REF_NAME}
+sudo -u ec2-user git reset --hard origin/${GITHUB_REF_NAME}
+
+# 環境変数ファイル (.env) を作成
+{
+  printf 'DATABASE_URL=postgresql+asyncpg://postgresMaster:%s@%s/todo_db?ssl=require\n' "${DB_PASSWORD}" "${RDS_ENDPOINT}"
+  echo "POSTGRES_USER=postgresMaster"
+  printf 'POSTGRES_PASSWORD=%s\n' "${DB_PASSWORD}"
+  echo "POSTGRES_DB=todo_db"
+  printf 'SECRET_KEY=%s\n' "${APP_SECRET_KEY}"
+  echo "ENV=production"
+  echo "DOMAIN_NAME=${EC2_IP}"
+  echo "CORS_ORIGINS=https://${CF_DOMAIN},http://${EC2_IP}"
+} > .env
+chown ec2-user:ec2-user .env
+
+# Dockerコンテナの起動
+sudo systemctl start docker
+sudo docker compose up -d --build
+
+# データベースのマイグレーション
+echo "Waiting for app to start..."
+sleep 20
+sudo docker compose exec -T backend alembic upgrade head

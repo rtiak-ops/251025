@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from .. import crud, models, schemas
+from .. import crud, models, schemas, dependencies
 from ..database import get_db
-from ..auth import get_current_user
 
 router = APIRouter(prefix="/organizations", tags=["Organizations"])
 
@@ -10,7 +9,7 @@ router = APIRouter(prefix="/organizations", tags=["Organizations"])
 async def create_organization(
     org: schemas.OrganizationCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(dependencies.get_current_user)
 ):
     """
     新しい組織を作成し、作成者をその組織に紐づけます。
@@ -43,7 +42,7 @@ async def create_organization(
 
 @router.get("/me", response_model=schemas.OrganizationOut)
 async def get_my_organization(
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(dependencies.get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """

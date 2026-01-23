@@ -1,91 +1,25 @@
-from __future__ import annotations  # Python 3.10+: 型ヒントの前方参照を簡潔に
+from __future__ import annotations
+from collections.abc import AsyncGenerator
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+from .core.config import DATABASE_URL, DEBUG, ENV
 
-import logging  # ロギングをインポート
-import os  # 環境変数を読み込むためにインポート
-from collections.abc import AsyncGenerator  # Python 3.9+: typing.AsyncGeneratorより推奨
-
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine  # 非同期エンジンと非同期セッションをインポート
-from sqlalchemy.orm import declarative_base, sessionmaker  # セッション作成関数と宣言的基底クラスをインポート
-from sqlalchemy import event  # イベントリスナー用
-import time
-from dotenv import load_dotenv
-
-# .env ファイルがあれば読み込む
-load_dotenv()
-
-
-# 環境変数からデータベース接続URLを取得
-# (例: "postgresql+asyncpg://user:password@host/dbname")
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-# 💡 ここで環境変数の値を確認する
-if DATABASE_URL is None:
-    logging.error("致命的なエラー: 環境変数 'DATABASE_URL' がコンテナ内で見つかりませんでした。")
-    # Noneのままengineを作成するとエラーになるため、ここで処理を停止
-    raise ValueError("DATABASE_URLが設定されていません。")
-else:
-    logging.info(f"データベースURLが正常にロードされました: {DATABASE_URL[:20]}...")
-
-# データベース接続エンジンを作成
-# 1. create_async_engine: 非同期処理用のエンジンを作成
-# 2. DATABASE_URL: 接続文字列を指定
-# 3. echo: 実行されるSQL文をコンソールに出力（デバッグ用途）
-#    - セキュリティのため、本番環境では必ず False に設定します
-#    - ログに機密情報（パスワードのハッシュ等）が出力されるのを防ぎます
-DEBUG = os.getenv("DEBUG", "false").lower() == "true"
-ENV = os.getenv("ENV", "development")
+# データベース接続エンジンの作成
 is_echo = DEBUG and ENV != "production"
-
 engine = create_async_engine(DATABASE_URL, echo=is_echo)
 
-# --- パフォーマンス監視: スロークエリ・ロギング ---
-# 実行に時間がかかっているクエリを特定するための仕組みです
-
-@event.listens_for(engine.sync_engine, "before_cursor_execute")
-def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    """クエリ実行前の時間を記録"""
-    context._query_start_time = time.time()
-
-@event.listens_for(engine.sync_engine, "after_cursor_execute")
-def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    """実行時間を計算し、しきい値(0.1s)を超えた場合に警告ログを出力"""
-    total_time = time.time() - context._query_start_time
-    # 0.1秒（100ms）をスロークエリの基準とする
-    slow_query_threshold = 0.1
-    if total_time > slow_query_threshold:
-        logging.warning(
-            f"Slow Query Detected: {total_time:.4f}s\n"
-            f"SQL: {statement}\n"
-            f"Parameters: {parameters}"
-        )
-
-# ----------------- セッション管理 -----------------
-
-# 非同期セッションファクトリを作成
-# 1. sessionmaker: セッションを作成するためのクラスを作成
-# 2. engine: 接続エンジンを指定
-# 3. class_=AsyncSession: 作成するセッションクラスとして非同期セッションを指定
-# 4. expire_on_commit=False: コミット後にオブジェクトを期限切れにしない設定（非同期処理ではFalseが一般的）
+# 非同期セッションファクトリの作成
 AsyncSessionLocal = sessionmaker(
-    bind=engine,                         # どのエンジンに接続するか
-    class_=AsyncSession,                 # 使用するセッションクラス
-    expire_on_commit=False,              # コミット後もオブジェクトをメモリに残す
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
 )
 
-# 宣言的な基底クラスを作成
-# 全てのモデル（テーブル）が継承するクラス
+# 宣言的な基底クラス
 Base = declarative_base()
 
-# ----------------- 依存性注入用関数 -----------------
-
-# データベースセッションを非同期ジェネレータとして提供する関数
-# 主にFastAPIなどの依存性注入システムで使用される
+# 依存性注入用関数
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """
-    非同期データベースセッションを提供し、スコープを抜ける際に自動的に閉じるジェネレータ。
-    async withブロックにより、自動的にセッションが閉じられます。
-    """
+    """非同期DBセッションを提供し自動で閉じる"""
     async with AsyncSessionLocal() as session:
-        # セッションを呼び出し元に提供 (yield)
         yield session
-        # async withブロックの終了時に自動的にセッションが閉じられます

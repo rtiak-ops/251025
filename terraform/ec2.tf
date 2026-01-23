@@ -14,7 +14,7 @@ data "aws_ami" "amazon_linux_2023" {              # OS（Amazon Linux 2023）の
 
   filter {                                      # 検索条件を指定します
     name   = "name"                             # 名前で検索します
-    values = ["al2023-ami-2023*-x86_64"]        # Amazon Linux 2023の標準的な名前を指定します
+    values = ["al2023-ami-2023*-arm64"]        # Amazon Linux 2023の標準的な名前を指定します
   }                                             # フィルター終了
 }                                               # 情報取得終了
 
@@ -23,7 +23,7 @@ data "aws_ami" "amazon_linux_2023" {              # OS（Amazon Linux 2023）の
 # --------------------------------------------------------------------------------------------------
 resource "aws_instance" "app" {                  # サーバー本体（インスタンス）を作ります
   ami           = data.aws_ami.amazon_linux_2023.id # さっき選んだOS（AMI ID）を使います
-  instance_type = "t3.micro"                        # サーバーの「馬力（スペック）」。安くてテストに最適です。
+  instance_type = "t4g.micro"                        # サーバーの「馬力（スペック）」。安くてテストに最適です。 (Graviton)
   key_name      = var.key_name                      # SSHログインに使うための「合鍵」の名前です
 
   subnet_id              = aws_subnet.public[0].id         # 公開エリア（パブリックサブネット）の1つ目に設置します

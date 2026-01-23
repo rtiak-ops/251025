@@ -17,7 +17,7 @@ resource "aws_db_instance" "main" {          # データベース本体を作り
   storage_type      = "gp3"                  # 高性能なSSDを使います
   engine            = "postgres"             # PostgreSQLという種類のシステムを使います
   engine_version    = "17"                   # バージョンは17にします
-  instance_class    = "db.t3.micro"          # サーバーの馬力を指定します
+  instance_class    = "db.t4g.micro"          # サーバーの馬力を指定します（コスト効率の良いGravitonインスタンス）
   
   db_name  = "todo_db"                     # 最初から作っておくデータの引き出し名です
   username = "postgresMaster"              # 管理者（マスター）の名前を決めます
@@ -28,6 +28,7 @@ resource "aws_db_instance" "main" {          # データベース本体を作り
   
   skip_final_snapshot = true                 # 削除する時にバックアップを取らないようにします（節約）
   publicly_accessible = false                # インターネットから直接見えないように隠します
+  apply_immediately   = true                 # 変更をすぐに適用します（節約設定の反映）
 
   tags = {                                   # タグを付けます
     Name = "${var.project_name}-rds"        # 名前タグです

@@ -1,7 +1,7 @@
-import { createProject, createOrganization } from '../api';
+import { createProject, createOrganization } from '../../api';
 import { toast } from 'react-hot-toast';
 import { Plus } from 'lucide-react';
-import type { ProjectSummary, User, Organization } from '../types';
+import type { ProjectSummary, User, Organization } from '../../types';
 
 interface SidebarProps {
   projects: ProjectSummary[];
@@ -18,7 +18,6 @@ interface SidebarProps {
 /**
  * Sidebar.tsx
  * アプリケーションのナビゲーションを司るサイドバー。
- * ダッシュボードへの切り替えやプロジェクト一覧の表示、新規作成を行います。
  */
 export default function Sidebar({
   projects,
@@ -31,10 +30,6 @@ export default function Sidebar({
   currentUser,
   organization,
 }: SidebarProps) {
-  /**
-   * 新規プロジェクト作成のハンドラー
-   * ※ 簡易的に prompt を使用していますが、本番環境ではモーダルでの実装が望ましいです。
-   */
   const handleCreateProject = async () => {
     const name = window.prompt("プロジェクト名を入力してください:");
     if (!name || !name.trim()) return;
@@ -42,16 +37,12 @@ export default function Sidebar({
     try {
       await createProject({ name, description: "" });
       toast.success("プロジェクトを作成しました");
-      // 作成成功後、親コンポーネントに通知してデータを再取得させる
       onProjectCreated();
     } catch {
       toast.error("作成に失敗しました");
     }
   };
 
-  /**
-   * 新規組織作成のハンドラー
-   */
   const handleCreateOrganization = async () => {
     const name = window.prompt("【正式名称】組織名（会社名）を入力してください:");
     if (!name || !name.trim()) return;
@@ -66,7 +57,7 @@ export default function Sidebar({
         website: website?.trim() 
       });
       toast.success("組織を正式に登録しました");
-      onProjectCreated(); // データ再取得
+      onProjectCreated();
     } catch (error) {
       const err = error as { response?: { status?: number } };
       const message = err.response?.status === 409 
@@ -78,7 +69,6 @@ export default function Sidebar({
 
   return (
     <aside className="w-64 glass h-[calc(100vh-2rem)] sticky top-4 flex flex-col p-6 rounded-3xl">
-      {/* ロゴセクション */}
       <div className="mb-10">
         <h1 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">
           BizFlow
@@ -109,13 +99,11 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* ナビゲーションメニュー */}
       <nav className="flex-1 space-y-2 overflow-y-auto">
         <div className="text-xs font-semibold text-slate-400 dark:text-white/60 uppercase tracking-wider mb-2 px-2">
           メイン
         </div>
         
-        {/* ダッシュボードボタン */}
         <button
           onClick={() => onViewChange('dashboard')}
           className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
@@ -127,7 +115,6 @@ export default function Sidebar({
           <span className="text-lg">📊</span> ダッシュボード
         </button>
 
-        {/* すべてのタスクボタン */}
         <button
           onClick={() => onViewChange('all')}
           className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
@@ -139,7 +126,6 @@ export default function Sidebar({
           <span className="text-lg">📅</span> すべてのタスク
         </button>
 
-        {/* 監査ログボタン（管理者のみ） */}
         {currentUser?.role === 'admin' && (
           <button
             onClick={() => onViewChange('audit')}
@@ -153,7 +139,6 @@ export default function Sidebar({
           </button>
         )}
 
-        {/* システムモニターボタン（管理者のみ） */}
         {currentUser?.role === 'admin' && (
           <button
             onClick={() => onViewChange('monitor')}
@@ -167,7 +152,6 @@ export default function Sidebar({
           </button>
         )}
 
-        {/* ユーザー管理ボタン（管理者のみ） */}
         {currentUser?.role === 'admin' && (
           <button
             onClick={() => onViewChange('users')}
@@ -181,7 +165,6 @@ export default function Sidebar({
           </button>
         )}
 
-        {/* プロジェクトセクションヘッダー（追加ボタン付き） */}
         <div className="pt-6 flex items-center justify-between mb-2 px-2">
           <span className="text-xs font-semibold text-slate-400 dark:text-white/60 uppercase tracking-wider">
             プロジェクト
@@ -195,7 +178,6 @@ export default function Sidebar({
           </button>
         </div>
 
-        {/* プロジェクト一覧の動的レンダリング */}
         {Array.isArray(projects) && projects.map((project) => (
           <button
             key={project.id}
@@ -210,7 +192,6 @@ export default function Sidebar({
               <span className="text-lg">📁</span>
               <span className="truncate">{project.name}</span>
             </span>
-            {/* タスク件数バッジ */}
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
               currentView === project.id ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-700'
             }`}>
@@ -220,7 +201,6 @@ export default function Sidebar({
         ))}
       </nav>
 
-      {/* フッターセクション（設定・テーマ・ログアウト） */}
       <div className="mt-auto pt-6 space-y-4">
         <button
           onClick={onThemeToggle}
@@ -234,7 +214,6 @@ export default function Sidebar({
         >
           🚪 ログアウト
         </button>
-
       </div>
     </aside>
   );

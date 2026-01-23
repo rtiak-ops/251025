@@ -13,18 +13,28 @@ from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 # ======================================================================
 
 class OrganizationBase(BaseModel):
-    name: str
-    corporate_id: str | None = None
-    website: str | None = None
-    plan: str = "free"
+    """
+    組織の基本情報を定義するスキーマ。
+    """
+    name: str                       # 組織名 (必須)
+    corporate_id: str | None = None # 法人番号 (任意)
+    website: str | None = None      # 組織のウェブサイトURL (任意)
+    plan: str = "free"              # 契約プラン (デフォルト: "free")
 
 class OrganizationCreate(OrganizationBase):
+    """
+    組織作成時に入力されるデータ構造。
+    OrganizationBaseを継承。
+    """
     pass
 
 class OrganizationOut(OrganizationBase):
-    id: int
-    is_verified: bool
-    created_at: datetime
+    """
+    APIから返却される組織情報のデータ構造。
+    """
+    id: int               # 組織を一意に識別するID
+    is_verified: bool     # 確認済み組織かどうかのフラグ
+    created_at: datetime  # 登録日時
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -107,14 +117,15 @@ class UserOut(UserBase):
 class UserRoleUpdate(BaseModel):
     """
     ユーザーの役割を更新するためのスキーマ。
+    Admin権限を持つユーザーが、他のユーザーの権限を変更する際に使用する。
     """
-    role: str
+    role: str # 設定する新しい役割 (例: "admin", "user")
 
 class UserOrganizationUpdate(BaseModel):
     """
     ユーザーを組織に追加するためのスキーマ。
     """
-    email: EmailStr
+    email: EmailStr # 組織に追加したいユーザーのメールアドレス
 
 # ----------------------------------------------------------------------
 # 4. ログイン成功時に返されるトークン情報 (Token)
@@ -267,16 +278,16 @@ class TodoUpdate(BaseModel):
     # 更新時に完了状態を変更しない場合はNoneのまま。
     completed: bool | None = None
 
-    # project_idを任意に変更
+    # project_idを任意に変更。
     project_id: int | None = None
 
-    # statusを任意に変更
+    # statusを任意に変更 (TODO, IN_PROGRESS, REVIEW, DONE)。
     status: str | None = None
 
-    # priorityを任意に変更
+    # priorityを任意に変更 (LOW, MEDIUM, HIGH, URGENT)。
     priority: str | None = None
 
-    # due_dateを任意に変更
+    # due_dateを任意に変更。
     due_date: datetime | None = None
 
 # ----------------------------------------------------------------------
@@ -352,36 +363,57 @@ class TodoReorder(BaseModel):
 # ======================================================================
 
 class ProjectBase(BaseModel):
-    name: str
-    description: str | None = None
+    """
+    プロジェクトの基本情報を定義するスキーマ。
+    """
+    name: str                       # プロジェクト名 (必須)
+    description: str | None = None  # プロジェクトの説明 (任意)
 
 class ProjectCreate(ProjectBase):
+    """
+    プロジェクト新規作成用のスキーマ。
+    """
     pass
 
 class ProjectUpdate(BaseModel):
-    name: str | None = None
-    description: str | None = None
+    """
+    プロジェクト情報更新用のスキーマ。全項目が任意。
+    """
+    name: str | None = None         # プロジェクト名
+    description: str | None = None  # 説明
 
 class CollaboratorBase(BaseModel):
-    user_id: int
-    permission: str = "editor"
+    """
+    共同作業者の基本情報を定義するスキーマ。
+    """
+    user_id: int                    # ユーザーID
+    permission: str = "editor"      # 権限 (デフォルト: "editor")
 
 class CollaboratorCreate(CollaboratorBase):
+    """
+    共同作業者追加用のスキーマ。
+    """
     pass
 
 class CollaboratorOut(CollaboratorBase):
-    id: int
-    user_email: str | None = None # フロントエンド表示用
+    """
+    APIから返却される共同作業者のデータ構造。
+    """
+    id: int                         # インデックスID
+    user_email: str | None = None   # フロントエンド表示用のメールアドレス
     
     model_config = ConfigDict(from_attributes=True)
 
 class ProjectOut(ProjectBase):
-    id: int
-    created_at: datetime
-    updated_at: datetime
-    owner_id: int
-    organization_id: int | None = None
-    collaborators: list[CollaboratorOut] = []
+    """
+    APIから返却されるプロジェクト情報のフルセット。
+    """
+    id: int                         # プロジェクトID
+    created_at: datetime            # 作成日時
+    updated_at: datetime            # 更新日時
+    owner_id: int                   # オーナーのユーザーID
+    organization_id: int | None = None # 所属組織ID
+    collaborators: list[CollaboratorOut] = [] # 共同作業者のリスト
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -394,15 +426,16 @@ class ProjectSummary(ProjectOut):
     role: str | None = None
 class AuditLogOut(BaseModel):
     """
-    監査ログ出力用スキーマ
+    監査ログ出力用のスキーマ。
+    システムの操作履歴をクライアントに返す際に使用する。
     """
-    id: int
-    user_id: int | None
-    user_email: str | None = None
-    action: str
-    resource_type: str
-    resource_id: int | None
-    details: str | None
-    created_at: datetime
+    id: int                      # ログID
+    user_id: int | None          # 操作を行ったユーザーのID
+    user_email: str | None = None # 操作を行ったユーザーのメールアドレス
+    action: str                  # 行われたアクションの種類
+    resource_type: str           # 対象リソースの種類 (例: "todo")
+    resource_id: int | None      # 対象リソースのID
+    details: str | None          # 詳細情報 (JSON文字列など)
+    created_at: datetime         # 記録日時
 
     model_config = ConfigDict(from_attributes=True)

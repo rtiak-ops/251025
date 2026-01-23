@@ -1,238 +1,48 @@
-import { useEffect, useState } from "react";
-import { Toaster, toast } from "react-hot-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { type DropResult } from "@hello-pangea/dnd";
-import { getTodos, getStoredToken, clearToken, reorderTodos, getProjectSummaries, updateProject, deleteProject, getMe } from "./api";
-import type { Todo, ProjectSummary, User } from "./types";
-import Sidebar from "./components/Sidebar";
-import DashboardView from "./components/DashboardView";
-import ProjectTasksView from "./components/ProjectTasksView";
-import AuthForm from "./components/AuthForm";
-import AuditLogView from "./components/AuditLogView";
-import MonitorView from "./components/MonitorView";
-import UserManagementView from "./components/UserManagementView";
-import { getMyOrganization } from "./api";
-import type { Organization } from "./types";
+import { Toaster } from "react-hot-toast";
+import Sidebar from "./components/layout/Sidebar";
+import DashboardView from "./components/views/DashboardView";
+import ProjectTasksView from "./components/views/ProjectTasksView";
+import AuthForm from "./components/views/AuthForm";
+import AuditLogView from "./components/views/AuditLogView";
+import MonitorView from "./components/views/MonitorView";
+import UserManagementView from "./components/views/UserManagementView";
+import MainLayout from "./components/layout/MainLayout";
+import SearchBar from "./components/layout/SearchBar";
+import { useAppLogic } from "./hooks/useAppLogic";
 
 /**
  * App.tsx
- * アプリケーションのメインエントリーポイント。
- * 全体のレイアウト、ルーティング（ビューの切り替え）、共有データの取得を管理します。
+ * アプリケーションのルートコンポーネント。
+ * レイアウト、ロジック、各ビューを統合します。
  */
 export default function App() {
-  const queryClient = useQueryClient();
-  
-  // --- 状態管理 (State) ---
-  const [token, setToken] = useState<string | null>(getStoredToken());
-  // 現在表示しているビュー（ダッシュボード、全タスク、監査ログ、モニター、ユーザー管理、または特定のプロジェクトID）
-  const [currentView, setCurrentView] = useState<'dashboard' | 'all' | 'audit' | 'monitor' | 'users' | number>('dashboard');
-  
-  // フィルタータイプ
-  type Filter = {
-    label: string;
-    priority?: Todo['priority'];
-    status?: Todo['status'];
-    completed?: boolean;
-  };
-  
-  // フィルター状態
-  const [activeFilter, setActiveFilter] = useState<Filter | null>(null);
+  const {
+    token,
+    setToken,
+    currentView,
+    activeFilter,
+    searchQuery,
+    theme,
+    projects,
+    currentUser,
+    organization,
+    allTodos,
+    filteredTodos,
+    currentProject,
+    isTodosLoading,
+    setSearchQuery,
+    setTheme,
+    setActiveFilter,
+    handleLogout,
+    handleDataChange,
+    handleDragEnd,
+    handleFilterSelect,
+    handleViewChange,
+    handleEditProject,
+    handleDeleteProject
+  } = useAppLogic();
 
-  // 検索クエリ
-  const [searchQuery, setSearchQuery] = useState("");
-  
-  // テーマ（ライト/ダークモード）
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    const stored = localStorage.getItem("theme");
-    return stored === "light" || stored === "dark" 
-      ? stored 
-      : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  });
-
-  // --- データ取得 (React Query) ---
-
-  // プロジェクト一覧と進捗サマリーを取得
-  const { data: projectsData } = useQuery<ProjectSummary[]>({
-    queryKey: ["projects"],
-    queryFn: getProjectSummaries,
-    enabled: !!token,
-  });
-  const projects = Array.isArray(projectsData) ? projectsData : [];
-
-  // 現在のログインユーザー情報を取得
-  const { data: currentUser } = useQuery<User>({
-    queryKey: ["me"],
-    queryFn: getMe,
-    enabled: !!token,
-  });
-
-  // 組織情報を取得
-  const { data: organization } = useQuery<Organization>({
-    queryKey: ["organization"],
-    queryFn: getMyOrganization,
-    enabled: !!token && !!currentUser?.organization_id,
-  });
-
-  // すべてのタスクを取得
-  const { 
-    data: todosData, 
-    isLoading: isTodosLoading
-  } = useQuery<Todo[]>({
-    queryKey: ["todos", searchQuery],
-    queryFn: () => getTodos(searchQuery),
-    enabled: !!token,
-  });
-  const allTodos = Array.isArray(todosData) ? todosData : [];
-
-  // --- 副作用 (Side Effects) ---
-
-  // 認証エラー（401）を検知してログアウト処理を行う
-  useEffect(() => {
-    const handleUnauthorized = () => {
-      setToken(null);
-      queryClient.clear();
-    };
-    window.addEventListener("auth:unauthorized", handleUnauthorized);
-    return () => window.removeEventListener("auth:unauthorized", handleUnauthorized);
-  }, [queryClient]);
-
-  // テーマの変更をDOMとlocalStorageに反映
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  // タスクの並び替え更新用
-  const reorderMutation = useMutation({
-    mutationFn: (newOrderIds: number[]) => reorderTodos(newOrderIds),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
-    },
-    onError: () => {
-      toast.error("並び替えに失敗しました");
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
-    }
-  });
-
-  // --- ハンドラー (Handlers) ---
-
-  const handleLogout = () => {
-    clearToken();
-    setToken(null);
-    queryClient.clear();
-    toast.success("ログアウトしました");
-  };
-
-
-
-  /** 
-   * データが変更された際にキャッシュを無効化して再取得を促す
-   */
-  const handleDataChange = () => {
-    queryClient.invalidateQueries({ queryKey: ["me"] });
-    queryClient.invalidateQueries({ queryKey: ["organization"] });
-    queryClient.invalidateQueries({ queryKey: ["todos"] });
-    queryClient.invalidateQueries({ queryKey: ["projects"] });
-  };
-
-  /**
-   * ドラッグ&ドロップ終了時の処理
-   */
-  const handleDragEnd = async (result: DropResult) => {
-    if (!result.destination) return;
-    
-    // 現在の表示リスト内で並び替え
-    const items = Array.from(filteredTodos);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-
-    try {
-        const newOrderIds = items.map(t => t.id);
-        reorderMutation.mutate(newOrderIds);
-    } catch (e) {
-        console.error(e);
-    }
-  };
-
-  /**
-   * ダッシュボードの統計カードクリック時のハンドラー
-   */
-  const handleFilterSelect = (filter: Filter) => {
-    setActiveFilter(filter);
-    setCurrentView('all'); // フィルター時は「すべてのタスク」ビューに遷移
-  };
-
-  const handleViewChange = (view: 'dashboard' | 'all' | 'audit' | 'monitor' | 'users' | number) => {
-    setCurrentView(view);
-    setActiveFilter(null); // ビュー切り替え時はフィルターをリセット
-  };
-
-  /** プロジェクトの編集ハンドラー */
-  const handleEditProject = async () => {
-    if (typeof currentView !== 'number' || !currentProject) return;
-    
-    const newName = window.prompt("プロジェクト名を変更:", currentProject.name);
-    if (newName === null) return; // キャンセル
-    
-    const newDesc = window.prompt("プロジェクトの説明を変更:", currentProject.description || "");
-    if (newDesc === null) return;
-
-    try {
-      await updateProject(currentView, { name: newName, description: newDesc });
-      toast.success("プロジェクトを更新しました");
-      handleDataChange();
-    } catch {
-      toast.error("更新に失敗しました");
-    }
-  };
-
-  /** プロジェクトの削除ハンドラー */
-  const handleDeleteProject = async () => {
-    if (typeof currentView !== 'number' || !currentProject) return;
-    
-    if (!window.confirm(`プロジェクト「${currentProject.name}」を削除しますか？配下のタスクもすべて削除されます。`)) {
-      return;
-    }
-
-    try {
-      await deleteProject(currentView);
-      toast.success("プロジェクトを削除しました");
-      setCurrentView('dashboard');
-      handleDataChange();
-    } catch {
-      toast.error("削除に失敗しました");
-    }
-  };
-
-  // --- 算出プロパティ (Computed) ---
-
-  // 現在のビューに合わせて表示するタスクをフィルタリング
-  const filteredTodos = allTodos.filter(t => {
-    // 1. ビューのチェック
-    const matchesView = currentView === 'all' || currentView === 'dashboard' || currentView === 'audit' || currentView === 'monitor' || currentView === 'users' || t.project_id === currentView;
-    if (!matchesView) return false;
-
-    // 2. フィルターのチェック
-    if (activeFilter) {
-      if (activeFilter.priority && t.priority !== activeFilter.priority) return false;
-      if (activeFilter.status && t.status !== activeFilter.status) return false;
-      if (activeFilter.completed !== undefined && t.completed !== activeFilter.completed) return false;
-    }
-
-    // 3. 検索クエリのチェック (フロントエンドでも念のため。サーバー側でもフィルタ済みだが)
-    if (searchQuery && !t.title.toLowerCase().includes(searchQuery.toLowerCase()) && !t.description?.toLowerCase().includes(searchQuery.toLowerCase())) {
-        return false;
-    }
-
-    return true;
-  });
-
-  // 数値（ID）の場合は該当するプロジェクト情報を取得
-  const currentProject = typeof currentView === 'number' 
-    ? projects.find(p => p.id === currentView) 
-    : undefined;
-
-  // 未ログイン時は認証フォームを表示
+  // 未ログイン状態（トークンがない）場合は、ログイン・新規登録画面を優先表示
   if (!token) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -250,69 +60,65 @@ export default function App() {
     );
   }
 
-  // メインレイアウト
   return (
-    <div className="min-h-screen flex p-4 gap-6">
-      {/* ナビゲーションサイドバー */}
-      <Sidebar 
-        projects={projects}
-        currentView={currentView}
-        onViewChange={handleViewChange}
-        onLogout={handleLogout}
-        theme={theme}
-        onThemeToggle={() => setTheme(theme === "dark" ? "light" : "dark")}
-        onProjectCreated={handleDataChange}
-        currentUser={currentUser}
-        organization={organization}
-      />
+    <MainLayout
+      // サイドバー: アプリの左側に表示されるナビゲーション
+      sidebar={
+        <Sidebar 
+          projects={projects}
+          currentView={currentView}
+          onViewChange={handleViewChange}
+          onLogout={handleLogout}
+          theme={theme}
+          onThemeToggle={() => setTheme(theme === "dark" ? "light" : "dark")}
+          onProjectCreated={handleDataChange}
+          currentUser={currentUser}
+          organization={organization}
+        />
+      }
+      // 検索バー: コンテンツの上部に固定される検索入力
+      searchBar={
+        <SearchBar 
+          value={searchQuery}
+          onChange={setSearchQuery}
+          onClear={() => setSearchQuery("")}
+        />
+      }
+    >
+      {/* 
+          メインコンテンツエリア: 
+          currentViewの状態に基づいて、表示するView（画面）を動的に切り替えています。
+          これを「条件付きレンダリング」と呼び、URLを変えずに画面遷移を実現しています。
+      */}
+      {currentView === 'dashboard' ? (
+        // ダッシュボード: 統計と概要の表示
+        <DashboardView todos={allTodos} projects={projects} onFilterSelect={handleFilterSelect} />
+      ) : currentView === 'audit' ? (
+        // 監査ログ: システム操作履歴の表示
+        <AuditLogView />
+      ) : currentView === 'monitor' ? (
+        // システム管理: モニタリング情報の表示
+        <MonitorView />
+      ) : currentView === 'users' ? (
+        // ユーザー管理: 組織のユーザー管理
+        <UserManagementView currentUser={currentUser} />
+      ) : (
+        // プロジェクト詳細: タスク一覧やドラッグ&ドロップなどのタスク管理
+        <ProjectTasksView 
+          project={currentProject}
+          todos={filteredTodos}
+          isLoading={isTodosLoading}
+          onDataChange={handleDataChange}
+          onDragEnd={handleDragEnd}
+          activeFilter={activeFilter}
+          onClearFilter={() => setActiveFilter(null)}
+          onEditProject={handleEditProject}
+          onDeleteProject={handleDeleteProject}
+          currentUser={currentUser}
+        />
+      )}
 
-      {/* メインコンテンツ: ビューに応じて切り替え */}
-      <main className="flex-1 max-w-5xl mx-auto w-full">
-        {/* 上部検索バー */}
-        <div className="mb-6 relative">
-          <input 
-            type="text" 
-            placeholder="タスクを検索..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-2xl py-3 px-12 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium dark:text-white"
-          />
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
-          {searchQuery && (
-            <button 
-                onClick={() => setSearchQuery("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white"
-            >
-                ✕
-            </button>
-          )}
-        </div>
-
-        {currentView === 'dashboard' ? (
-          <DashboardView todos={allTodos} projects={projects} onFilterSelect={handleFilterSelect} />
-        ) : currentView === 'audit' ? (
-          <AuditLogView />
-        ) : currentView === 'monitor' ? (
-          <MonitorView />
-        ) : currentView === 'users' ? (
-          <UserManagementView currentUser={currentUser} />
-        ) : (
-          <ProjectTasksView 
-            project={currentProject}
-            todos={filteredTodos}
-            isLoading={isTodosLoading}
-            onDataChange={handleDataChange}
-            onDragEnd={handleDragEnd}
-            activeFilter={activeFilter}
-            onClearFilter={() => setActiveFilter(null)}
-            onEditProject={handleEditProject}
-            onDeleteProject={handleDeleteProject}
-            currentUser={currentUser}
-          />
-        )}
-      </main>
-
-      {/* 通知コンポーネント */}
+      {/* 通知トースト: 成功メッセージやエラーメッセージを右下に表示 */}
       <Toaster 
         position="bottom-right"
         toastOptions={{
@@ -320,6 +126,6 @@ export default function App() {
           duration: 3000,
         }}
       />
-    </div>
+    </MainLayout>
   );
 }

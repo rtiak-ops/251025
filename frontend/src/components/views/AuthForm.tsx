@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { login, register, getStoredToken } from "../../api";
+import { AxiosError } from "axios";
 import { toast } from "react-hot-toast";
 import { LogIn, UserPlus, Mail, Lock, User as UserIcon, Loader2 } from "lucide-react";
 
@@ -38,8 +39,9 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
         toast.success("アカウントを作成しました。ログインしてください。");
         setIsLogin(true); // 登録後はログイン画面へ
       }
-    } catch (err: any) {
-        const errorMsg = err.response?.data?.detail || "認証に失敗しました";
+    } catch (err) {
+        const axiosError = err as AxiosError<{ detail?: string }>;
+        const errorMsg = axiosError.response?.data?.detail || "認証に失敗しました";
         toast.error(errorMsg);
     } finally {
       setIsLoading(false);

@@ -11,7 +11,7 @@ export type Filter = {
   completed?: boolean;
 };
 
-export function useTodos(token: string | null, searchQuery: string, currentView: any, activeFilter: Filter | null) {
+export function useTodos(token: string | null, searchQuery: string, currentView: string | number, activeFilter: Filter | null) {
   const queryClient = useQueryClient();
 
   const { data: todosData, isLoading: isTodosLoading } = useQuery<Todo[]>({

@@ -12,7 +12,7 @@ export const getTodos = async (q?: string): Promise<Todo[]> => {
     });
     return res.data;
   } catch (error) {
-    const axiosError = error as AxiosError<{ detail?: any }>;
+    const axiosError = error as AxiosError<{ detail?: unknown }>;
     if (axiosError.response?.status === 401) {
       const authHeader = axiosError.config?.headers?.Authorization;
       const usedToken = typeof authHeader === 'string' ? authHeader.split(" ")[1] : undefined;

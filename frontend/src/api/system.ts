@@ -8,7 +8,7 @@ import type { AuditLog, HealthStatus, SystemStats } from "../types";
 export const getAuditLogs = async (
     skip: number = 0, 
     limit: number = 100,
-    filters: any = {}
+    filters: Record<string, unknown> = {}
 ): Promise<AuditLog[]> => {
     const res: AxiosResponse<AuditLog[]> = await api.get("/admin/audit-logs", {
         params: { skip, limit, ...filters }

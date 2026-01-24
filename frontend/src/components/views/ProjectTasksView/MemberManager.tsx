@@ -83,7 +83,7 @@ export default function MemberManager({
           </div>
         </div>
 
-        {Array.isArray((project as any).collaborators) && (project as any).collaborators.map((c: Collaborator) => {
+        {Array.isArray(project.collaborators) && project.collaborators.map((c: Collaborator) => {
           const isMe = currentUser?.id === c.user_id;
           return (
             <div key={c.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">

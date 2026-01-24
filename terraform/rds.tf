@@ -17,7 +17,7 @@ resource "aws_db_instance" "main" {            # データベース本体を作�
   storage_type      = "gp3"                    # 高性能なSSDを使います
   engine            = "postgres"               # PostgreSQLという種類のシステムを使います
   engine_version    = "17"                     # バージョンは17にします
-  instance_class    = "db.t4g.micro"           # サーバーの馬力を指定します（コスト効率の良いGravitonインスタンス）
+  instance_class    = "db.t3.micro"            # サーバーの馬力を指定します（12ヶ月無料枠の対象になりやすいタイプ）
 
   db_name  = "todo_db"        # 最初から作っておくデータの引き出し名です
   username = "postgresMaster" # 管理者（マスター）の名前を決めます

@@ -8,38 +8,38 @@
 # --------------------------------------------------------------------------------------------------
 # どの「OS（WindowsかMacかLinuxか）」を入れるかを決めます。
 # ここでは「Amazon Linux 2023」という最新のLinux OSを自動で探してくる設定にしています。
-data "aws_ami" "amazon_linux_2023" {              # OS（Amazon Linux 2023）の情報を取得します
-  most_recent = true                            # 最新のバージョンを選びます
-  owners      = ["amazon"]                      # AWS公式が提供しているものに限定します
+data "aws_ami" "amazon_linux_2023" { # OS（Amazon Linux 2023）の情報を取得します
+  most_recent = true                 # 最新のバージョンを選びます
+  owners      = ["amazon"]           # AWS公式が提供しているものに限定します
 
-  filter {                                      # 検索条件を指定します
-    name   = "name"                             # 名前で検索します
-    values = ["al2023-ami-2023*-arm64"]        # Amazon Linux 2023の標準的な名前を指定します
-  }                                             # フィルター終了
-}                                               # 情報取得終了
+  filter {                              # 検索条件を指定します
+    name   = "name"                     # 名前で検索します
+    values = ["al2023-ami-2023*-arm64"] # Amazon Linux 2023の標準的な名前を指定します
+  }                                     # フィルター終了
+}                                       # 情報取得終了
 
 # --------------------------------------------------------------------------------------------------
 # ② サーバー本体の設定
 # --------------------------------------------------------------------------------------------------
-resource "aws_instance" "app" {                  # サーバー本体（インスタンス）を作ります
+resource "aws_instance" "app" {                     # サーバー本体（インスタンス）を作ります
   ami           = data.aws_ami.amazon_linux_2023.id # さっき選んだOS（AMI ID）を使います
-  instance_type = "t4g.micro"                        # サーバーの「馬力（スペック）」。安くてテストに最適です。 (Graviton)
+  instance_type = "t4g.micro"                       # サーバーの「馬力（スペック）」。安くてテストに最適です。 (Graviton)
   key_name      = var.key_name                      # SSHログインに使うための「合鍵」の名前です
 
-  subnet_id              = aws_subnet.public[0].id         # 公開エリア（パブリックサブネット）の1つ目に設置します
-  vpc_security_group_ids      = [aws_security_group.ec2.id]     # サーバー用の「門番（セキュリティグループ）」を指定します
-  iam_instance_profile   = aws_iam_instance_profile.ec2_ssm_profile.name # SSMログイン用の権限を付与します
-  user_data_replace_on_change = true                # 自動セットアップの内容を変えたらサーバーを作り直します
+  subnet_id                   = aws_subnet.public[0].id                       # 公開エリア（パブリックサブネット）の1つ目に設置します
+  vpc_security_group_ids      = [aws_security_group.ec2.id]                   # サーバー用の「門番（セキュリティグループ）」を指定します
+  iam_instance_profile        = aws_iam_instance_profile.ec2_ssm_profile.name # SSMログイン用の権限を付与します
+  user_data_replace_on_change = true                                          # 自動セットアップの内容を変えたらサーバーを作り直します
 
   # 記憶装置（SSD）：パソコンのCドライブのようなもの
-  root_block_device {                               # ストレージ（SSD）の設定です
-    volume_size = 20                                # 容量を20GB確保します
-    volume_type = "gp3"                             # 高性能でコスパの良い第3世代SSDを使います
-  }                                                 # ストレージ設定終了
+  root_block_device {   # ストレージ（SSD）の設定です
+    volume_size = 20    # 容量を20GB確保します
+    volume_type = "gp3" # 高性能でコスパの良い第3世代SSDを使います
+  }                     # ストレージ設定終了
 
-  tags = {                                          # タグ（名札）を付けます
-    Name = "${var.project_name}-ec2"                # プロジェクト名＋ec2 という名前にします
-  }                                                 # タグ設定終了
+  tags = {                           # タグ（名札）を付けます
+    Name = "${var.project_name}-ec2" # プロジェクト名＋ec2 という名前にします
+  }                                  # タグ設定終了
 
   # --------------------------------------------------------------------------------------------------
   # ③ 自動セットアップ（User Data）：サーバー起動時に「勝手にお願い！」する作業リスト
@@ -97,14 +97,14 @@ resource "aws_instance" "app" {                  # サーバー本体（イン�
                 sleep 5                              # 失敗したら5秒待って再挑戦します
               done                                   # 繰り返し終了
               EOF
-}                                                 # サーバー設定終了
+} # サーバー設定終了
 
 # --------------------------------------------------------------------------------------------------
 # ④ 固定IPアドレス (Elastic IP) の設定
 # --------------------------------------------------------------------------------------------------
 # サーバーを再起動しても住所（IPアドレス）が変わらないように固定します。
 resource "aws_eip" "app" {
-  domain   = "vpc"
+  domain = "vpc"
 
   tags = {
     Name = "${var.project_name}-eip"

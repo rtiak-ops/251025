@@ -2,15 +2,15 @@
 # 1. 接続設定 (Provider)
 # ==================================================================================================
 
-terraform {                                 # Terraformの設定を開始します
-  required_providers {                      # このプロジェクトで「どのクラウド用の道具」を使うか指定します
-    aws = {                                 # 「AWS用の道具（プロバイダー）」を使いたい、という宣言です
-      source  = "hashicorp/aws"             # その道具の「本名（配布元）」を指定しています
-      version = "~> 5.0"                    # 道具のバージョンが5.0系であることを保証します
-    }                                       # awsの設定を閉じます
-  }                                         # required_providersの設定を閉じます
-}                                           # terraformの設定を閉じます
+terraform {                     # Terraformの設定を開始します
+  required_providers {          # このプロジェクトで「どのクラウド用の道具」を使うか指定します
+    aws = {                     # 「AWS用の道具（プロバイダー）」を使いたい、という宣言です
+      source  = "hashicorp/aws" # その道具の「本名（配布元）」を指定しています
+      version = "~> 5.0"        # 道具のバージョンが5.0系であることを保証します
+    }                           # awsの設定を閉じます
+  }                             # required_providersの設定を閉じます
+}                               # terraformの設定を閉じます
 
-provider "aws" {                            # AWSの設定（ログイン先など）を具体的に書きます
-  region = "ap-northeast-1"                 # 日本の「東京」にあるデータセンターを使います
-}                                           # providerの設定を閉じます
+provider "aws" {            # AWSの設定（ログイン先など）を具体的に書きます
+  region = "ap-northeast-1" # 日本の「東京」にあるデータセンターを使います
+}                           # providerの設定を閉じます

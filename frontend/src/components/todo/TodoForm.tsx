@@ -12,12 +12,15 @@ interface TodoFormProps {
 export default function TodoForm({ onAdd, initialProjectId }: TodoFormProps) {
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<Todo['priority']>("MEDIUM");
-  const [projectId, setProjectId] = useState<number | undefined>(initialProjectId);
+  const [projectId] = useState<number | undefined>(initialProjectId);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || isSubmitting) return;
 
+    setIsSubmitting(true);
     try {
       await createTodo({
         title: title.trim(),
@@ -29,6 +32,8 @@ export default function TodoForm({ onAdd, initialProjectId }: TodoFormProps) {
       toast.success("タスクを追加しました");
     } catch {
       toast.error("追加に失敗しました");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -42,7 +47,7 @@ export default function TodoForm({ onAdd, initialProjectId }: TodoFormProps) {
       <div className="space-y-3">
         <input 
           type="text" 
-          placeholder="何をしますか？" 
+          placeholder="新しいタスクをクイック追加" 
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
@@ -67,11 +72,11 @@ export default function TodoForm({ onAdd, initialProjectId }: TodoFormProps) {
 
         <button 
           type="submit"
-          disabled={!title.trim()}
+          disabled={!title.trim() || isSubmitting}
           className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Send size={18} />
-          タスクを追加
+          {isSubmitting ? '保存中...' : 'タスクを追加'}
         </button>
       </div>
     </form>

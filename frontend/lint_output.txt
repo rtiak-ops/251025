@@ -1,0 +1,31 @@
+
+> todo-frontend@1.0.0 lint
+> eslint .
+
+
+C:\Users\rtiak\Desktop\251025\frontend\src\api\system.ts
+  11:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\rtiak\Desktop\251025\frontend\src\api\todos.ts
+  15:55  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\rtiak\Desktop\251025\frontend\src\components\views\AuthForm.tsx
+  41:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\rtiak\Desktop\251025\frontend\src\components\views\ErrorBoundary.tsx
+  20:42  error  '_' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\rtiak\Desktop\251025\frontend\src\components\views\ProjectTasksView\MemberManager.tsx
+  86:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  86:71  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\rtiak\Desktop\251025\frontend\src\components\views\ProjectTasksView\ProjectHeader.tsx
+   1:15  error  'ReactNode' is defined but never used     @typescript-eslint/no-unused-vars
+  83:59  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  83:94  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\rtiak\Desktop\251025\frontend\src\hooks\useTodos.ts
+  14:82  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 10 problems (10 errors, 0 warnings)
+

@@ -17,7 +17,7 @@ from . import models
 from .routers import ai, auth, todos, projects, admin, monitor, organizations
 from .limiter import limiter
 from .middleware import RequestLoggingMiddleware, SecurityHeadersMiddleware
-from .core.config import CORS_ORIGINS, PROJECT_NAME
+from .core.config import CORS_ORIGINS, PROJECT_NAME, DEBUG, ENV
 
 # --- ロギング設定（JSON形式で標準出力に出力） ---
 logger = logging.getLogger(__name__)

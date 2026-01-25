@@ -12,6 +12,8 @@ interface TodoItemProps {
 export default function TodoItem({ todo, onChange }: TodoItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(todo.title);
+  const [status, setStatus] = useState(todo.status);
+  const [priority, setPriority] = useState(todo.priority);
   const [dueDate, setDueDate] = useState(todo.due_date ? new Date(todo.due_date).toISOString().split('T')[0] : "");
 
   const handleToggleComplete = async () => {
@@ -38,6 +40,8 @@ export default function TodoItem({ todo, onChange }: TodoItemProps) {
     try {
       await updateTodo(todo.id, { 
         title,
+        status,
+        priority,
         due_date: dueDate ? new Date(dueDate).toISOString() : undefined
       });
       setIsEditing(false);
@@ -78,18 +82,50 @@ export default function TodoItem({ todo, onChange }: TodoItemProps) {
               className="w-full bg-white dark:bg-slate-700 border border-indigo-500 rounded px-2 py-1 outline-none dark:text-white"
               autoFocus
             />
-            <div className="flex items-center gap-2">
-              <input 
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-2 py-0.5 text-[10px] outline-none dark:text-white"
-              />
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+                className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-2 py-0.5 text-[10px] outline-none dark:text-white font-bold"
+              >
+                <option value="TODO">TODO</option>
+                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                <option value="REVIEW">REVIEW</option>
+                <option value="DONE">DONE</option>
+              </select>
+
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as any)}
+                className={`border border-slate-200 dark:border-slate-600 rounded px-2 py-0.5 text-[10px] outline-none font-bold ${priorityColors[priority]}`}
+              >
+                <option value="LOW">LOW</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="HIGH">HIGH</option>
+                <option value="URGENT">URGENT</option>
+              </select>
+
+              <div className="flex items-center gap-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-2 py-0.5">
+                <Calendar size={10} className="text-slate-400" />
+                <input 
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="bg-transparent text-[10px] outline-none dark:text-white"
+                />
+              </div>
+
               <button 
                 onClick={handleUpdateTask}
-                className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-bold"
+                className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg font-bold shadow-sm transition-all"
               >
                 保存
+              </button>
+              <button 
+                onClick={() => setIsEditing(false)}
+                className="text-[10px] bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-200 px-3 py-1 rounded-lg font-bold transition-all"
+              >
+                キャンセル
               </button>
             </div>
           </div>

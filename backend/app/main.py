@@ -12,7 +12,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.middleware import SlowAPIMiddleware
 
-from .database import Base, engine
+from .database import Base, engine, AsyncSessionLocal
 from . import models
 from .routers import ai, auth, todos, projects, admin, monitor, organizations
 from .limiter import limiter
@@ -92,23 +92,24 @@ async def health_check():
     from .database import get_db
     try:
         # DB接続が可能かシンプルなクエリでテスト
-        async for db in get_db():
-            await db.execute(text("SELECT 1"))
-            break
+        # ここでハングして504になるのを防ぐため、3秒でタイムアウトさせる
+        async with AsyncSessionLocal() as db:
+            await asyncio.wait_for(db.execute(text("SELECT 1")), timeout=3.0)
+            
         return {
             "status": "healthy",
             "database": "connected",
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
-    except Exception as e:
-        logger.error(f"ヘルスチェック失敗: {e}")
+    except (asyncio.TimeoutError, Exception) as e:
+        logger.error(f"ヘルスチェック失敗: {str(e)}")
         from fastapi.responses import JSONResponse
         return JSONResponse(
             status_code=503,
             content={
                 "status": "unhealthy",
                 "database": "disconnected",
-                "error": str(e),
+                "error": "Database connection timed out or failed. Check DATABASE_URL.",
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
         )

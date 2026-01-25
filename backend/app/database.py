@@ -7,7 +7,15 @@ from .core.config import DATABASE_URL, DEBUG, ENV
 # データベース接続用の非同期エンジンを作成
 # DEBUG=True かつ 本番環境以外の場合、SQLログを出力（echo=True）
 is_echo = DEBUG and ENV != "production"
-engine = create_async_engine(DATABASE_URL, echo=is_echo)
+# 接続タイムアウトを設定（デフォルトだと長時間ハングするため）
+engine = create_async_engine(
+    DATABASE_URL, 
+    echo=is_echo,
+    connect_args={
+        "command_timeout": 15,    # クエリのタイムアウト（秒）
+        "timeout": 10             # 接続自体のタイムアウト（秒）
+    }
+)
 
 # 非同期DBセッションを作成するためのファクトリ（AsyncSessionLocal）を定義
 AsyncSessionLocal = sessionmaker(

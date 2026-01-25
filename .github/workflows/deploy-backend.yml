@@ -43,7 +43,8 @@ jobs:
           CF_DOMAIN: ${{ steps.infra-info.outputs.cf_domain }}
         run: |
           # テンプレートに変数を埋め込んで実行用スクリプトを生成
-          envsubst < scripts/deploy-ec2.sh.template > deploy_script_raw.sh
+          # 内部変数が消えないよう、置換対象を明示的に指定
+          envsubst '$GITHUB_REPOSITORY $GITHUB_REF_NAME $DB_PASSWORD $RDS_ENDPOINT $APP_SECRET_KEY $EC2_IP $CF_DOMAIN' < scripts/deploy-ec2.sh.template > deploy_script_raw.sh
           
           # 改行コードを完全に除去(CRLF -> LF)し、確実にクリーンなスクリプトを作成
           tr -d '\r' < deploy_script_raw.sh > deploy_script.sh

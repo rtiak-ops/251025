@@ -44,6 +44,12 @@ jobs:
         run: |
           # テンプレートに変数を埋め込んで実行用スクリプトを生成
           # 内部変数が消えないよう、置換対象を明示的に指定
+          # また、変数の前後の余計な空白を念のため除去
+          DB_PASSWORD=$(echo "${{ secrets.DB_PASSWORD }}" | xargs)
+          APP_SECRET_KEY=$(echo "${{ secrets.APP_SECRET_KEY }}" | xargs)
+          
+          export DB_PASSWORD APP_SECRET_KEY
+          
           envsubst '$GITHUB_REPOSITORY $GITHUB_REF_NAME $DB_PASSWORD $RDS_ENDPOINT $APP_SECRET_KEY $EC2_IP $CF_DOMAIN' < scripts/deploy-ec2.sh.template > deploy_script_raw.sh
           
           # 改行コードを完全に除去(CRLF -> LF)し、確実にクリーンなスクリプトを作成
@@ -61,17 +67,28 @@ jobs:
             --query "Command.CommandId" \
             --output text)
           
-          echo "コマンド送信完了。ID: $COMMAND_ID. 完了を待機中..."
-          aws ssm wait command-executed --command-id "$COMMAND_ID" --instance-id "${{ steps.infra-info.outputs.instance_id }}"
+          echo "コマンド送信完了。ID: $COMMAND_ID. 実行完了を待機中（最大10分）..."
           
-          INVOCATION=$(aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "${{ steps.infra-info.outputs.instance_id }}" --output json)
-          STATUS=$(echo "$INVOCATION" | jq -r '.Status')
-          echo "最終ステータス: $STATUS"
+          # カスタム待機ループ（標準の waiter よりも柔軟で詳細なログを出力可能）
+          for i in {1..60}; do
+            INVOCATION=$(aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "${{ steps.infra-info.outputs.instance_id }}" --output json 2>/dev/null || echo "{}")
+            STATUS=$(echo "$INVOCATION" | jq -r '.Status // "Pending"')
+            
+            echo "現在のステータス: $STATUS ($i/60)"
+            
+            if [[ "$STATUS" == "Success" ]]; then
+              echo "デプロイが正常に完了しました。"
+              exit 0
+            elif [[ "$STATUS" == "Failed" || "$STATUS" == "Cancelled" || "$STATUS" == "TimedOut" ]]; then
+              echo "!!! エラー: デプロイが失敗しました (Status: $STATUS) !!!"
+              echo "--- 標準出力 ---"
+              echo "$INVOCATION" | jq -r '.StandardOutputContent'
+              echo "--- 標準エラー出力 ---"
+              echo "$INVOCATION" | jq -r '.StandardErrorContent'
+              exit 1
+            fi
+            sleep 10
+          done
           
-          if [ "$STATUS" != "Success" ]; then
-            echo "!!! エラー: デプロイが失敗しました !!!"
-            echo "--- 標準エラー出力 ---"
-            echo "$INVOCATION" | jq -r '.StandardErrorContent'
-            exit 1
-          fi
-          echo "デプロイが正常に完了しました。"
+          echo "エラー: デプロイがタイムアウトしました。"
+          exit 1

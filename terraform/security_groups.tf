@@ -2,6 +2,11 @@
 # 門番（Security Groups）：通信のルールを決める
 # ==================================================================================================
 
+# CloudFrontのIPアドレスリスト（Prefix List）を取得します
+data "aws_ec2_managed_prefix_list" "cloudfront" {
+  name = "com.amazonaws.global.cloudfront.origin-facing"
+}
+
 resource "aws_security_group" "ec2" {             # サーバー（EC2）用の門番ルールを作ります
   name        = "${var.project_name}-ec2-sg"      # 門番に名前（プロジェクト名＋ec2-sg）を付けます
   description = "Security group for EC2 instance" # どんな門番か、説明書きをします
@@ -28,6 +33,14 @@ resource "aws_security_group" "ec2" {             # サーバー（EC2）用の�
     protocol    = "tcp"         # TCP通信です
     cidr_blocks = ["0.0.0.0/0"] # 安全な接続（HTTPS）を許可します
   }                             # HTTPSルールの終了
+
+  ingress {                                                              # APIサーバー（8000番）へのアクセス設定
+    from_port       = 8000                                               # 8000番ポートを
+    to_port         = 8000                                               # 開けます
+    protocol        = "tcp"                                              # TCP通信です
+    prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]   # 重要：CloudFrontからのアクセスだけを許可します
+    description     = "Allow API access from CloudFront"                 # 説明書きです
+  }                                                                      # APIルールの終了
 
   egress {                      # 出口のルール（中から外へ）を決めます
     from_port   = 0             # 全てのポートから

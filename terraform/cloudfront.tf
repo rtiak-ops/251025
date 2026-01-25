@@ -133,6 +133,27 @@ resource "aws_cloudfront_distribution" "main" { # 配信システム本体（司
     max_ttl                = 0
   } # ルール3終了
 
+  ordered_cache_behavior {     # ヘルスチェック用のルールです
+    path_pattern     = "/health"
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "EC2-${aws_instance.app.id}"
+
+    forwarded_values {
+      query_string = false
+      headers      = ["Origin", "Host"] # シンプルにオリジンとホスト情報だけ伝えます
+
+      cookies {
+        forward = "none"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+    min_ttl                = 0
+    default_ttl            = 0
+    max_ttl                = 0
+  } # ヘルスチェックルール終了
+
   custom_error_response {              # ページが見つからなかった時の特別対応です
     error_code         = 403           # 403エラーが起きたら
     response_code      = 200           # 「成功したよ」という顔をして

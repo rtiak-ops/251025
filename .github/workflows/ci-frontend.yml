@@ -79,7 +79,7 @@ jobs:
 
       # 実際にビルドを行い、エラーがないか確認（Pushはしない）
       - name: フロントエンドイメージのビルド (テストのみ)
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./frontend
           push: false

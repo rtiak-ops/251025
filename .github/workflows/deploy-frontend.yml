@@ -43,7 +43,7 @@ jobs:
         env:
           VITE_API_BASE_URL: https://${{ steps.infra-info.outputs.cf_domain }}
         run: |
-          npm ci
+          npm ci --legacy-peer-deps
           npm run build
 
       - name: S3へ同期

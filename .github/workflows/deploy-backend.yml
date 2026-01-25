@@ -50,11 +50,13 @@ jobs:
           
           echo "SSMコマンドを送信中 (InstanceId: ${{ steps.infra-info.outputs.instance_id }})..."
           
-          # パラメータをJSON形式で構築（シェルエスケープ問題を回避）
+          # パラメータをJSONファイルとして作成（型エラーとエスケープ問題を確実に回避）
+          jq -n --arg cmd "$(cat deploy_script.sh)" '{"commands": [$cmd]}' > ssm_params.json
+          
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${{ steps.infra-info.outputs.instance_id }}" \
             --document-name "AWS-RunShellScript" \
-            --parameters "{\"commands\":$(jq -R -s . deploy_script.sh)}" \
+            --cli-input-json "{\"Parameters\": $(cat ssm_params.json)}" \
             --query "Command.CommandId" \
             --output text)
           

@@ -53,7 +53,8 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
       }
     } catch (err) {
         // APIエラーハンドリング（バリデーションエラー等の詳細取得）
-        const axiosError = err as AxiosError<{ detail?: any }>;
+        type FastAPIErrorDetail = string | { msg: string; [key: string]: unknown }[] | { msg: string; [key: string]: unknown };
+        const axiosError = err as AxiosError<{ detail?: FastAPIErrorDetail }>;
         let msg = "認証に失敗しました";
         
         if (axiosError.response?.data?.detail) {

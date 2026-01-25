@@ -84,6 +84,7 @@ jobs:
         run: |
           # テンプレートに変数を埋め込んで実行用スクリプトを生成
           envsubst < scripts/deploy-ec2.sh.template > deploy_script.sh
+          sed -i 's/\r$//' deploy_script.sh
           
           echo "SSMコマンドを送信中 (InstanceId: ${{ steps.infra-info.outputs.instance_id }})..."
           COMMAND_ID=$(aws ssm send-command \

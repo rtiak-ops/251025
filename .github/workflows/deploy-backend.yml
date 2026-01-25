@@ -1,0 +1,71 @@
+# バックエンド専用のデプロイワークフロー
+name: CD Backend
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - 'scripts/**'
+      - 'terraform/**'
+      - '.github/workflows/deploy-backend.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+
+      - name: AWS 認証設定
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      - name: 最新のインフラ情報を取得
+        id: infra-info
+        run: bash scripts/get-infra-info.sh
+
+      - name: EC2へデプロイ (SSM経由)
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          RDS_ENDPOINT: ${{ steps.infra-info.outputs.rds_endpoint }}
+          APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}
+          EC2_IP: ${{ steps.infra-info.outputs.ec2_ip }}
+          CF_DOMAIN: ${{ steps.infra-info.outputs.cf_domain }}
+        run: |
+          # テンプレートに変数を埋め込んで実行用スクリプトを生成
+          envsubst < scripts/deploy-ec2.sh.template > deploy_script.sh
+          # 改行コードをLinux形式(LF)に強制変換
+          sed -i 's/\r$//' deploy_script.sh
+          
+          echo "SSMコマンドを送信中 (InstanceId: ${{ steps.infra-info.outputs.instance_id }})..."
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ steps.infra-info.outputs.instance_id }}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters "commands=$(cat deploy_script.sh | jq -R -s .)" \
+            --query "Command.CommandId" \
+            --output text)
+          
+          echo "コマンド送信完了。ID: $COMMAND_ID. 完了を待機中..."
+          aws ssm wait command-executed --command-id "$COMMAND_ID" --instance-id "${{ steps.infra-info.outputs.instance_id }}"
+          
+          INVOCATION=$(aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "${{ steps.infra-info.outputs.instance_id }}" --output json)
+          STATUS=$(echo "$INVOCATION" | jq -r '.Status')
+          echo "最終ステータス: $STATUS"
+          
+          if [ "$STATUS" != "Success" ]; then
+            echo "!!! エラー: デプロイが失敗しました !!!"
+            echo "--- 標準エラー出力 ---"
+            echo "$INVOCATION" | jq -r '.StandardErrorContent'
+            exit 1
+          fi
+          echo "デプロイが正常に完了しました。"

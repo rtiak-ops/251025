@@ -1,0 +1,55 @@
+# フロントエンド専用のデプロイワークフロー
+name: CD Frontend
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'frontend/**'
+      - 'scripts/get-infra-info.sh'
+      - '.github/workflows/deploy-frontend.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+
+      - name: AWS 認証設定
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      - name: 最新のインフラ情報を取得
+        id: infra-info
+        run: bash scripts/get-infra-info.sh
+
+      - name: Node.js セットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: '23'
+          cache: 'npm'
+          cache-dependency-path: ./frontend/package-lock.json
+
+      - name: フロントエンドのビルド
+        working-directory: ./frontend
+        env:
+          VITE_API_BASE_URL: https://${{ steps.infra-info.outputs.cf_domain }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: S3へ同期
+        run: |
+          aws s3 sync ./frontend/dist s3://${{ steps.infra-info.outputs.s3_bucket }} --delete
+
+      - name: CloudFrontキャッシュクリア
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ steps.infra-info.outputs.cf_id }} --paths "/*"

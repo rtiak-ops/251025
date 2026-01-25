@@ -57,7 +57,11 @@ resource "aws_instance" "app" {                     # サーバー本体（イ�
               # 2. 必要なツール（DockerやGit）をインストールする
               dnf update -y                          # OSの全ソフトを最新にします
               dnf install -y docker git              # DockerとGitを導入します
-              dnf install -y docker-compose-plugin   # Dockerを楽に動かすプラグインを導入します
+              
+              # Docker Compose V2 をインストール (dnfで見つからない場合があるため直接ダウンロード)
+              mkdir -p /usr/local/lib/docker/cli-plugins
+              curl -SL https://github.com/docker/compose/releases/download/v2.24.1/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+              chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
               
               # 3. Docker（コンテナを動かす道具）を使えるようにする
               systemctl start docker                 # Dockerを起動します

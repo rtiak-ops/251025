@@ -43,15 +43,18 @@ jobs:
           CF_DOMAIN: ${{ steps.infra-info.outputs.cf_domain }}
         run: |
           # テンプレートに変数を埋め込んで実行用スクリプトを生成
-          envsubst < scripts/deploy-ec2.sh.template > deploy_script.sh
-          # 改行コードをLinux形式(LF)に強制変換
-          sed -i 's/\r$//' deploy_script.sh
+          envsubst < scripts/deploy-ec2.sh.template > deploy_script_raw.sh
+          
+          # 改行コードを完全に除去(CRLF -> LF)し、確実にクリーンなスクリプトを作成
+          tr -d '\r' < deploy_script_raw.sh > deploy_script.sh
           
           echo "SSMコマンドを送信中 (InstanceId: ${{ steps.infra-info.outputs.instance_id }})..."
+          
+          # パラメータをJSON形式で構築（シェルエスケープ問題を回避）
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${{ steps.infra-info.outputs.instance_id }}" \
             --document-name "AWS-RunShellScript" \
-            --parameters "commands=$(cat deploy_script.sh | jq -R -s .)" \
+            --parameters "{\"commands\":$(jq -R -s . deploy_script.sh)}" \
             --query "Command.CommandId" \
             --output text)
           

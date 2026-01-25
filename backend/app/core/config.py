@@ -17,7 +17,18 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # --- CORS設定 ---
-CORS_ORIGINS = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "").split(",") if origin.strip()]
+raw_origins = os.getenv("CORS_ORIGINS", "").split(",")
+CORS_ORIGINS = []
+for origin in raw_origins:
+    o = origin.strip()
+    if o:
+        CORS_ORIGINS.append(o)
+        # 末尾にスラッシュがある場合とない場合の両方を許可リストに含める安全策
+        if o.endswith("/"):
+            CORS_ORIGINS.append(o[:-1])
+        else:
+            CORS_ORIGINS.append(o + "/")
+
 if not CORS_ORIGINS:
     CORS_ORIGINS = [
         "http://localhost",

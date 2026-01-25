@@ -18,6 +18,8 @@ from .routers import ai, auth, todos, projects, admin, monitor, organizations
 from .limiter import limiter
 from .middleware import RequestLoggingMiddleware, SecurityHeadersMiddleware
 from .core.config import CORS_ORIGINS, PROJECT_NAME, DEBUG, ENV
+import traceback
+from fastapi.responses import JSONResponse
 
 # --- ロギング設定（JSON形式で標準出力に出力） ---
 logger = logging.getLogger(__name__)
@@ -59,8 +61,27 @@ async def lifespan(app: FastAPI):
     logger.info("アプリケーション終了処理が完了しました。")
 
 # FastAPIのアプリケーションインスタンスを作成
-# DEBUG=True の場合、エラー時にブラウザへ詳細なトレースバックを表示します
 app = FastAPI(title=PROJECT_NAME, lifespan=lifespan, debug=DEBUG)
+
+# --- 全域例外ハンドラー (500エラーを見える化する) ---
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    予期せぬエラーが発生した際、詳細を JSON で返します。
+    """
+    error_msg = traceback.format_exc()
+    logger.error(f"予期せぬエラー: {str(exc)}\n{error_msg}")
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal Server Error (Detailed)",
+            "error_type": type(exc).__name__,
+            "error_msg": str(exc),
+            # DEBUG=True の場合のみトレースバックを返す
+            "traceback": error_msg if DEBUG else "Contact administrator"
+        },
+    )
 
 # --- ミドルウェア・例外ハンドラーの設定 ---
 

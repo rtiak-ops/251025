@@ -22,26 +22,29 @@ async def create_organization(
     if current_user.organization_id:
         raise HTTPException(status_code=400, detail="すでに組織に所属しています。")
     
-    # バリデーション: 空文字列を None に変換（ユニーク制約エラー防止）
-    if org.corporate_id == "":
-        org.corporate_id = None
-    if org.website == "":
-        org.website = None
-
     from sqlalchemy.exc import IntegrityError
     import logging
     logger = logging.getLogger(__name__)
 
     try:
+        # バリデーション: 空文字列を None に変換（ユニーク制約エラー防止）
+        org_data = org.model_dump()
+        if not org_data.get('corporate_id') or org_data['corporate_id'].strip() == '':
+            org_data['corporate_id'] = None
+        if not org_data.get('website') or org_data['website'].strip() == '':
+            org_data['website'] = None
+        
+        # クリーンなデータで新しいスキーマオブジェクトを作成
+        clean_org = schemas.OrganizationCreate(**org_data)
+        
         # CRUD処理で組織レコードを作成
-        db_org = await crud.create_organization(db, org)
+        db_org = await crud.create_organization(db, clean_org)
         
         # 【法人確認シミュレーション】
         # 法人番号（13桁）が入力されていれば、簡易的に「認証済み」ステータスにする
-        if org.corporate_id and len(org.corporate_id) == 13:
+        if clean_org.corporate_id and len(clean_org.corporate_id) == 13:
             db_org.is_verified = True
             db.add(db_org)
-            # ここでの2度目のコミットは、後のユーザー更新と一緒にまとめて行います
             
         # 組織作成者をその組織に紐付ける（最初の所属メンバーにする）
         current_user.organization_id = db_org.id

@@ -47,22 +47,28 @@ export default function Sidebar({
     const name = window.prompt("【正式名称】組織名（会社名）を入力してください:");
     if (!name || !name.trim()) return;
 
-    const corporate_id = window.prompt("【任意】13桁の法人番号を入力してください（入力すると認証マークが付与されます）:") || undefined;
-    const website = window.prompt("【任意】会社ウェブサイトURLを入力してください:") || undefined;
+    const corporate_id = window.prompt("【任意】13桁の法人番号を入力してください（入力すると認証マークが付与されます）:");
+    const website = window.prompt("【任意】会社ウェブサイトURLを入力してください:");
 
     try {
       await createOrganization({ 
-        name, 
-        corporate_id: corporate_id?.trim(), 
-        website: website?.trim() 
+        name: name.trim(), 
+        corporate_id: corporate_id?.trim() || undefined, 
+        website: website?.trim() || undefined 
       });
       toast.success("組織を正式に登録しました");
       onProjectCreated();
     } catch (error) {
-      const err = error as { response?: { status?: number } };
-      const message = err.response?.status === 409 
-        ? "その名称または法人番号は既に登録されています" 
-        : "組織の作成に失敗しました";
+      console.error("組織作成エラー:", error);
+      const err = error as { response?: { status?: number, data?: { detail?: string } } };
+      let message = "組織の作成に失敗しました";
+      
+      if (err.response?.status === 409) {
+        message = "その名称または法人番号は既に登録されています";
+      } else if (err.response?.data?.detail) {
+        message = err.response.data.detail;
+      }
+      
       toast.error(message);
     }
   };

@@ -55,13 +55,24 @@ async def list_users(
 ):
     """
     所属組織に属しているユーザーのリストを取得します。管理者権限が必要です。
+    組織に所属していない管理者は、この機能を使用できません。
     """
     from ..models import User
     from sqlalchemy import select
-    stmt = select(User).offset(skip).limit(limit).order_by(User.id)
-    # 管理者が組織に所属している場合、その組織のユーザーのみに限定
-    if current_user.organization_id:
-        stmt = stmt.where(User.organization_id == current_user.organization_id)
+    from fastapi import HTTPException
+    
+    # 組織に所属していない場合はエラー
+    if not current_user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="組織に所属していないため、ユーザー管理機能を使用できません。先に組織を作成してください。"
+        )
+    
+    # 同じ組織のユーザーのみを取得
+    stmt = select(User).where(
+        User.organization_id == current_user.organization_id
+    ).offset(skip).limit(limit).order_by(User.id)
+    
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -77,9 +88,18 @@ async def update_user_role(
     変更内容は監査ログに記録されます。
 
     注意: システム全体の管理者が0人になるような変更（自分一人の場合等）は拒否されます。
+    同じ組織に所属するユーザーのみ変更可能です。
     """
     from ..models import User
     from sqlalchemy import select
+    
+    # 組織に所属していない場合はエラー
+    if not current_user.organization_id:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="組織に所属していないため、ユーザー管理機能を使用できません。"
+        )
     
     # 対象ユーザーを取得
     result = await db.execute(select(User).where(User.id == user_id))
@@ -88,6 +108,14 @@ async def update_user_role(
     if not db_user:
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+    
+    # 同じ組織のユーザーかチェック
+    if db_user.organization_id != current_user.organization_id:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="他の組織のユーザーを変更することはできません。"
+        )
     
     old_role = db_user.role
     new_role = role_data.role
@@ -177,3 +205,76 @@ async def add_user_to_organization(
     )
 
     return db_user
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(dependencies.admin_required),
+):
+    """
+    指定したユーザーを削除します。管理者権限が必要です。
+    
+    制限:
+    - 自分自身を削除することはできません
+    - 最後の管理者を削除することはできません
+    - 同じ組織に所属するユーザーのみ削除可能です
+    """
+    from ..models import User
+    from sqlalchemy import select, func
+    from fastapi import HTTPException
+    
+    # 組織に所属していない場合はエラー
+    if not current_user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="組織に所属していないため、ユーザー管理機能を使用できません。"
+        )
+    
+    # 自分自身の削除を防止
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="自分自身を削除することはできません。"
+        )
+    
+    # 対象ユーザーを取得
+    result = await db.execute(select(User).where(User.id == user_id))
+    db_user = result.scalar_one_or_none()
+    
+    if not db_user:
+        raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+    
+    # 同じ組織のユーザーかチェック
+    if db_user.organization_id != current_user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="他の組織のユーザーを削除することはできません。"
+        )
+    
+    # 最後の管理者の削除を防止
+    if db_user.role == "admin":
+        admin_count = (await db.execute(
+            select(func.count(User.id)).where(User.role == "admin")
+        )).scalar()
+        if admin_count <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="システムに最低一人の管理者が存在する必要があります。"
+            )
+    
+    # 監査ログに記録
+    await crud.create_audit_log(
+        db,
+        user_id=current_user.id,
+        action="DELETE_USER",
+        resource_type="USER",
+        resource_id=user_id,
+        details=f"User {db_user.email} deleted by {current_user.email}",
+        organization_id=current_user.organization_id
+    )
+    
+    # ユーザーを削除
+    await db.delete(db_user)
+    await db.commit()
+

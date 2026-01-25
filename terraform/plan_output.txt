@@ -1,0 +1,325 @@
+data.archive_file.lambda_start: Reading...
+data.archive_file.lambda_stop: Reading...
+data.archive_file.lambda_start: Read complete after 0s [id=87ed4a566245481e84eecb7cb9e64b39c3d3feb2]
+data.archive_file.lambda_stop: Read complete after 0s [id=3cee956a7d7d42fce0282896163e30ed6252dc13]
+data.aws_availability_zones.available: Reading...
+data.aws_ami.amazon_linux_2023: Reading...
+data.aws_iam_openid_connect_provider.github: Reading...
+data.aws_caller_identity.current: Reading...
+aws_cloudfront_origin_access_control.main: Refreshing state... [id=E3584IHTNKT3X2]
+aws_cloudwatch_event_rule.stop_daily: Refreshing state... [id=todo-app-stop-daily]
+aws_vpc.main: Refreshing state... [id=vpc-045d2cb58357a04b6]
+aws_eip.app: Refreshing state... [id=eipalloc-07d766a7cccf82e30]
+aws_iam_role.ec2_ssm_role: Refreshing state... [id=todo-app-ec2-ssm-role]
+aws_iam_role.scheduler_lambda: Refreshing state... [id=todo-app-scheduler-lambda-role]
+data.aws_caller_identity.current: Read complete after 0s [id=838873470633]
+aws_cloudwatch_event_rule.start_daily: Refreshing state... [id=todo-app-start-daily]
+data.aws_availability_zones.available: Read complete after 0s [id=ap-northeast-1]
+aws_s3_bucket.frontend: Refreshing state... [id=todo-app-frontend-838873470633]
+data.aws_ami.amazon_linux_2023: Read complete after 1s [id=ami-06cce67a5893f85f9]
+aws_s3_bucket_public_access_block.frontend: Refreshing state... [id=todo-app-frontend-838873470633]
+aws_internet_gateway.main: Refreshing state... [id=igw-021f9926fa30c0ab8]
+aws_subnet.private[1]: Refreshing state... [id=subnet-0b9895e80af6d672f]
+aws_security_group.ec2: Refreshing state... [id=sg-0bc36f6c9caef2203]
+aws_subnet.public[0]: Refreshing state... [id=subnet-01373c581ed7d8068]
+aws_subnet.public[1]: Refreshing state... [id=subnet-035a0ca548e781370]
+aws_subnet.private[0]: Refreshing state... [id=subnet-039cb83fed330a68e]
+data.aws_iam_openid_connect_provider.github: Read complete after 1s [id=arn:aws:iam::838873470633:oidc-provider/token.actions.githubusercontent.com]
+aws_iam_role.github_actions: Refreshing state... [id=todo-app-github-actions-role]
+aws_route_table.public: Refreshing state... [id=rtb-002f26d8ff843557a]
+aws_security_group.rds: Refreshing state... [id=sg-050207de5e72f10a1]
+aws_db_subnet_group.main: Refreshing state... [id=todo-app-db-subnet-group]
+aws_route_table_association.public[1]: Refreshing state... [id=rtbassoc-0d3705ba36b541368]
+aws_route_table_association.public[0]: Refreshing state... [id=rtbassoc-060c8c001c9ae1be5]
+aws_iam_role_policy_attachment.ssm_managed_core: Refreshing state... [id=todo-app-ec2-ssm-role-20260119113315612500000001]
+aws_iam_instance_profile.ec2_ssm_profile: Refreshing state... [id=todo-app-ec2-ssm-profile]
+aws_iam_role_policy.scheduler_lambda_policy: Refreshing state... [id=todo-app-scheduler-lambda-role:todo-app-scheduler-lambda-policy]
+aws_db_instance.main: Refreshing state... [id=db-2DBSMUTGFZXPDXTAPK5EVVCJ3A]
+aws_lambda_function.stop_instances: Refreshing state... [id=todo-app-stop-instances]
+aws_lambda_function.start_instances: Refreshing state... [id=todo-app-start-instances]
+aws_cloudfront_distribution.main: Refreshing state... [id=E21A5GWIVKJKDQ]
+aws_iam_role_policy.github_actions_policy: Refreshing state... [id=todo-app-github-actions-role:todo-app-github-actions-policy]
+aws_lambda_permission.allow_eventbridge_stop_daily: Refreshing state... [id=AllowExecutionFromEventBridgeDailyStop]
+aws_cloudwatch_event_target.stop_daily: Refreshing state... [id=todo-app-stop-daily-StopInstances]
+aws_lambda_permission.allow_eventbridge_start_daily: Refreshing state... [id=AllowExecutionFromEventBridgeDailyStart]
+aws_cloudwatch_event_target.start_daily: Refreshing state... [id=todo-app-start-daily-StartInstances]
+aws_s3_bucket_policy.frontend: Refreshing state... [id=todo-app-frontend-838873470633]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+  ~ update in-place
+ <= read (data resources)
+
+Terraform will perform the following actions:
+
+  # data.aws_iam_policy_document.s3_policy will be read during apply
+  # (depends on a resource or a module with changes pending)
+ <= data "aws_iam_policy_document" "s3_policy" {
+      + id            = (known after apply)
+      + json          = (known after apply)
+      + minified_json = (known after apply)
+
+      + statement {
+          + actions   = [
+              + "s3:GetObject",
+            ]
+          + resources = [
+              + "arn:aws:s3:::todo-app-frontend-838873470633/*",
+            ]
+
+          + condition {
+              + test     = "StringEquals"
+              + values   = [
+                  + "arn:aws:cloudfront::838873470633:distribution/E21A5GWIVKJKDQ",
+                ]
+              + variable = "AWS:SourceArn"
+            }
+
+          + principals {
+              + identifiers = [
+                  + "cloudfront.amazonaws.com",
+                ]
+              + type        = "Service"
+            }
+        }
+    }
+
+  # aws_cloudfront_distribution.main will be updated in-place
+  ~ resource "aws_cloudfront_distribution" "main" {
+        id                              = "E21A5GWIVKJKDQ"
+        tags                            = {
+            "Name" = "todo-app-cloudfront"
+        }
+        # (22 unchanged attributes hidden)
+
+      ~ ordered_cache_behavior {
+          ~ target_origin_id           = "EC2-i-04c80fd44a0cbd269" -> (known after apply)
+            # (16 unchanged attributes hidden)
+
+            # (2 unchanged blocks hidden)
+        }
+      ~ ordered_cache_behavior {
+          ~ target_origin_id           = "EC2-i-04c80fd44a0cbd269" -> (known after apply)
+            # (16 unchanged attributes hidden)
+
+            # (2 unchanged blocks hidden)
+        }
+      ~ ordered_cache_behavior {
+          ~ target_origin_id           = "EC2-i-04c80fd44a0cbd269" -> (known after apply)
+            # (16 unchanged attributes hidden)
+
+            # (2 unchanged blocks hidden)
+        }
+      ~ ordered_cache_behavior {
+          ~ target_origin_id           = "EC2-i-04c80fd44a0cbd269" -> (known after apply)
+            # (16 unchanged attributes hidden)
+
+            # (2 unchanged blocks hidden)
+        }
+
+      - origin {
+          - connection_attempts      = 3 -> null
+          - connection_timeout       = 10 -> null
+          - domain_name              = "ec2-43-206-223-249.ap-northeast-1.compute.amazonaws.com" -> null
+          - origin_id                = "EC2-i-04c80fd44a0cbd269" -> null
+            # (2 unchanged attributes hidden)
+
+          - custom_origin_config {
+              - http_port                = 8000 -> null
+              - https_port               = 443 -> null
+              - origin_keepalive_timeout = 5 -> null
+              - origin_protocol_policy   = "http-only" -> null
+              - origin_read_timeout      = 30 -> null
+              - origin_ssl_protocols     = [
+                  - "TLSv1.2",
+                ] -> null
+            }
+        }
+      + origin {
+          + connection_attempts      = 3
+          + connection_timeout       = 10
+          + domain_name              = (known after apply)
+          + origin_id                = (known after apply)
+            # (2 unchanged attributes hidden)
+
+          + custom_origin_config {
+              + http_port                = 8000
+              + https_port               = 443
+              + origin_keepalive_timeout = 5
+              + origin_protocol_policy   = "http-only"
+              + origin_read_timeout      = 30
+              + origin_ssl_protocols     = [
+                  + "TLSv1.2",
+                ]
+            }
+        }
+
+        # (6 unchanged blocks hidden)
+    }
+
+  # aws_eip_association.eip_assoc will be created
+  + resource "aws_eip_association" "eip_assoc" {
+      + allocation_id        = "eipalloc-07d766a7cccf82e30"
+      + id                   = (known after apply)
+      + instance_id          = (known after apply)
+      + network_interface_id = (known after apply)
+      + private_ip_address   = (known after apply)
+      + public_ip            = (known after apply)
+    }
+
+  # aws_instance.app will be created
+  + resource "aws_instance" "app" {
+      + ami                                  = "ami-06cce67a5893f85f9"
+      + arn                                  = (known after apply)
+      + associate_public_ip_address          = (known after apply)
+      + availability_zone                    = (known after apply)
+      + cpu_core_count                       = (known after apply)
+      + cpu_threads_per_core                 = (known after apply)
+      + disable_api_stop                     = (known after apply)
+      + disable_api_termination              = (known after apply)
+      + ebs_optimized                        = (known after apply)
+      + enable_primary_ipv6                  = (known after apply)
+      + get_password_data                    = false
+      + host_id                              = (known after apply)
+      + host_resource_group_arn              = (known after apply)
+      + iam_instance_profile                 = "todo-app-ec2-ssm-profile"
+      + id                                   = (known after apply)
+      + instance_initiated_shutdown_behavior = (known after apply)
+      + instance_lifecycle                   = (known after apply)
+      + instance_state                       = (known after apply)
+      + instance_type                        = "t3.micro"
+      + ipv6_address_count                   = (known after apply)
+      + ipv6_addresses                       = (known after apply)
+      + key_name                             = "app-key"
+      + monitoring                           = (known after apply)
+      + outpost_arn                          = (known after apply)
+      + password_data                        = (known after apply)
+      + placement_group                      = (known after apply)
+      + placement_partition_number           = (known after apply)
+      + primary_network_interface_id         = (known after apply)
+      + private_dns                          = (known after apply)
+      + private_ip                           = (known after apply)
+      + public_dns                           = (known after apply)
+      + public_ip                            = (known after apply)
+      + secondary_private_ips                = (known after apply)
+      + security_groups                      = (known after apply)
+      + source_dest_check                    = true
+      + spot_instance_request_id             = (known after apply)
+      + subnet_id                            = "subnet-01373c581ed7d8068"
+      + tags                                 = {
+          + "Name" = "todo-app-ec2"
+        }
+      + tags_all                             = {
+          + "Name" = "todo-app-ec2"
+        }
+      + tenancy                              = (known after apply)
+      + user_data                            = (sensitive value)
+      + user_data_base64                     = (known after apply)
+      + user_data_replace_on_change          = true
+      + vpc_security_group_ids               = [
+          + "sg-0bc36f6c9caef2203",
+        ]
+
+      + capacity_reservation_specification (known after apply)
+
+      + cpu_options (known after apply)
+
+      + ebs_block_device (known after apply)
+
+      + enclave_options (known after apply)
+
+      + ephemeral_block_device (known after apply)
+
+      + instance_market_options (known after apply)
+
+      + maintenance_options (known after apply)
+
+      + metadata_options (known after apply)
+
+      + network_interface (known after apply)
+
+      + private_dns_name_options (known after apply)
+
+      + root_block_device {
+          + delete_on_termination = true
+          + device_name           = (known after apply)
+          + encrypted             = (known after apply)
+          + iops                  = (known after apply)
+          + kms_key_id            = (known after apply)
+          + tags_all              = (known after apply)
+          + throughput            = (known after apply)
+          + volume_id             = (known after apply)
+          + volume_size           = 20
+          + volume_type           = "gp3"
+        }
+    }
+
+  # aws_lambda_function.start_instances will be updated in-place
+  ~ resource "aws_lambda_function" "start_instances" {
+        id                             = "todo-app-start-instances"
+        tags                           = {
+            "Name" = "todo-app-start-instances"
+        }
+        # (29 unchanged attributes hidden)
+
+      ~ environment {
+          ~ variables = {
+              - "EC2_INSTANCE_ID" = "i-04c80fd44a0cbd269"
+              - "RDS_INSTANCE_ID" = "todo-app-db"
+            } -> (known after apply)
+        }
+
+        # (3 unchanged blocks hidden)
+    }
+
+  # aws_lambda_function.stop_instances will be updated in-place
+  ~ resource "aws_lambda_function" "stop_instances" {
+        id                             = "todo-app-stop-instances"
+        tags                           = {
+            "Name" = "todo-app-stop-instances"
+        }
+        # (29 unchanged attributes hidden)
+
+      ~ environment {
+          ~ variables = {
+              - "EC2_INSTANCE_ID" = "i-04c80fd44a0cbd269"
+              - "RDS_INSTANCE_ID" = "todo-app-db"
+            } -> (known after apply)
+        }
+
+        # (3 unchanged blocks hidden)
+    }
+
+  # aws_s3_bucket_policy.frontend will be updated in-place
+  ~ resource "aws_s3_bucket_policy" "frontend" {
+        id     = "todo-app-frontend-838873470633"
+      ~ policy = jsonencode(
+            {
+              - Statement = [
+                  - {
+                      - Action    = "s3:GetObject"
+                      - Condition = {
+                          - StringEquals = {
+                              - "AWS:SourceArn" = "arn:aws:cloudfront::838873470633:distribution/E21A5GWIVKJKDQ"
+                            }
+                        }
+                      - Effect    = "Allow"
+                      - Principal = {
+                          - Service = "cloudfront.amazonaws.com"
+                        }
+                      - Resource  = "arn:aws:s3:::todo-app-frontend-838873470633/*"
+                    },
+                ]
+              - Version   = "2012-10-17"
+            }
+        ) -> (known after apply)
+        # (1 unchanged attribute hidden)
+    }
+
+Plan: 2 to add, 4 to change, 0 to destroy.
+
+─────────────────────────────────────────────────────────────────────────────
+
+Note: You didn't use the -out option to save this plan, so Terraform can't
+guarantee to take exactly these actions if you run "terraform apply" now.

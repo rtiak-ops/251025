@@ -28,7 +28,7 @@ jobs:
 
       # Node.jsの実行環境をセットアップ
       - name: Node.js環境のセットアップ
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '23'
           cache: 'npm' # npmのキャッシュを利用して高速化

@@ -1,6 +1,7 @@
 from __future__ import annotations
 import logging
 import sys
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -36,14 +37,19 @@ async def lifespan(app: FastAPI):
     アプリケーションの起動時と終了時に実行されるライフサイクル関数
     """
     # 起動時: データベースのテーブル作成・初期化を実行
-    logger.info("アプリケーション起動: データベース初期化を実行します。")
+    logger.info("アプリケーション起動: データベース初期化を開始します。")
     try:
+        # DB接続に時間がかかりすぎて504になるのを防ぐため、5秒でタイムアウトさせる
         async with engine.begin() as conn:
-            # モデル定義に基づきテーブルを作成（既に存在する場合は何もしない）
-            await conn.run_sync(Base.metadata.create_all)
+            await asyncio.wait_for(
+                conn.run_sync(Base.metadata.create_all), 
+                timeout=10.0
+            )
         logger.info("データベースの初期化が完了しました。")
+    except asyncio.TimeoutError:
+        logger.error("データベース接続がタイムアウトしました。DATABASE_URLまたはネットワーク設定を確認してください。")
     except Exception as e:
-        logger.error(f"初期化中にエラーが発生しました: {e}")
+        logger.error(f"初期化中にエラーが発生しました: {str(e)}", exc_info=True)
 
     yield # ここでアプリケーションがリクエストの待機を開始
 

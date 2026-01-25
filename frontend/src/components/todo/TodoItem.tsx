@@ -38,7 +38,7 @@ export default function TodoItem({ todo, onChange }: TodoItemProps) {
     try {
       await updateTodo(todo.id, { 
         title,
-        due_date: dueDate ? new Date(dueDate).toISOString() : null as any
+        due_date: dueDate ? new Date(dueDate).toISOString() : undefined
       });
       setIsEditing(false);
       onChange();

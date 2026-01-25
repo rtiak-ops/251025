@@ -85,7 +85,7 @@ export default function TodoItem({ todo, onChange }: TodoItemProps) {
             <div className="flex flex-wrap items-center gap-2">
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value as any)}
+                onChange={(e) => setStatus(e.target.value as Todo['status'])}
                 className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-2 py-0.5 text-[10px] outline-none dark:text-white font-bold"
               >
                 <option value="TODO">TODO</option>
@@ -96,7 +96,7 @@ export default function TodoItem({ todo, onChange }: TodoItemProps) {
 
               <select
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as any)}
+                onChange={(e) => setPriority(e.target.value as Todo['priority'])}
                 className={`border border-slate-200 dark:border-slate-600 rounded px-2 py-0.5 text-[10px] outline-none font-bold ${priorityColors[priority]}`}
               >
                 <option value="LOW">LOW</option>

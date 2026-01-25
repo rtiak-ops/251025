@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createTodo } from '../../api';
 import { toast } from 'react-hot-toast';
-import { PlusCircle, Send } from 'lucide-react';
+import { PlusCircle, Send, Clock } from 'lucide-react';
 import type { Todo } from '../../types';
 
 interface TodoFormProps {
@@ -12,6 +12,7 @@ interface TodoFormProps {
 export default function TodoForm({ onAdd, initialProjectId }: TodoFormProps) {
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<Todo['priority']>("MEDIUM");
+  const [dueDate, setDueDate] = useState<string>("");
   const [projectId] = useState<number | undefined>(initialProjectId);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,9 +26,11 @@ export default function TodoForm({ onAdd, initialProjectId }: TodoFormProps) {
       await createTodo({
         title: title.trim(),
         priority,
-        project_id: projectId
+        project_id: projectId,
+        due_date: dueDate ? new Date(dueDate).toISOString() : undefined
       });
       setTitle("");
+      setDueDate("");
       onAdd();
       toast.success("タスクを追加しました");
     } catch {
@@ -55,21 +58,33 @@ export default function TodoForm({ onAdd, initialProjectId }: TodoFormProps) {
           className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
         />
         
-        <div className="flex gap-2">
-          {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as Todo['priority'][]).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPriority(p)}
-              className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all border ${
-                priority === p 
-                  ? 'bg-indigo-600 text-white border-indigo-700 shadow-md' 
-                  : 'bg-white dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'
-              }`}
-            >
-              {p}
-            </button>
-          ))}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1 flex gap-2">
+            {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as Todo['priority'][]).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPriority(p)}
+                className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all border ${
+                  priority === p 
+                    ? 'bg-indigo-600 text-white border-indigo-700 shadow-md' 
+                    : 'bg-white dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+          
+          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1">
+            <Clock size={14} className="text-slate-400" />
+            <input 
+              type="date" 
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="bg-transparent text-[10px] font-bold text-slate-600 dark:text-slate-300 outline-none cursor-pointer"
+            />
+          </div>
         </div>
 
         <button 

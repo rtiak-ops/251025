@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { updateTodo, deleteTodo } from '../../api';
 import { toast } from 'react-hot-toast';
-import { Clock, AlertTriangle, CheckCircle2, Trash2, Edit } from 'lucide-react';
+import { Clock, AlertTriangle, CheckCircle2, Trash2, Edit, Calendar } from 'lucide-react';
 import type { Todo } from '../../types';
 
 interface TodoItemProps {
@@ -12,6 +12,7 @@ interface TodoItemProps {
 export default function TodoItem({ todo, onChange }: TodoItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(todo.title);
+  const [dueDate, setDueDate] = useState(todo.due_date ? new Date(todo.due_date).toISOString().split('T')[0] : "");
 
   const handleToggleComplete = async () => {
     try {
@@ -33,9 +34,12 @@ export default function TodoItem({ todo, onChange }: TodoItemProps) {
     }
   };
 
-  const handleUpdateTitle = async () => {
+  const handleUpdateTask = async () => {
     try {
-      await updateTodo(todo.id, { title });
+      await updateTodo(todo.id, { 
+        title,
+        due_date: dueDate ? new Date(dueDate).toISOString() : null as any
+      });
       setIsEditing(false);
       onChange();
     } catch {
@@ -63,17 +67,32 @@ export default function TodoItem({ todo, onChange }: TodoItemProps) {
 
       <div className="flex-1 min-w-0">
         {isEditing ? (
-          <input 
-            id={`todo_edit_${todo.id}`}
-            name="todo_title"
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={handleUpdateTitle}
-            onKeyDown={(e) => e.key === 'Enter' && handleUpdateTitle()}
-            className="w-full bg-white dark:bg-slate-700 border border-indigo-500 rounded px-2 py-1 outline-none"
-            autoFocus
-          />
+          <div className="flex flex-col gap-2">
+            <input 
+              id={`todo_edit_${todo.id}`}
+              name="todo_title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleUpdateTask()}
+              className="w-full bg-white dark:bg-slate-700 border border-indigo-500 rounded px-2 py-1 outline-none dark:text-white"
+              autoFocus
+            />
+            <div className="flex items-center gap-2">
+              <input 
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-2 py-0.5 text-[10px] outline-none dark:text-white"
+              />
+              <button 
+                onClick={handleUpdateTask}
+                className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-bold"
+              >
+                保存
+              </button>
+            </div>
+          </div>
         ) : (
           <div className="flex items-center gap-2">
             <h4 className={`font-bold truncate dark:text-white ${todo.completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>
@@ -89,6 +108,14 @@ export default function TodoItem({ todo, onChange }: TodoItemProps) {
             <Clock size={10} />
             {new Date(todo.created_at).toLocaleDateString()}
           </span>
+          {todo.due_date && (
+            <span className={`flex items-center gap-1 ${
+              new Date(todo.due_date) < new Date() && !todo.completed ? 'text-red-500' : 'text-amber-500'
+            }`}>
+              <Calendar size={10} />
+              {new Date(todo.due_date).toLocaleDateString()}
+            </span>
+          )}
           {todo.status !== 'TODO' && (
             <span className="flex items-center gap-1 text-indigo-500">
               <AlertTriangle size={10} />

@@ -48,9 +48,11 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate) -> models.User
     # ユーザーインスタンスの作成
     db_user = models.User(email=user.email, hashed_password=hashed_password)
     
-    # システム全体で最初のユーザーを自動的に管理者（admin）に設定
-    user_count = (await db.execute(select(func.count(models.User.id)))).scalar()
-    if user_count == 0:
+    # システム全体で管理者が一人もいない場合、登録ユーザーを自動的に管理者（admin）に設定
+    admin_count = (await db.execute(
+        select(func.count(models.User.id)).where(models.User.role == "admin")
+    )).scalar()
+    if admin_count == 0:
         db_user.role = "admin"
     
     db.add(db_user)

@@ -24,6 +24,9 @@ export interface Todo {
 export interface CreateTodoData {
   title: string;        // タイトルは必須
   description?: string; // 説明は任意
+  priority?: Todo['priority'];
+  project_id?: number;
+  due_date?: string;
 }
 
 /**

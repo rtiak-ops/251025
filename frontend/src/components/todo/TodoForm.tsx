@@ -46,6 +46,8 @@ export default function TodoForm({ onAdd, initialProjectId }: TodoFormProps) {
       
       <div className="space-y-3">
         <input 
+          id="todo_title"
+          name="todo_title"
           type="text" 
           placeholder="新しいタスクをクイック追加" 
           value={title}

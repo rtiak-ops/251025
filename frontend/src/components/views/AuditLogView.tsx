@@ -33,6 +33,8 @@ export default function AuditLogView() {
       <div className="glass p-6 rounded-3xl">
         <div className="relative mb-6">
           <input 
+            id="audit_search"
+            name="audit_search"
             type="text" 
             placeholder="ログを検索 (アクション, リソース, ユーザー)..." 
             value={searchTerm}

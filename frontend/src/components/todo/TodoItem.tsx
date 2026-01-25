@@ -64,6 +64,8 @@ export default function TodoItem({ todo, onChange }: TodoItemProps) {
       <div className="flex-1 min-w-0">
         {isEditing ? (
           <input 
+            id={`todo_edit_${todo.id}`}
+            name="todo_title"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}

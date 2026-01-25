@@ -17,6 +17,8 @@ export default function SearchBar({ value, onChange, onClear }: SearchBarProps) 
   return (
     <div className="mb-6 relative">
       <input 
+        id="search_query"
+        name="search_query"
         type="text" 
         placeholder="タスクを検索..." 
         value={value}

@@ -101,6 +101,8 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
           <div className="relative">
             <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
             <input 
+              id="full_name"
+              name="full_name"
               type="text" 
               placeholder="氏名を入力..." 
               value={fullName}
@@ -114,6 +116,8 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
         <div className="relative">
           <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
           <input 
+            id="email"
+            name="email"
             type="email" 
             placeholder="メールアドレス..." 
             value={email}
@@ -126,6 +130,8 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
         <div className="relative">
           <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
           <input 
+            id="password"
+            name="password"
             type="password" 
             placeholder="パスワード..." 
             value={password}

@@ -119,6 +119,8 @@ export default function MemberManager({
           </label>
           <div className="flex items-center gap-2">
               <input 
+                  id="invite_email"
+                  name="invite_email"
                   type="email" 
                   placeholder="メールアドレスを入力..." 
                   value={inviteEmail}

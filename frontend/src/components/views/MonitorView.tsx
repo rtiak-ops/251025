@@ -3,13 +3,16 @@ import { getSystemMetrics } from "../../api";
 import { Activity, Database, Globe, Server, Users } from "lucide-react";
 
 /**
- * システムの稼働状況を可視化するモニタービュー。
+ * 【システムモニタービュー (MonitorView)】
+ * 開発者および管理者向けに、アプリケーションの負荷状況、データベース接続状態、
+ * リソースの使用率などをリアルタイム（5秒間隔）で可視化する画面です。
  */
 export default function MonitorView() {
+  // バックエンドからシステムの統計情報（メトリクス）を定期的に取得
   const { data: metrics } = useQuery({
     queryKey: ["metrics"],
     queryFn: getSystemMetrics,
-    refetchInterval: 5000,
+    refetchInterval: 5000, // 5秒ごとに自動リフレッシュ
   });
 
   return (

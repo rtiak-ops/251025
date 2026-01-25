@@ -4,22 +4,26 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from .core.config import DATABASE_URL, DEBUG, ENV
 
-# データベース接続エンジンの作成
+# データベース接続用の非同期エンジンを作成
+# DEBUG=True かつ 本番環境以外の場合、SQLログを出力（echo=True）
 is_echo = DEBUG and ENV != "production"
 engine = create_async_engine(DATABASE_URL, echo=is_echo)
 
-# 非同期セッションファクトリの作成
+# 非同期DBセッションを作成するためのファクトリ（AsyncSessionLocal）を定義
 AsyncSessionLocal = sessionmaker(
     bind=engine,
     class_=AsyncSession,
-    expire_on_commit=False,
+    expire_on_commit=False, # コミット後もインスタンス属性にアクセス可能にする（推奨設定）
 )
 
-# 宣言的な基底クラス
+# モデルクラスが継承する基底クラスを定義
 Base = declarative_base()
 
-# 依存性注入用関数
+# FastAPIの各種エンドポイントでDBセッションを依存性注入として受け取るための関数
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """非同期DBセッションを提供し自動で閉じる"""
+    """
+    リクエストごとに新しい非同期DBセッションを生成し、
+    処理が完了したら自動的にクローズします。
+    """
     async with AsyncSessionLocal() as session:
         yield session

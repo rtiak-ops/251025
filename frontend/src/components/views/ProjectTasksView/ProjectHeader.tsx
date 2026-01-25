@@ -13,7 +13,9 @@ interface ProjectHeaderProps {
 }
 
 /**
- * プロジェクトのヘッダー部分（タイトル、説明、操作ボタン）
+ * 【プロジェクトヘッダー (ProjectHeader)】
+ * プロジェクトの「タイトル」「説明」「操作メニュー（編集・削除・メンバー管理）」を表示します。
+ * フィルタが適用されている場合は、フィルタ解除用のバッジも表示します。
  */
 export default function ProjectHeader({
   project,
@@ -29,16 +31,20 @@ export default function ProjectHeader({
     <div className="flex flex-col lg:flex-row gap-8 items-start">
       <div className="flex-1 space-y-4">
         <div className="flex items-center gap-6">
+          {/* プロジェクトアイコン */}
           <div className="p-4 rounded-3xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 flex-shrink-0">
             <Folder size={32} />
           </div>
           <div>
             <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-1 flex items-center gap-3 flex-wrap">
+              {/* プロジェクト名（未選択時は「すべてのタスク」） */}
               {project ? project.name : 'すべてのタスク'}
+              
+              {/* アクティブな絞り込み条件（フィルタ）の表示 */}
               {activeFilter && (
                 <span className="text-sm font-medium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-800 flex items-center gap-2">
                   {activeFilter.label}
-                  <button onClick={onClearFilter} className="hover:text-red-500 transition-colors">✕</button>
+                  <button onClick={onClearFilter} className="hover:text-red-500 transition-colors" title="フィルタを解除">✕</button>
                 </span>
               )}
             </h2>
@@ -48,8 +54,13 @@ export default function ProjectHeader({
           </div>
         </div>
 
+        {/* 
+            【操作アクション】
+            プロジェクトが存在する場合に表示されるボタン群。
+        */}
         {project && (
           <div className="flex flex-wrap items-center gap-3 pt-2">
+            {/* 編集・削除ボタンはプロジェクト所有者（オーナー）のみに表示 */}
             {isOwner && (
               <>
                 <button 
@@ -67,6 +78,7 @@ export default function ProjectHeader({
               </>
             )}
 
+            {/* 共同編集者（メンバー）表示の切り替えボタン */}
             <button 
               onClick={() => setShowMembers(!showMembers)}
               className={`flex items-center gap-2 ml-4 px-4 py-2 rounded-xl border transition-all ${
@@ -77,6 +89,10 @@ export default function ProjectHeader({
             >
                 <Users size={16} />
                 <span className="text-xs font-bold">メンバー管理</span>
+                {/* 
+                    簡易的なメンバーアバター（イニシャル）のスタック表示。
+                    現在のメンバー数を確認できる視覚的なヒントです。
+                */}
                 <div className="flex -space-x-2 ml-1">
                     <div className="w-6 h-6 rounded-full bg-indigo-500 border border-white dark:border-slate-800 flex items-center justify-center text-[8px] text-white font-bold" title="Owner">O</div>
                     {project && Array.isArray(project.collaborators) && project.collaborators.slice(0, 3).map((c: Collaborator) => (

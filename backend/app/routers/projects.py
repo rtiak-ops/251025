@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .. import crud, schemas, models, dependencies
 from ..database import get_db
 
+# プロジェクト管理用のルーター
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
 @router.get("/", response_model=list[schemas.ProjectOut])
@@ -12,7 +13,8 @@ async def read_projects(
     current_user: models.User = Depends(dependencies.get_current_user),
 ) -> list[schemas.ProjectOut]:
     """
-    ログインユーザーのプロジェクト一覧を取得します。
+    ログインユーザーがアクセス可能なプロジェクトの一覧を取得します。
+    （自分がオーナー、共同編集者、または同じ組織のプロジェクトが対象）
     """
     return await crud.get_projects(db, user_id=current_user.id)
 
@@ -22,7 +24,7 @@ async def read_project_summaries(
     current_user: models.User = Depends(dependencies.get_current_user),
 ):
     """
-    各プロジェクトのタスク統計を含むサマリーを取得します。
+    各プロジェクトの進捗（タスク総数、完了数など）を含めたサマリー情報を取得します。
     """
     return await crud.get_project_summaries(db, user_id=current_user.id)
 
@@ -32,11 +34,14 @@ async def create_project(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(dependencies.get_current_user),
 ) -> schemas.ProjectOut:
+    """
+    新しいプロジェクトを作成します。作成者が自動的にオーナーとなります。
+    """
     user_id = current_user.id
     org_id = current_user.organization_id
     new_project = await crud.create_project(db, project=project, owner_id=user_id)
     
-    # 監査ログを記録
+    # 監査ログの記録
     await crud.create_audit_log(
         db, 
         user_id=user_id, 
@@ -56,7 +61,7 @@ async def read_project(
     current_user: models.User = Depends(dependencies.get_current_user),
 ) -> schemas.ProjectOut:
     """
-    指定されたIDのプロジェクトを取得します。
+    指定されたIDのプロジェクト詳細を取得します。アクセス権限がない場合は 404 を返します。
     """
     project = await crud.get_project_by_id(db, project_id=project_id, user_id=current_user.id)
     if project is None:
@@ -70,13 +75,17 @@ async def update_project(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(dependencies.get_current_user),
 ) -> schemas.ProjectOut:
+    """
+    プロジェクト情報を更新します。更新はオーナーまたは編集権限を持つメンバーのみ可能です。
+    """
     user_id = current_user.id
     org_id = current_user.organization_id
     updated = await crud.update_project(db, project_id=project_id, project=project, user_id=user_id)
     if updated is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+        # 権限不足または存在しない場合
+        raise HTTPException(status_code=404, detail="Project not found or permission denied")
     
-    # 監査ログを記録
+    # 監査ログの記録
     await crud.create_audit_log(
         db, 
         user_id=user_id, 
@@ -95,13 +104,16 @@ async def delete_project(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(dependencies.get_current_user),
 ):
+    """
+    プロジェクトを削除します。オーナーのみが削除可能です。
+    """
     user_id = current_user.id
     org_id = current_user.organization_id
     deleted = await crud.delete_project(db, project_id=project_id, user_id=user_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise HTTPException(status_code=404, detail="Project not found or only owners can delete")
     
-    # 監査ログを記録
+    # 監査ログの記録
     await crud.create_audit_log(
         db, 
         user_id=user_id, 
@@ -121,11 +133,11 @@ async def add_collaborator(
     current_user: models.User = Depends(dependencies.get_current_user),
 ):
     """
-    プロジェクトにメンバーを追加します。
+    プロジェクトに他のユーザーを共同編集者として追加（招待）します。
     """
     # 権限チェック: プロジェクトのオーナーのみがメンバーを追加可能
     project = await crud.get_project_by_id(db, project_id=project_id, user_id=current_user.id)
-    if not project:
+    if not project or project.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Only owners can add collaborators")
     
     return await crud.add_collaborator(db, project_id=project_id, collaborator=collaborator)
@@ -138,11 +150,11 @@ async def remove_collaborator(
     current_user: models.User = Depends(dependencies.get_current_user),
 ):
     """
-    プロジェクトからメンバーを削除します。
+    プロジェクトから共同編集者を削除します。
     """
     # 権限チェック: プロジェクトのオーナーのみがメンバーを削除可能
     project = await crud.get_project_by_id(db, project_id=project_id, user_id=current_user.id)
-    if not project:
+    if not project or project.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Only owners can remove collaborators")
     
     await crud.remove_collaborator(db, project_id=project_id, user_id=user_id)

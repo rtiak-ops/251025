@@ -123,20 +123,21 @@ table.coverage td span.cline-any {
 .coverage-summary tbody { border: 1px solid #bbb; }
 .coverage-summary td { border-right: 1px solid #bbb; }
 .coverage-summary td:last-child { border-right: none; }
+/* カバレッジサマリーテーブルのヘッダー設定 */
 .coverage-summary th {
   text-align: left;
   font-weight: normal;
   white-space: nowrap;
 }
 .coverage-summary th.file { border-right: none !important; }
-.coverage-summary th.pct { }
+
+/* パーセンテージ、画像、絶対値などのセルを右寄せにする */
 .coverage-summary th.pic,
 .coverage-summary th.abs,
 .coverage-summary td.pct,
 .coverage-summary td.abs { text-align: right; }
 .coverage-summary td.file { white-space: nowrap;  }
 .coverage-summary td.pic { min-width: 120px !important;  }
-.coverage-summary tfoot td { }
 
 .coverage-summary .sorter {
     height: 10px;

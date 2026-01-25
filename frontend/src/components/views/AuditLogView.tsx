@@ -4,17 +4,23 @@ import { History, Search } from "lucide-react";
 import { useState } from "react";
 
 /**
- * システム内の操作履歴を表示する監査ログビュー。
- * セキュリティや操作ミスの追跡に活用されます。
+ * 【監査ログビュー (AuditLogView)】
+ * 組織内で行われた「誰が・いつ・何をしたか」という操作履歴を一覧表示する管理者用画面です。
+ * データの作成、更新、削除などの重要なアクションを追跡し、セキュリティ監査やトラブルシューティングに役立てます。
  */
 export default function AuditLogView() {
+  // ユーザーが入力した検索キーワードの状態管理
   const [searchTerm, setSearchTerm] = useState("");
 
+  // React Queryを使用してバックエンドから監査ログデータを取得
+  // 自動的にキャッシュ管理やローディング状態のハンドリングが行われます。
   const { data: logs, isLoading } = useQuery({
     queryKey: ["audit-logs"],
     queryFn: () => getAuditLogs(),
   });
 
+  // クライアントサイドでのフィルタリング
+  // アクション（CREATE/DELETE等）、リソース（TODO/PROJECT等）、実行ユーザーのメールアドレスで検索可能です。
   const filteredLogs = Array.isArray(logs) ? logs.filter(log => 
     log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.resource_type.toLowerCase().includes(searchTerm.toLowerCase()) ||

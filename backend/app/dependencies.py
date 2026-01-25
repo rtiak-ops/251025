@@ -8,14 +8,17 @@ from .core.security import decode_token
 from .database import get_db
 from . import crud, models, schemas
 
-# OAuth2パスワード認証のスキーム
+# 認証トークンの受け渡しにOAuth2の Bearer形式（Authorization: Bearer <TOKEN>）を使用することを定義
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> models.User:
-    """リクエストに含まれるトークンから現在ログイン中のユーザーを取得"""
+    """
+    リクエストヘッダーに含まれるJWTトークンを検証し、現在ログイン中のユーザー情報を取得します。
+    認証に失敗した場合は 401 Unauthorized エラーを発生させます。
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="認証情報を検証できませんでした",
@@ -23,15 +26,17 @@ async def get_current_user(
     )
     
     try:
-        # トークンをデコード
+        # トークンの署名を検証しデコード
         payload = decode_token(token)
+        # トークン内の 'sub' クレーム（通常はユーザーの識別子、ここではemail）を取得
         email: str | None = payload.get("sub")
         if email is None:
             raise credentials_exception
     except JWTError:
+        # トークンの期限切れや改ざん等
         raise credentials_exception
 
-    # データベースからユーザーを検索
+    # デコードされたemailを元にデータベースからユーザー実体を取得
     user = await crud.get_user_by_email(db, email=email)
     if user is None:
         raise credentials_exception
@@ -39,7 +44,11 @@ async def get_current_user(
     return user
 
 def require_role(allowed_roles: list[str]):
-    """特定のロールを持つユーザーのみを許可する依存関数"""
+    """
+    特定のユーザー権限（admin等）が要求されるエンドポイント向けの権限チェッカー。
+    
+    使用例: admin_required = require_role(["admin"])
+    """
     async def role_checker(current_user: models.User = Depends(get_current_user)):
         if current_user.role not in allowed_roles:
             raise HTTPException(
@@ -49,5 +58,5 @@ def require_role(allowed_roles: list[str]):
         return current_user
     return role_checker
 
-# ショートカット
+# 管理者権限を要求する際のショートカット
 admin_required = require_role(["admin"])

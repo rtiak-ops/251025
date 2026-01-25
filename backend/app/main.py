@@ -18,7 +18,7 @@ from .limiter import limiter
 from .middleware import RequestLoggingMiddleware, SecurityHeadersMiddleware
 from .core.config import CORS_ORIGINS, PROJECT_NAME
 
-# --- ロギング設定 ---
+# --- ロギング設定（JSON形式で標準出力に出力） ---
 logger = logging.getLogger(__name__)
 logHandler = logging.StreamHandler(sys.stdout)
 formatter = json.JsonFormatter(
@@ -32,49 +32,60 @@ root_logger.setLevel(logging.INFO)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 起動時: DB初期化
+    """
+    アプリケーションの起動時と終了時に実行されるライフサイクル関数
+    """
+    # 起動時: データベースのテーブル作成・初期化を実行
     logger.info("アプリケーション起動: データベース初期化を実行します。")
     try:
         async with engine.begin() as conn:
+            # モデル定義に基づきテーブルを作成（既に存在する場合は何もしない）
             await conn.run_sync(Base.metadata.create_all)
         logger.info("データベースの初期化が完了しました。")
     except Exception as e:
         logger.error(f"初期化中にエラーが発生しました: {e}")
 
-    yield
+    yield # ここでアプリケーションがリクエストの待機を開始
 
-    # 終了時: 接続プールを閉じる
+    # 終了時: データベースの接続プールを安全に閉じる
     logger.info("アプリケーション終了処理を開始します。")
     await engine.dispose()
     logger.info("アプリケーション終了処理が完了しました。")
 
-# アプリケーション初期化
-app = FastAPI(title=PROJECT_NAME, lifespan=lifespan)
+# FastAPIのアプリケーションインスタンスを作成
+# DEBUG=True の場合、エラー時にブラウザへ詳細なトレースバックを表示します
+app = FastAPI(title=PROJECT_NAME, lifespan=lifespan, debug=DEBUG)
 
-# レート制限
+# --- ミドルウェア・例外ハンドラーの設定 ---
+
+# レート制限（スロットリング）の設定
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
-# カスタムミドルウェア
-app.add_middleware(RequestLoggingMiddleware)
-app.add_middleware(SecurityHeadersMiddleware)
+# カスタムミドルウェアの追加
+app.add_middleware(RequestLoggingMiddleware)      # リクエストログの記録
+app.add_middleware(SecurityHeadersMiddleware)     # セキュリティヘッダーの付与
 
-# CORS
+# CORS（Cross-Origin Resource Sharing）の設定
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_origins=CORS_ORIGINS,                      # 許可するオリジン（フロントエンドのURL等）
+    allow_credentials=True,                          # クッキーや認証情報の含めを許可
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"], # 許可するHTTPメソッド
+    allow_headers=["*"],                             # すべてのヘッダーを許可
 )
 
-# ヘルスチェック
+# ヘルスチェック用エンドポイント（インフラ監視用）
 @app.get("/health", tags=["Health"])
 async def health_check():
+    """
+    システムの健康状態を確認し、DB接続状況を含めてレスポンスを返します。
+    """
     from sqlalchemy import text
     from .database import get_db
     try:
+        # DB接続が可能かシンプルなクエリでテスト
         async for db in get_db():
             await db.execute(text("SELECT 1"))
             break
@@ -96,11 +107,11 @@ async def health_check():
             }
         )
 
-# ルーティング
-app.include_router(auth.router)
-app.include_router(projects.router)
-app.include_router(todos.router)
-app.include_router(ai.router)
-app.include_router(admin.router)
-app.include_router(monitor.router)
-app.include_router(organizations.router)
+# --- 各ルーター（機能単位のエンドポイント）の登録 ---
+app.include_router(auth.router)           # 認証（登録、ログイン）
+app.include_router(projects.router)       # プロジェクト管理
+app.include_router(todos.router)          # タスク管理
+app.include_router(ai.router)             # AI連携（タスク分解等）
+app.include_router(admin.router)          # 管理者機能（監査ログ、ユーザー管理）
+app.include_router(monitor.router)        # 監視、統計
+app.include_router(organizations.router)  # 組織管理

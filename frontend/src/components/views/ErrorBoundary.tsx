@@ -10,17 +10,27 @@ interface State {
 }
 
 /**
- * Reactのレンダリングエラーをキャッチし、画面真っ白になるのを防ぐためのコンポーネント。
+ * 【エラー境界 (ErrorBoundary)】
+ * Reactコンポーネントツリー内で発生した予期せぬ JavaScript エラーをキャッチし、
+ * アプリ全体がクラッシュ（真っ白な画面）するのを防ぐための「フォールバック」コンポーネントです。
+ * 本番環境でユーザーに不快な体験を与えないための安全装置として機能します。
  */
 export default class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false
   };
 
+  /**
+   * 子コンポーネントでエラーが発生した際に呼び出され、
+   * 次のレンダリングでエラー画面を表示するように状態を更新します。
+   */
   public static getDerivedStateFromError(): State {
     return { hasError: true };
   }
 
+  /**
+   * エラー情報をログ（Sentry等への送信やコンソール出力）に記録するために使用されます。
+   */
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
   }

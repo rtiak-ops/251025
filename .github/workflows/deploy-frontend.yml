@@ -1,10 +1,14 @@
 # フロントエンド専用のデプロイワークフロー
 name: CD Frontend
 
+# 実行トリガーの設定
 on:
+  # 手動実行を許可
   workflow_dispatch:
+  # main または develop ブランチへのプッシュ時に実行
   push:
     branches: [main, develop]
+    # 特定のファイルに変更があった場合のみ実行
     paths:
       - 'frontend/**'
       - 'scripts/get-infra-info.sh'
@@ -12,25 +16,31 @@ on:
 
 jobs:
   deploy:
+    # 最新のUbuntu環境で実行
     runs-on: ubuntu-latest
+    # OIDCを使用したAWS認証とコード取得に必要な権限
     permissions:
       id-token: write
       contents: read
 
     steps:
+      # リポジトリのコードをチェックアウト
       - name: チェックアウト
         uses: actions/checkout@v4
 
+      # GitHub ActionsからAWSのリソースへアクセスするための認証設定
       - name: AWS 認証設定
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ap-northeast-1
 
+      # Terraformなどで作成された最新のS3バケット名やCloudFront情報を取得するスクリプトを実行
       - name: 最新のインフラ情報を取得
         id: infra-info
         run: bash scripts/get-infra-info.sh
 
+      # Node.jsの実行環境をセットアップ（キャッシュを使用して高速化）
       - name: Node.js セットアップ
         uses: actions/setup-node@v4
         with:
@@ -38,6 +48,8 @@ jobs:
           cache: 'npm'
           cache-dependency-path: ./frontend/package-lock.json
 
+      # フロントエンドの依存関係インストールとビルド
+      # ビルド時にAPIのベースURLを環境変数として注入
       - name: フロントエンドのビルド
         working-directory: ./frontend
         env:
@@ -46,10 +58,12 @@ jobs:
           npm ci --legacy-peer-deps
           npm run build
 
+      # ビルドされた静的ファイルをS3バケットへ同期（不要なファイルは削除）
       - name: S3へ同期
         run: |
           aws s3 sync ./frontend/dist s3://${{ steps.infra-info.outputs.s3_bucket }} --delete
 
+      # デプロイした内容を即座に反映させるため、CloudFrontのキャッシュを無効化
       - name: CloudFrontキャッシュクリア
         run: |
           aws cloudfront create-invalidation --distribution-id ${{ steps.infra-info.outputs.cf_id }} --paths "/*"

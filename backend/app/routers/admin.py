@@ -21,7 +21,17 @@ async def read_audit_logs(
     current_user: models.User = Depends(dependencies.admin_required),
 ):
     """
-    所属組織の監査ログを取得します。
+    所属組織の監査ログ（操作履歴）を取得します。管理者権限が必要です。
+
+    Args:
+        skip (int): 取得開始位置（オフセット）
+        limit (int): 取得する最大件数
+        user_email (str | None): 実行ユーザーのメールアドレスによる絞り込み
+        action (str | None): 操作の種類（CREATE, UPDATE等）による絞り込み
+        resource_type (str | None): 操作対象（TODO, PROJECT等）による絞り込み
+        query (str | None): 全体検索キーワード
+        start_date (datetime | None): 検索開始日時
+        end_date (datetime | None): 検索終了日時
     """
     return await crud.get_audit_logs(
         db, 
@@ -44,11 +54,12 @@ async def list_users(
     current_user: models.User = Depends(dependencies.admin_required),
 ):
     """
-    所属組織のユーザーリストを取得します。
+    所属組織に属しているユーザーのリストを取得します。管理者権限が必要です。
     """
     from ..models import User
     from sqlalchemy import select
     stmt = select(User).offset(skip).limit(limit).order_by(User.id)
+    # 管理者が組織に所属している場合、その組織のユーザーのみに限定
     if current_user.organization_id:
         stmt = stmt.where(User.organization_id == current_user.organization_id)
     result = await db.execute(stmt)
@@ -62,7 +73,10 @@ async def update_user_role(
     current_user: models.User = Depends(dependencies.admin_required),
 ):
     """
-    ユーザーの権限を変更し、その操作を監査ログに記録します。
+    指定したユーザーの権限（ロール）を変更します。
+    変更内容は監査ログに記録されます。
+
+    注意: システム全体の管理者が0人になるような変更（自分一人の場合等）は拒否されます。
     """
     from ..models import User
     from sqlalchemy import select
@@ -92,11 +106,12 @@ async def update_user_role(
                 detail="システムに最低一人の管理者が存在する必要があります。自分以外の管理者を先に作成してください。"
             )
 
+    # ロールを更新してデータベースに保存
     db_user.role = new_role
     await db.commit()
     await db.refresh(db_user)
     
-    # 監査ログに記録
+    # 更新アクションを監査ログに記録
     await crud.create_audit_log(
         db,
         user_id=current_user.id,
@@ -118,7 +133,11 @@ async def add_user_to_organization(
     current_user: models.User = Depends(dependencies.admin_required),
 ):
     """
-    既存のユーザーをメールアドレスで検索し、自分の組織に追加します。
+    既存のユーザーをメールアドレスで検索し、自分が管理する組織のメンバーとして追加します。
+    
+    制限: 
+    - 管理者自身が組織に所属している必要があります。
+    - 既に対象ユーザーが何らかの組織に所属している場合は追加できません。
     """
     from ..models import User
     from sqlalchemy import select
@@ -127,25 +146,26 @@ async def add_user_to_organization(
     if not current_user.organization_id:
         raise HTTPException(status_code=400, detail="あなたは組織に所属していないため、メンバーを追加できません。先に組織を作成してください。")
 
-    # 対象ユーザーを取得
+    # 指定されたメールアドレスでユーザーを検索
     result = await db.execute(select(User).where(User.email == data.email))
     db_user = result.scalar_one_or_none()
 
     if not db_user:
         raise HTTPException(status_code=404, detail="指定されたメールアドレスのユーザーが見つかりません。")
 
+    # ユーザーが既に組織に入っているかチェック
     if db_user.organization_id:
         if db_user.organization_id == current_user.organization_id:
             raise HTTPException(status_code=400, detail="このユーザーは既にあなたの組織に所属しています。")
         else:
             raise HTTPException(status_code=400, detail="このユーザーは既に別の組織に所属しています。")
 
-    # 組織を紐付け
+    # 組織IDを紐付けて保存
     db_user.organization_id = current_user.organization_id
     await db.commit()
     await db.refresh(db_user)
 
-    # 監査ログに記録
+    # 追加アクションを監査ログに記録
     await crud.create_audit_log(
         db,
         user_id=current_user.id,

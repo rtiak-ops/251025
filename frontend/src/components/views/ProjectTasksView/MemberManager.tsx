@@ -13,7 +13,9 @@ interface MemberManagerProps {
 }
 
 /**
- * メンバー情報の表示と招待を行うパネル
+ * 【メンバー管理パネル (MemberManager)】
+ * プロジェクトに協力する「共同編集者」の一覧表示、新規メンバーの招待、メンバーの除外を行います。
+ * チーム開発を可能にするための重要なコンポーネントです。
  */
 export default function MemberManager({
   project,
@@ -22,8 +24,12 @@ export default function MemberManager({
   onDataChange,
   onClose,
 }: MemberManagerProps) {
+  // 招待したいユーザーのメールアドレスの状態
   const [inviteEmail, setInviteEmail] = useState("");
 
+  /**
+   * メールアドレスでユーザーを検索し、プロジェクトに招待するハンドラー
+   */
   const handleInvite = async () => {
     if (!inviteEmail.trim()) {
       toast.error("メールアドレスを入力してください");
@@ -31,6 +37,7 @@ export default function MemberManager({
     }
     
     try {
+      // 指定されたメールアドレスのユーザーが存在するかサーバーを検索
       const users = await searchUsers(inviteEmail);
       const user = users.find(u => u.email === inviteEmail);
       
@@ -39,16 +46,21 @@ export default function MemberManager({
         return;
       }
 
+      // 見つかったユーザーに対して共同編集者（editor）としての参加リクエストを送信
       await addCollaborator(project.id, user.id, 'editor');
       toast.success(`${inviteEmail} を招待しました`);
-      setInviteEmail("");
-      onDataChange();
+      setInviteEmail(""); // 入力欄をクリア
+      onDataChange();    // キャッシュを更新してリストを最新に
     } catch {
       toast.error("招待に失敗しました");
     }
   };
 
+  /**
+   * 共同編集者をプロジェクトから外すハンドラー
+   */
   const handleRemoveMember = async (userId: number) => {
+    // 誤削除防止
     if (!window.confirm("このメンバーをプロジェクトから削除しますか？")) return;
 
     try {

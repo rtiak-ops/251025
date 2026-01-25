@@ -11,11 +11,12 @@ import SearchBar from "./components/layout/SearchBar";
 import { useAppLogic } from "./hooks/useAppLogic";
 
 /**
- * App.tsx
- * アプリケーションのルートコンポーネント。
- * レイアウト、ロジック、各ビューを統合します。
+ * 【BizFlow メインアプリケーション】
+ * アプリケーションの全体構造（レイアウト）と、各画面（View）の切り替えを管理するルートコンポーネントです。
+ * 画面遷移のロジック、検索バー、サイドバー、各種通知（Toaster）を統合しています。
  */
 export default function App() {
+  // アプリケーション全体で共有される複雑なロジックをカスタムフックに集約して呼び出しています。
   const {
     token,
     setToken,
@@ -42,7 +43,8 @@ export default function App() {
     handleDeleteProject
   } = useAppLogic();
 
-  // 未ログイン状態（トークンがない）場合は、ログイン・新規登録画面を優先表示
+  // --- 認証チェック ---
+  // 有効なトークンがない（未ログイン）場合は、認証フォーム（ログイン/会員登録）を大きく表示します。
   if (!token) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -60,9 +62,11 @@ export default function App() {
     );
   }
 
+  // --- メインレイアウト ---
+  // サイドバーとメインコンテンツを含むレイアウトコンポーネントを構築します。
   return (
     <MainLayout
-      // サイドバー: アプリの左側に表示されるナビゲーション
+      // 左側のナビゲーションメニュー: 画面切り替え、ログアウト、プロジェクト一覧を表示
       sidebar={
         <Sidebar 
           projects={projects}
@@ -76,7 +80,7 @@ export default function App() {
           organization={organization}
         />
       }
-      // 検索バー: コンテンツの上部に固定される検索入力
+      // 上部の検索バー: 全タスクを対象にしたキーワード検索が可能
       searchBar={
         <SearchBar 
           value={searchQuery}
@@ -86,24 +90,24 @@ export default function App() {
       }
     >
       {/* 
-          メインコンテンツエリア: 
-          currentViewの状態に基づいて、表示するView（画面）を動的に切り替えています。
-          これを「条件付きレンダリング」と呼び、URLを変えずに画面遷移を実現しています。
+          【コンテンツの切り替え】
+          currentView 変数の値によって、中央部のコンテンツエリアを動的に変更（条件付きレンダリング）します。
       */}
       {currentView === 'dashboard' ? (
-        // ダッシュボード: 統計と概要の表示
+        // デフォルト画面: 自分の進捗状況、プロジェクト一覧、フィルタリングの要約
         <DashboardView todos={allTodos} projects={projects} onFilterSelect={handleFilterSelect} />
       ) : currentView === 'audit' ? (
-        // 監査ログ: システム操作履歴の表示
+        // 監査ログ画面: 管理者向け。システムの操作履歴を確認
         <AuditLogView />
       ) : currentView === 'monitor' ? (
-        // システム管理: モニタリング情報の表示
+        // 監視画面: 管理者向け。システムの負荷状況やDB接続状況を確認
         <MonitorView />
       ) : currentView === 'users' ? (
-        // ユーザー管理: 組織のユーザー管理
+        // ユーザー管理: 管理者向け。組織のメンバー追加やロール変更が可能
         <UserManagementView currentUser={currentUser} />
       ) : (
-        // プロジェクト詳細: タスク一覧やドラッグ&ドロップなどのタスク管理
+        // プロジェクト詳細 / 全タスク一覧: 
+        // かんばん形式またはリスト形式でのタスク管理（ドラッグ＆ドロップ対応）。
         <ProjectTasksView 
           project={currentProject}
           todos={filteredTodos}
@@ -118,7 +122,10 @@ export default function App() {
         />
       )}
 
-      {/* 通知トースト: 成功メッセージやエラーメッセージを右下に表示 */}
+      {/* 
+          【通知システム】
+          操作の成功（保存完了など）やエラーをポップアップで表示するためのコンポーネント。
+      */}
       <Toaster 
         position="bottom-right"
         toastOptions={{

@@ -9,9 +9,12 @@ interface AuthFormProps {
 }
 
 /**
- * ログイン・新規登録を切り替えて表示するフォームコンポーネント。
+ * 【認証フォーム (AuthForm)】
+ * ユーザーのログインと新規登録を担うコンポーネントです。
+ * タブ切り替えによって単一の画面で両方の機能を提供し、認証成功時に親コンポーネントへトークンを渡します。
  */
 export default function AuthForm({ onAuthenticated }: AuthFormProps) {
+  // 現在のモード（ログイン or 新規登録）の状態管理
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   
@@ -21,6 +24,9 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
   const [fullName, setFullName] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  /**
+   * フォーム送信時の処理
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -28,29 +34,34 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
 
     try {
       if (isLogin) {
-        // ログイン処理
+        // --- ログイン処理 ---
+        // メールアドレスとパスワードをバックエンドへ送信
         await login(email, password);
         const token = getStoredToken();
         if (token) {
+          // 認証成功通知を親(App.tsx)へ飛ばす
           onAuthenticated(token);
           toast.success("おかえりなさい！");
         }
       } else {
-        // 新規登録処理
+        // --- 新規登録処理 ---
+        // 氏名を含めたアカウント情報を登録
         await register(email, password, fullName);
         toast.success("アカウントを作成しました。ログインしてください。");
-        setIsLogin(true); // 登録後はログイン画面へ
+        // 登録完了後はユーザーの利便性のためにログイン画面に自動切替
+        setIsLogin(true);
       }
     } catch (err) {
+        // APIエラーハンドリング（バリデーションエラー等の詳細取得）
         const axiosError = err as AxiosError<{ detail?: any }>;
         let msg = "認証に失敗しました";
         
         if (axiosError.response?.data?.detail) {
           const detail = axiosError.response.data.detail;
+          // FastAPIが返す詳細なエラーメッセージをフロントエンド用に成形
           if (typeof detail === "string") {
             msg = detail;
           } else if (Array.isArray(detail)) {
-            // FastAPI validation error: msg, loc, type
             msg = detail.map(d => {
               const rawMsg = typeof d === 'string' ? d : (d.msg || JSON.stringify(d));
               return rawMsg.replace(/^Value error, /, "");

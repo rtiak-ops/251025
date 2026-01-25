@@ -20,7 +20,9 @@ interface ProjectTasksViewProps {
 }
 
 /**
- * プロジェクト詳細とタスク一覧を表示する画面のメイン
+ * 【プロジェクト詳細 & タスク一覧ビュー (ProjectTasksView)】
+ * 特定のプロジェクト、または「すべてのタスク」を表示するための複合ビューです。
+ * ヘッダー、メンバー管理パネル、タスク入力フォーム、そしてドラッグ＆ドロップ可能なタスクリストを統合しています。
  */
 export default function ProjectTasksView({
   project,
@@ -34,14 +36,23 @@ export default function ProjectTasksView({
   onClearFilter,
   currentUser
 }: ProjectTasksViewProps) {
+  // メンバー管理パネルを表示するかどうかのフラグ
   const [showMembers, setShowMembers] = useState(false);
+  
+  // 現在のユーザーがこのプロジェクトの所有者（オーナー）かどうかを判定し、
+  // 編集やメンバー招待などの権限を制御します。
   const isOwner = (project as ProjectSummary)?.role === 'owner';
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* 
+          【上部コントロールエリア】
+          プロジェクトの基本情報表示、操作ボタン、およびタスク入力フォーム。
+      */}
       <div className="glass p-8 rounded-3xl">
         <div className="flex flex-col lg:flex-row gap-8 items-start">
           <div className="flex-1 space-y-4">
+            {/* プロジェクトのタイトルや説明を表示するヘッダーコンポーネント */}
             <ProjectHeader 
               project={project}
               activeFilter={activeFilter}
@@ -53,6 +64,7 @@ export default function ProjectTasksView({
               setShowMembers={setShowMembers}
             />
 
+            {/* メンバー管理パネル: ボタン押下時のみ表示 */}
             {project && showMembers && (
               <MemberManager 
                 project={project}
@@ -64,12 +76,17 @@ export default function ProjectTasksView({
             )}
           </div>
 
+          {/* 右側（PC）または下部（スマホ）のタスククイック作成フォーム */}
           <div className="w-full lg:w-[480px] lg:pl-8 lg:border-l border-slate-200 dark:border-slate-700 mt-6 lg:mt-0">
             <TodoForm onAdd={onDataChange} initialProjectId={project?.id} />
           </div>
         </div>
       </div>
 
+      {/* 
+          【タスクリストエリア】
+          メインのタスク一覧。ドラッグによる並び替えに対応。
+      */}
       <div className="glass rounded-3xl overflow-hidden min-h-[400px]">
         <TaskList 
           todos={todos}

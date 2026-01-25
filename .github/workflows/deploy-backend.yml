@@ -1,10 +1,14 @@
 # バックエンド専用のデプロイワークフロー
 name: CD Backend
 
+# 実行トリガーの設定
 on:
+  # 手動実行を許可
   workflow_dispatch:
+  # main または develop ブランチへのプッシュ時に実行
   push:
     branches: [main, develop]
+    # 特定のディレクトリやファイルに変更があった場合のみ実行
     paths:
       - 'backend/**'
       - 'scripts/**'
@@ -13,25 +17,31 @@ on:
 
 jobs:
   deploy:
+    # 最新のUbuntu環境で実行
     runs-on: ubuntu-latest
+    # OIDCを使用したAWS認証とコード取得に必要な権限
     permissions:
       id-token: write
       contents: read
 
     steps:
+      # リポジトリのコードをチェックアウト
       - name: チェックアウト
         uses: actions/checkout@v4
 
+      # GitHub ActionsからAWSのリソースへアクセスするための認証設定
       - name: AWS 認証設定
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ap-northeast-1
 
+      # Terraformなどで作成された最新のRDSエンドポイントやEC2インスタンスIDを取得するスクリプトを実行
       - name: 最新のインフラ情報を取得
         id: infra-info
         run: bash scripts/get-infra-info.sh
 
+      # AWS Systems Manager (SSM) を使用して、EC2インスタンス上でデプロイスクリプトを実行
       - name: EC2へデプロイ (SSM経由)
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -42,9 +52,8 @@ jobs:
           EC2_IP: ${{ steps.infra-info.outputs.ec2_ip }}
           CF_DOMAIN: ${{ steps.infra-info.outputs.cf_domain }}
         run: |
-          # テンプレートに変数を埋め込んで実行用スクリプトを生成
-          # 内部変数が消えないよう、置換対象を明示的に指定
-          # また、変数の前後の余計な空白を念のため除去
+          # テンプレートファイルに変数を埋め込んで、実行用のシェルスクリプトを生成
+          # 内部変数が消えないよう置換対象を明示し、余計な空白を除去
           DB_PASSWORD=$(echo "${{ secrets.DB_PASSWORD }}" | xargs)
           APP_SECRET_KEY=$(echo "${{ secrets.APP_SECRET_KEY }}" | xargs)
           
@@ -52,14 +61,15 @@ jobs:
           
           envsubst '$GITHUB_REPOSITORY $GITHUB_REF_NAME $DB_PASSWORD $RDS_ENDPOINT $APP_SECRET_KEY $EC2_IP $CF_DOMAIN' < scripts/deploy-ec2.sh.template > deploy_script_raw.sh
           
-          # 改行コードを完全に除去(CRLF -> LF)し、確実にクリーンなスクリプトを作成
+          # Windowsの改行コード(CRLF)が含まれる場合があるため、LFに変換
           tr -d '\r' < deploy_script_raw.sh > deploy_script.sh
           
           echo "SSMコマンドを送信中 (InstanceId: ${{ steps.infra-info.outputs.instance_id }})..."
           
-          # パラメータをJSONファイルとして作成（型エラーとエスケープ問題を確実に回避）
+          # シェルスクリプトの内容をJSONのパラメータとしてパッケージング
           jq -n --arg cmd "$(cat deploy_script.sh)" '{"commands": [$cmd]}' > ssm_params.json
           
+          # AWS SSM send-command を実行してEC2上でスクリプトを開始
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${{ steps.infra-info.outputs.instance_id }}" \
             --document-name "AWS-RunShellScript" \
@@ -69,7 +79,7 @@ jobs:
           
           echo "コマンド送信完了。ID: $COMMAND_ID. 実行完了を待機中（最大10分）..."
           
-          # カスタム待機ループ（標準の waiter よりも柔軟で詳細なログを出力可能）
+          # コマンドの実行完了をポーリングで待機
           for i in {1..60}; do
             INVOCATION=$(aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "${{ steps.infra-info.outputs.instance_id }}" --output json 2>/dev/null || echo "{}")
             STATUS=$(echo "$INVOCATION" | jq -r '.Status // "Pending"')

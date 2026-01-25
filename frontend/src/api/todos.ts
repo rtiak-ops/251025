@@ -1,25 +1,15 @@
-import { AxiosError, type AxiosResponse } from "axios";
-import { api, clearToken } from "./client";
+import type { AxiosResponse } from "axios";
+import { api } from "./client";
 import type { Todo, CreateTodoData, UpdateTodoData } from "../types";
 
 /**
  * ToDoリスト取得
  */
 export const getTodos = async (q?: string): Promise<Todo[]> => {
-  try {
-    const res: AxiosResponse<Todo[]> = await api.get("/todos/", {
-      params: { q }
-    });
-    return res.data;
-  } catch (error) {
-    const axiosError = error as AxiosError<{ detail?: unknown }>;
-    if (axiosError.response?.status === 401) {
-      const authHeader = axiosError.config?.headers?.Authorization;
-      const usedToken = typeof authHeader === 'string' ? authHeader.split(" ")[1] : undefined;
-      clearToken(usedToken);
-    }
-    throw error;
-  }
+  const res: AxiosResponse<Todo[]> = await api.get("/todos/", {
+    params: { q }
+  });
+  return res.data;
 };
 
 /**

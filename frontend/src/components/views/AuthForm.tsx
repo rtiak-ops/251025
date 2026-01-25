@@ -19,10 +19,12 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage(null);
 
     try {
       if (isLogin) {
@@ -40,9 +42,30 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
         setIsLogin(true); // 登録後はログイン画面へ
       }
     } catch (err) {
-        const axiosError = err as AxiosError<{ detail?: string }>;
-        const errorMsg = axiosError.response?.data?.detail || "認証に失敗しました";
-        toast.error(errorMsg);
+        const axiosError = err as AxiosError<{ detail?: any }>;
+        let msg = "認証に失敗しました";
+        
+        if (axiosError.response?.data?.detail) {
+          const detail = axiosError.response.data.detail;
+          if (typeof detail === "string") {
+            msg = detail;
+          } else if (Array.isArray(detail)) {
+            // FastAPI validation error: msg, loc, type
+            msg = detail.map(d => {
+              const rawMsg = typeof d === 'string' ? d : (d.msg || JSON.stringify(d));
+              return rawMsg.replace(/^Value error, /, "");
+            }).join(", ");
+          } else if (typeof detail === "object" && detail.msg) {
+            msg = detail.msg.replace(/^Value error, /, "");
+          }
+        } else if (axiosError.request) {
+          msg = "サーバーと通信できません。インターネット接続を確認してください。";
+        } else if (axiosError.message) {
+          msg = axiosError.message;
+        }
+
+        setErrorMessage(msg);
+        toast.error(msg);
     } finally {
       setIsLoading(false);
     }
@@ -111,6 +134,12 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
             required
           />
         </div>
+
+        {errorMessage && (
+          <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-900/50 rounded-2xl text-red-600 dark:text-red-400 text-sm font-medium animate-in fade-in slide-in-from-top-2">
+            {errorMessage}
+          </div>
+        )}
 
         <button 
           type="submit" 

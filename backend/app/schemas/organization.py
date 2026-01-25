@@ -1,6 +1,6 @@
 from __future__ import annotations
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 class OrganizationBase(BaseModel):
     """
@@ -10,6 +10,13 @@ class OrganizationBase(BaseModel):
     corporate_id: str | None = None # 法人番号 (任意)
     website: str | None = None      # 組織のウェブサイトURL (任意)
     plan: str = "free"              # 契約プラン (デフォルト: "free")
+
+    @field_validator("corporate_id")
+    @classmethod
+    def validate_corporate_id(cls, v: str | None) -> str | None:
+        if v and len(v) > 13:
+            raise ValueError("法人番号は13文字以内である必要があります。")
+        return v
 
 class OrganizationCreate(OrganizationBase):
     """

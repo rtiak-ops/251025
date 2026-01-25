@@ -18,11 +18,20 @@ async def create_organization(
     【制限】
     - 既に組織に所属しているユーザーは新しい組織を作成できません。
     """
-    # 既に組織に所属しているかチェック
+    # すでに組織に所属しているかチェック
     if current_user.organization_id:
         raise HTTPException(status_code=400, detail="すでに組織に所属しています。")
     
+    # バリデーション: 空文字列を None に変換（ユニーク制約エラー防止）
+    if org.corporate_id == "":
+        org.corporate_id = None
+    if org.website == "":
+        org.website = None
+
     from sqlalchemy.exc import IntegrityError
+    import logging
+    logger = logging.getLogger(__name__)
+
     try:
         # CRUD処理で組織レコードを作成
         db_org = await crud.create_organization(db, org)
@@ -32,21 +41,28 @@ async def create_organization(
         if org.corporate_id and len(org.corporate_id) == 13:
             db_org.is_verified = True
             db.add(db_org)
-            await db.commit()
-            await db.refresh(db_org)
+            # ここでの2度目のコミットは、後のユーザー更新と一緒にまとめて行います
             
-    except IntegrityError:
-        # 名称や法人番号の重複エラー
+        # 組織作成者をその組織に紐付ける（最初の所属メンバーにする）
+        current_user.organization_id = db_org.id
+        db.add(current_user)
+        
+        # 最終的なコミット（組織の更新がある場合やユーザーの更新）
+        await db.commit()
+        await db.refresh(db_org)
+        await db.refresh(current_user)
+        
+        logger.info(f"組織作成成功: {db_org.name} (作成者: {current_user.email})")
+        return db_org
+
+    except IntegrityError as e:
+        await db.rollback()
+        logger.warning(f"組織作成重複エラー: {str(e)}")
         raise HTTPException(status_code=409, detail="その名称または法人番号は既に登録されています。")
     except Exception as e:
-        raise e
-    
-    # 組織作成者をその組織に紐付ける（最初の所属メンバーにする）
-    current_user.organization_id = db_org.id
-    db.add(current_user)
-    await db.commit()
-    
-    return db_org
+        await db.rollback()
+        logger.error(f"組織作成予期せぬエラー: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"システムエラーが発生しました: {str(e)}")
 
 @router.get("/me", response_model=schemas.OrganizationOut)
 async def get_my_organization(

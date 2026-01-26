@@ -66,7 +66,8 @@ export default function Sidebar({
       if (err.response?.status === 409) {
         message = "その名称または法人番号は既に登録されています";
       } else if (err.response?.data?.detail) {
-        message = err.response.data.detail;
+        const d = err.response.data.detail;
+        message = typeof d === 'string' ? d : Array.isArray(d) ? (d[0] as any)?.msg || JSON.stringify(d) : JSON.stringify(d);
       }
       
       toast.error(message);

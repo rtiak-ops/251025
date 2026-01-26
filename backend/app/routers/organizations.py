@@ -20,7 +20,15 @@ async def create_organization(
     """
     # すでに組織に所属しているかチェック
     if current_user.organization_id:
-        raise HTTPException(status_code=400, detail="すでに組織に所属しています。")
+        existing_org = await crud.get_organization(db, current_user.organization_id)
+        if existing_org:
+            raise HTTPException(status_code=400, detail="すでに組織に所属しています。既存の組織を退会するか削除してから新しく作成してください。")
+        else:
+            # 紐付けが壊れている場合はクリア
+            current_user.organization_id = None
+            db.add(current_user)
+            await db.commit()
+            await db.refresh(current_user)
     
     from sqlalchemy.exc import IntegrityError
     import logging

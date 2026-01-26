@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Building2, Globe, Hash, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
 import { createOrganization } from '../../api';
 import { toast } from 'react-hot-toast';
+import axios from 'axios';
 
 interface OrgRegistrationModalProps {
   onClose: () => void;
@@ -35,15 +36,26 @@ export default function OrgRegistrationModal({ onClose, onSuccess }: OrgRegistra
       toast.success("組織を正常に登録しました。管理者権限が付与されました。");
       onSuccess();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("組織作成エラー:", error);
       let message = "組織の登録に失敗しました";
-      if (error.response?.status === 409) {
-        message = "既にその名称または法人番号は登録されています";
-      } else if (error.response?.data?.detail) {
-        const d = error.response.data.detail;
-        message = typeof d === 'string' ? d : Array.isArray(d) ? (d[0] as any)?.msg || JSON.stringify(d) : JSON.stringify(d);
+      
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 409) {
+          message = "既にその名称または法人番号は登録されています";
+        } else if (error.response?.data?.detail) {
+          const d = error.response.data.detail;
+          if (typeof d === 'string') {
+            message = d;
+          } else if (Array.isArray(d)) {
+            const first = d[0] as { msg?: string } | undefined;
+            message = first?.msg || JSON.stringify(d);
+          } else {
+            message = JSON.stringify(d);
+          }
+        }
       }
+      
       toast.error(message);
     } finally {
       setIsSubmitting(false);

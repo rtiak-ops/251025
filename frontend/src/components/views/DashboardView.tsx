@@ -1,5 +1,5 @@
-import { LayoutDashboard, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
-import type { Todo, ProjectSummary } from '../../types';
+import { LayoutDashboard, CheckCircle2, Clock, AlertTriangle, Building2 } from 'lucide-react';
+import type { Todo, ProjectSummary, Organization } from '../../types';
 import StatCard from '../dashboard/StatCard';
 import StatusDistribution from '../dashboard/StatusDistribution';
 import ProjectProgressList from '../dashboard/ProjectProgressList';
@@ -7,6 +7,7 @@ import ProjectProgressList from '../dashboard/ProjectProgressList';
 interface DashboardViewProps {
   todos: Todo[];
   projects: ProjectSummary[];
+  organization?: Organization;
   onFilterSelect: (filter: { label: string; priority?: Todo['priority']; status?: Todo['status']; completed?: boolean }) => void;
 }
 
@@ -16,7 +17,7 @@ interface DashboardViewProps {
  * 自分が関わる全てのタスクとプロジェクトの進捗状況をグラフィカルに可視化し、
  * 「至急」「進行中」「完了」といった重要な統計情報を一目で把握できるようにします。
  */
-export default function DashboardView({ todos, projects, onFilterSelect }: DashboardViewProps) {
+export default function DashboardView({ todos, projects, organization, onFilterSelect }: DashboardViewProps) {
   // データの整合性チェック
   const safeTodos = Array.isArray(todos) ? todos : [];
   const safeProjects = Array.isArray(projects) ? projects : [];
@@ -31,10 +32,18 @@ export default function DashboardView({ todos, projects, onFilterSelect }: Dashb
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* ページヘッダー */}
       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
-          <LayoutDashboard className="text-indigo-600" size={32} />
-          ダッシュボード
-        </h2>
+        <div className="flex flex-col gap-1">
+          <h2 className="text-3xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
+            <LayoutDashboard className="text-indigo-600" size={32} />
+            ダッシュボード
+          </h2>
+          {organization && (
+            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-medium pl-11">
+              <Building2 size={16} />
+              <span>{organization.name}</span>
+            </div>
+          )}
+        </div>
         <div className="text-sm text-slate-500 dark:text-white font-medium bg-white/50 dark:bg-slate-800/50 px-4 py-2 rounded-full border border-white/20">
           最終更新: {new Date().toLocaleTimeString()}
         </div>

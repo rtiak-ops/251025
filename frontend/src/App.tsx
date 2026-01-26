@@ -95,7 +95,7 @@ export default function App() {
       */}
       {currentView === 'dashboard' ? (
         // デフォルト画面: 自分の進捗状況、プロジェクト一覧、フィルタリングの要約
-        <DashboardView todos={allTodos} projects={projects} onFilterSelect={handleFilterSelect} />
+        <DashboardView todos={allTodos} projects={projects} organization={organization} onFilterSelect={handleFilterSelect} />
       ) : currentView === 'audit' ? (
         // 監査ログ画面: 管理者向け。システムの操作履歴を確認
         <AuditLogView />

@@ -42,40 +42,47 @@ async def create_organization(
         if not org_data.get('website') or org_data['website'].strip() == '':
             org_data['website'] = None
         
-        # クリーンなデータで新しいスキーマオブジェクトを作成
-        clean_org = schemas.OrganizationCreate(**org_data)
-        
-        # CRUD処理で組織レコードを作成
-        db_org = await crud.create_organization(db, clean_org)
+        # 1. 組織レコードの作成（まだコミットしない）
+        db_org = models.Organization(
+            name=org_data['name'].strip(),
+            corporate_id=org_data['corporate_id'],
+            website=org_data['website'],
+            plan=org_data.get('plan', 'free')
+        )
         
         # 【法人確認シミュレーション】
-        # 法人番号（13桁）が入力されていれば、簡易的に「認証済み」ステータスにする
-        if clean_org.corporate_id and len(clean_org.corporate_id) == 13:
+        if db_org.corporate_id and len(db_org.corporate_id) == 13:
             db_org.is_verified = True
-            db.add(db_org)
             
-        # 組織作成者をその組織に紐付ける（最初の所属メンバーにする）
+        db.add(db_org)
+        await db.flush() # IDを確定させるために一時反映（コミットはしない）
+        
+        logger.info(f"組織準備完了: {db_org.name} (ID: {db_org.id})")
+
+        # 2. 作成者を管理者に昇格し、組織に紐付ける
         current_user.organization_id = db_org.id
-        # 組織作成者を自動的に管理者(admin)に昇格させる
         current_user.role = "admin"
         db.add(current_user)
         
-        # 最終的なコミット（組織の更新がある場合やユーザーの更新）
+        # 3. まとめてコミット（どちらかが失敗すればロールバックされる）
         await db.commit()
         await db.refresh(db_org)
         await db.refresh(current_user)
         
-        logger.info(f"組織作成成功: {db_org.name} (作成者: {current_user.email})")
+        logger.info(f"組織の完全登録完了: {db_org.name}, 管理者: {current_user.email}")
         return db_org
 
     except IntegrityError as e:
         await db.rollback()
-        logger.warning(f"組織作成重複エラー: {str(e)}")
-        raise HTTPException(status_code=409, detail="その名称または法人番号は既に登録されています。")
+        error_info = str(e.orig) if hasattr(e, 'orig') else str(e)
+        logger.warning(f"組織登録の競合: {error_info}")
+        if "organizations_name_key" in error_info or "unique constraint" in error_info.lower():
+             raise HTTPException(status_code=409, detail="その組織名は既に登録されている可能性があります。別の名称を試してください。")
+        raise HTTPException(status_code=409, detail="入力された組織名または法人番号は既に使用されています。")
     except Exception as e:
         await db.rollback()
-        logger.error(f"組織作成予期せぬエラー: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"システムエラーが発生しました: {str(e)}")
+        logger.error(f"組織登録における予期せぬエラー: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"サーバー側でエラーが発生しました: {str(e)}")
 
 @router.get("/me", response_model=schemas.OrganizationOut)
 async def get_my_organization(

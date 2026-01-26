@@ -1,7 +1,9 @@
-import { createProject, createOrganization } from '../../api';
+import { useState } from 'react';
+import { createProject } from '../../api';
 import { toast } from 'react-hot-toast';
 import { Plus } from 'lucide-react';
 import type { ProjectSummary, User, Organization } from '../../types';
+import OrgRegistrationModal from '../organization/OrgRegistrationModal';
 
 interface SidebarProps {
   projects: ProjectSummary[];
@@ -30,6 +32,8 @@ export default function Sidebar({
   currentUser,
   organization,
 }: SidebarProps) {
+  const [showOrgModal, setShowOrgModal] = useState(false);
+
   const handleCreateProject = async () => {
     const name = window.prompt("プロジェクト名を入力してください:");
     if (!name || !name.trim()) return;
@@ -43,43 +47,8 @@ export default function Sidebar({
     }
   };
 
-  const handleCreateOrganization = async () => {
-    const name = window.prompt("【正式名称】組織名（会社名）を入力してください:");
-    if (!name || !name.trim()) return;
-
-    const corporate_id = window.prompt("【任意】13桁の法人番号を入力してください（入力すると認証マークが付与されます）:");
-    const website = window.prompt("【任意】会社ウェブサイトURLを入力してください:");
-
-    try {
-      await createOrganization({ 
-        name: name.trim(), 
-        corporate_id: corporate_id?.trim() || undefined, 
-        website: website?.trim() || undefined 
-      });
-      toast.success("組織を正式に登録しました");
-      onProjectCreated();
-    } catch (error) {
-      console.error("組織作成エラー:", error);
-      const err = error as { response?: { status?: number, data?: { detail?: string } } };
-      let message = "組織の作成に失敗しました";
-      
-      if (err.response?.status === 409) {
-        message = "その名称または法人番号は既に登録されています";
-      } else if (err.response?.data?.detail) {
-        const d = err.response.data.detail;
-        if (typeof d === 'string') {
-          message = d;
-        } else if (Array.isArray(d)) {
-          // Pydantic validation error format check
-          const first = d[0] as { msg?: string } | undefined;
-          message = first?.msg || JSON.stringify(d);
-        } else {
-          message = JSON.stringify(d);
-        }
-      }
-      
-      toast.error(message);
-    }
+  const handleCreateOrganization = () => {
+    setShowOrgModal(true);
   };
 
   return (
@@ -231,6 +200,13 @@ export default function Sidebar({
           🚪 ログアウト
         </button>
       </div>
+
+      {showOrgModal && (
+        <OrgRegistrationModal 
+          onClose={() => setShowOrgModal(false)}
+          onSuccess={onProjectCreated}
+        />
+      )}
     </aside>
   );
 }

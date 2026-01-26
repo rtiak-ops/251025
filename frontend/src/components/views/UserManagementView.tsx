@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getUsers, updateUserRole, deleteUser } from "../../api";
-import { Users } from "lucide-react";
+import { getUsers, updateUserRole, deleteUser, assignUserToOrganization } from "../../api";
+import { Users, UserPlus, Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import type { User } from "../../types";
 import UserCard from "../users/UserCard";
@@ -17,6 +18,8 @@ interface UserManagementViewProps {
  */
 export default function UserManagementView({ currentUser }: UserManagementViewProps) {
   const queryClient = useQueryClient();
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [isInviting, setIsInviting] = useState(false);
 
   // --- データの取得 ---
   // 所属組織のユーザーリストを取得。React Queryで管理。
@@ -69,6 +72,27 @@ export default function UserManagementView({ currentUser }: UserManagementViewPr
     deleteMutation.mutate(userId);
   };
 
+  /**
+   * ユーザーを組織に追加するハンドラー
+   */
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+
+    setIsInviting(true);
+    try {
+      await assignUserToOrganization(inviteEmail.trim());
+      toast.success(`${inviteEmail} を組織に追加しました`);
+      setInviteEmail("");
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    } catch (error: any) {
+      const msg = error.response?.data?.detail || "追加に失敗しました。ユーザーが存在しないか、既に別の組織に所属している可能性があります。";
+      toast.error(msg);
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
   // 組織未登録エラー（400）の判定
   const usersError = queryClient.getQueryState(["users"])?.error;
   const isNoOrgError = axios.isAxiosError(usersError) && usersError.response?.status === 400;
@@ -76,11 +100,35 @@ export default function UserManagementView({ currentUser }: UserManagementViewPr
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* ページヘッダー */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h2 className="text-3xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
           <Users className="text-indigo-600" size={32} />
           ユーザー管理
         </h2>
+
+        {/* メンバー追加フォーム */}
+        {!isNoOrgError && (
+          <form onSubmit={handleInvite} className="flex items-center gap-2">
+            <div className="relative group">
+              <input 
+                type="email"
+                placeholder="追加するメールアドレス..."
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                className="w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white text-sm"
+                required
+              />
+            </div>
+            <button 
+              type="submit"
+              disabled={isInviting || !inviteEmail.trim()}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 text-sm"
+            >
+              {isInviting ? <Loader2 className="animate-spin" size={18} /> : <UserPlus size={18} />}
+              追加
+            </button>
+          </form>
+        )}
       </div>
 
       <div className="glass p-8 rounded-3xl">

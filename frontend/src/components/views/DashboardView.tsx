@@ -1,14 +1,18 @@
-import { LayoutDashboard, CheckCircle2, Clock, AlertTriangle, Building2 } from 'lucide-react';
-import type { Todo, ProjectSummary, Organization } from '../../types';
+import { LayoutDashboard, CheckCircle2, Clock, AlertTriangle, Building2, Settings } from 'lucide-react';
+import { useState } from 'react';
+import type { Todo, ProjectSummary, Organization, User } from '../../types';
 import StatCard from '../dashboard/StatCard';
 import StatusDistribution from '../dashboard/StatusDistribution';
 import ProjectProgressList from '../dashboard/ProjectProgressList';
+import OrgSettingsModal from '../organization/OrgSettingsModal';
 
 interface DashboardViewProps {
   todos: Todo[];
   projects: ProjectSummary[];
   organization?: Organization;
+  currentUser?: User;
   onFilterSelect: (filter: { label: string; priority?: Todo['priority']; status?: Todo['status']; completed?: boolean }) => void;
+  onDataChange: () => void;
 }
 
 /**
@@ -17,7 +21,9 @@ interface DashboardViewProps {
  * 自分が関わる全てのタスクとプロジェクトの進捗状況をグラフィカルに可視化し、
  * 「至急」「進行中」「完了」といった重要な統計情報を一目で把握できるようにします。
  */
-export default function DashboardView({ todos, projects, organization, onFilterSelect }: DashboardViewProps) {
+export default function DashboardView({ todos, projects, organization, currentUser, onFilterSelect, onDataChange }: DashboardViewProps) {
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  
   // データの整合性チェック
   const safeTodos = Array.isArray(todos) ? todos : [];
   const safeProjects = Array.isArray(projects) ? projects : [];
@@ -44,8 +50,20 @@ export default function DashboardView({ todos, projects, organization, onFilterS
             </div>
           )}
         </div>
-        <div className="text-sm text-slate-500 dark:text-white font-medium bg-white/50 dark:bg-slate-800/50 px-4 py-2 rounded-full border border-white/20">
-          最終更新: {new Date().toLocaleTimeString()}
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-slate-500 dark:text-white font-medium bg-white/50 dark:bg-slate-800/50 px-4 py-2 rounded-full border border-white/20">
+            最終更新: {new Date().toLocaleTimeString()}
+          </div>
+          {organization && currentUser?.role === 'admin' && (
+            <button 
+              onClick={() => setShowSettingsModal(true)}
+              className="p-2.5 bg-white dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl border border-white/20 shadow-sm transition-all flex items-center gap-2 font-bold text-sm"
+              title="組織の設定"
+            >
+              <Settings size={20} />
+              設定
+            </button>
+          )}
         </div>
       </div>
 
@@ -83,6 +101,14 @@ export default function DashboardView({ todos, projects, organization, onFilterS
         {/* 全タスク内のステータス割合（TODO / IN_PROGRESS / DONE）を表示するグラフ */}
         <StatusDistribution todos={safeTodos} />
       </div>
+
+      {showSettingsModal && organization && (
+        <OrgSettingsModal 
+          organization={organization}
+          onClose={() => setShowSettingsModal(false)}
+          onSuccess={onDataChange}
+        />
+      )}
     </div>
   );
 }

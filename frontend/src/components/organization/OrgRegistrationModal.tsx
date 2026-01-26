@@ -65,7 +65,7 @@ export default function OrgRegistrationModal({ onClose, onSuccess }: OrgRegistra
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
       <div 
-        className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl border border-white/20 overflow-hidden animate-in zoom-in-95 duration-300"
+        className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl border border-white/20 overflow-y-auto max-h-full animate-in zoom-in-95 duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative p-8">

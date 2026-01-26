@@ -24,11 +24,14 @@ export function useAuth() {
   });
 
   // --- ユーザーが所属する組織情報の取得 ---
-  // ユーザー情報が取得でき、かつ組織IDを持っている場合のみ実行されます
-  const { data: organization } = useQuery<Organization>({
-    queryKey: ["organization"],
-    queryFn: getMyOrganization,
-    enabled: !!token && !!currentUser?.organization_id,
+  // 組織IDが変更されたら即座に再取得されるように、queryKeyにIDを含めます
+  const { data: organization } = useQuery<Organization | null>({
+    queryKey: ["organization", currentUser?.organization_id],
+    queryFn: async () => {
+      if (!currentUser?.organization_id) return null;
+      return getMyOrganization();
+    },
+    enabled: !!token,
   });
 
   /**
@@ -60,7 +63,7 @@ export function useAuth() {
     token,
     setToken,
     currentUser,
-    organization,
+    organization: organization ?? undefined,
     
     // 操作
     handleLogout

@@ -48,7 +48,7 @@ export default function App() {
   if (!token) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="w-full max-w-md glass p-8 rounded-3xl animate-in zoom-in duration-500">
+        <div className="w-full max-w-md glass p-8 rounded-3xl animate-in zoom-in duration-500 max-h-[calc(100vh-2rem)] overflow-y-auto">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">
               BizFlow

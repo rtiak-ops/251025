@@ -85,8 +85,11 @@ export default function UserManagementView({ currentUser }: UserManagementViewPr
       toast.success(`${inviteEmail} を組織に追加しました`);
       setInviteEmail("");
       queryClient.invalidateQueries({ queryKey: ["users"] });
-    } catch (error: any) {
-      const msg = error.response?.data?.detail || "追加に失敗しました。ユーザーが存在しないか、既に別の組織に所属している可能性があります。";
+    } catch (error: unknown) {
+      let msg = "追加に失敗しました。ユーザーが存在しないか、既に別の組織に所属している可能性があります。";
+      if (axios.isAxiosError(error) && error.response?.data?.detail) {
+        msg = error.response.data.detail;
+      }
       toast.error(msg);
     } finally {
       setIsInviting(false);

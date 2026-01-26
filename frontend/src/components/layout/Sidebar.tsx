@@ -131,44 +131,45 @@ export default function Sidebar({
         >
           <span className="text-lg">📅</span> すべてのタスク
         </button>
-
         {currentUser?.role === 'admin' && (
-          <button
-            onClick={() => onViewChange('audit')}
-            className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
-              currentView === 'audit'
-                ? 'bg-indigo-600 text-white shadow-lg'
-                : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-white'
-            }`}
-          >
-            <span className="text-lg">📜</span> 監査ログ
-          </button>
-        )}
+          <>
+            <div className="pt-6 text-xs font-semibold text-slate-400 dark:text-white/60 uppercase tracking-wider mb-2 px-2">
+              管理
+            </div>
+            
+            <button
+              onClick={() => onViewChange('audit')}
+              className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
+                currentView === 'audit'
+                  ? 'bg-indigo-600 text-white shadow-lg'
+                  : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-white'
+              }`}
+            >
+              <span className="text-lg">📜</span> 監査ログ
+            </button>
 
-        {currentUser?.role === 'admin' && (
-          <button
-            onClick={() => onViewChange('monitor')}
-            className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
-              currentView === 'monitor'
-                ? 'bg-indigo-600 text-white shadow-lg'
-                : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-white'
-            }`}
-          >
-            <span className="text-lg">📈</span> システム状況
-          </button>
-        )}
+            <button
+              onClick={() => onViewChange('monitor')}
+              className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
+                currentView === 'monitor'
+                  ? 'bg-indigo-600 text-white shadow-lg'
+                  : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-white'
+              }`}
+            >
+              <span className="text-lg">📈</span> システム状況
+            </button>
 
-        {currentUser?.role === 'admin' && (
-          <button
-            onClick={() => onViewChange('users')}
-            className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
-              currentView === 'users'
-                ? 'bg-indigo-600 text-white shadow-lg'
-                : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-white'
-            }`}
-          >
-            <span className="text-lg">👥</span> ユーザー管理
-          </button>
+            <button
+              onClick={() => onViewChange('users')}
+              className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
+                currentView === 'users'
+                  ? 'bg-indigo-600 text-white shadow-lg'
+                  : 'hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-white'
+              }`}
+            >
+              <span className="text-lg">👥</span> ユーザー管理
+            </button>
+          </>
         )}
 
         <div className="pt-6 flex items-center justify-between mb-2 px-2">

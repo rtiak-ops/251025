@@ -79,23 +79,41 @@ export default function UserManagementView({ currentUser }: UserManagementViewPr
       </div>
 
       <div className="glass p-8 rounded-3xl">
-        {/* ユーザーカードのグリッド表示 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {isLoading ? (
-            // ローディング中のプレースホルダー
-            [...Array(3)].map((_, i) => (
+        {isLoading ? (
+          // ローディング中のプレースホルダー
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(3)].map((_, i) => (
               <div key={i} className="h-40 bg-slate-100 dark:bg-slate-800 rounded-3xl animate-pulse"></div>
-            ))
-          ) : Array.isArray(users) && users.map((user) => (
-            <UserCard 
-              key={user.id} 
-              user={user} 
-              isCurrentUser={user.id === currentUser?.id} // 本人かどうかでUI（削除ボタン非表示等）を出し分け
-              onRoleChange={handleRoleChange}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (queryClient.getQueryState(["users"])?.error as any)?.response?.status === 400 ? (
+          <div className="py-20 text-center space-y-4">
+            <div className="text-5xl">🏢</div>
+            <h3 className="text-xl font-bold text-slate-700 dark:text-white">組織が登録されていません</h3>
+            <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+              ユーザー管理機能を使用するには、先に組織を作成する必要があります。<br/>
+              サイドバーの上部にある「組織を作成」から登録を行ってください。
+            </p>
+          </div>
+        ) : Array.isArray(users) && users.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {users.map((user) => (
+              <UserCard 
+                key={user.id} 
+                user={user} 
+                isCurrentUser={user.id === currentUser?.id} 
+                onRoleChange={handleRoleChange}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="py-20 text-center">
+            <p className="text-slate-500 dark:text-slate-400 font-medium">
+              表示できるユーザーがいません。
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

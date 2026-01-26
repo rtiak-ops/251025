@@ -48,6 +48,8 @@ async def create_organization(
             
         # 組織作成者をその組織に紐付ける（最初の所属メンバーにする）
         current_user.organization_id = db_org.id
+        # 組織作成者を自動的に管理者(admin)に昇格させる
+        current_user.role = "admin"
         db.add(current_user)
         
         # 最終的なコミット（組織の更新がある場合やユーザーの更新）

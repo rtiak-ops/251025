@@ -72,8 +72,9 @@ export default function AuditLogView() {
                 ))
               ) : filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-20 text-center text-slate-500 font-medium">
-                    ログが見つかりませんでした。
+                  <td colSpan={5} className="py-32 text-center text-slate-500 font-medium space-y-4">
+                    <div className="text-4xl">🗒️</div>
+                    <div className="text-slate-400">監査ログがまだありません。</div>
                   </td>
                 </tr>
               ) : (

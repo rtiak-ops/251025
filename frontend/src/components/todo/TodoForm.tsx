@@ -13,7 +13,6 @@ export default function TodoForm({ onAdd, initialProjectId }: TodoFormProps) {
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<Todo['priority']>("MEDIUM");
   const [dueDate, setDueDate] = useState<string>("");
-  const [projectId] = useState<number | undefined>(initialProjectId);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBreakingDown, setIsBreakingDown] = useState(false);
@@ -36,7 +35,7 @@ export default function TodoForm({ onAdd, initialProjectId }: TodoFormProps) {
         await createTodo({
           title: subTitle,
           priority,
-          project_id: projectId,
+          project_id: initialProjectId,
           due_date: dueDate ? new Date(dueDate).toISOString() : undefined
         });
       }
@@ -61,7 +60,7 @@ export default function TodoForm({ onAdd, initialProjectId }: TodoFormProps) {
       await createTodo({
         title: title.trim(),
         priority,
-        project_id: projectId,
+        project_id: initialProjectId,
         due_date: dueDate ? new Date(dueDate).toISOString() : undefined
       });
       setTitle("");

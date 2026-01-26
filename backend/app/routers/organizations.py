@@ -140,3 +140,41 @@ async def delete_my_organization(
     await db.commit()
     
     return None
+
+@router.post("/leave", status_code=status.HTTP_204_NO_CONTENT)
+async def leave_organization(
+    current_user: models.User = Depends(dependencies.get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    所属している組織から退会します。
+    管理者（Admin）の場合、組織内に他の管理者が存在する必要があります。
+    自分が最後の管理者の場合は、退会前に権限を譲渡するか、組織を削除する必要があります。
+    """
+    if not current_user.organization_id:
+        raise HTTPException(status_code=400, detail="組織に所属していません。")
+    
+    # 管理者チェック: 最後の管理者の場合は退会不可
+    if current_user.role == "admin":
+        from sqlalchemy import select, func
+        from ..models import User
+        # 同組織内の他の管理者の数を数える
+        admin_count_stmt = select(func.count(User.id)).where(
+            User.organization_id == current_user.organization_id,
+            User.role == "admin"
+        )
+        admin_count = (await db.execute(admin_count_stmt)).scalar()
+        
+        if admin_count <= 1:
+            raise HTTPException(
+                status_code=400, 
+                detail="あなたが最後の管理者のため、退会できません。先に他のユーザーを管理者に昇格させるか、組織自体を削除してください。"
+            )
+
+    # ユーザーの組織紐付けとロールをリセット
+    current_user.organization_id = None
+    current_user.role = "user"
+    db.add(current_user)
+    await db.commit()
+    
+    return None

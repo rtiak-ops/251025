@@ -30,3 +30,10 @@ export const updateOrganization = async (data: UpdateOrganizationData): Promise<
 export const deleteOrganization = async (): Promise<void> => {
   await api.delete("/organizations/me");
 };
+
+/**
+ * 組織から退会
+ */
+export const leaveOrganization = async (): Promise<void> => {
+  await api.post("/organizations/leave");
+};

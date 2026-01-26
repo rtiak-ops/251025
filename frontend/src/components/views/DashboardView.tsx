@@ -54,14 +54,14 @@ export default function DashboardView({ todos, projects, organization, currentUs
           <div className="text-sm text-slate-500 dark:text-white font-medium bg-white/50 dark:bg-slate-800/50 px-4 py-2 rounded-full border border-white/20">
             最終更新: {new Date().toLocaleTimeString()}
           </div>
-          {organization && currentUser?.role === 'admin' && (
+          {organization && (
             <button 
               onClick={() => setShowSettingsModal(true)}
               className="p-2.5 bg-white dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl border border-white/20 shadow-sm transition-all flex items-center gap-2 font-bold text-sm"
-              title="組織の設定"
+              title="組織の情報・設定"
             >
               <Settings size={20} />
-              設定
+              組織
             </button>
           )}
         </div>
@@ -105,6 +105,7 @@ export default function DashboardView({ todos, projects, organization, currentUs
       {showSettingsModal && organization && (
         <OrgSettingsModal 
           organization={organization}
+          currentUser={currentUser}
           onClose={() => setShowSettingsModal(false)}
           onSuccess={onDataChange}
         />

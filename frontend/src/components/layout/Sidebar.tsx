@@ -67,7 +67,15 @@ export default function Sidebar({
         message = "その名称または法人番号は既に登録されています";
       } else if (err.response?.data?.detail) {
         const d = err.response.data.detail;
-        message = typeof d === 'string' ? d : Array.isArray(d) ? (d[0] as any)?.msg || JSON.stringify(d) : JSON.stringify(d);
+        if (typeof d === 'string') {
+          message = d;
+        } else if (Array.isArray(d)) {
+          // Pydantic validation error format check
+          const first = d[0] as { msg?: string } | undefined;
+          message = first?.msg || JSON.stringify(d);
+        } else {
+          message = JSON.stringify(d);
+        }
       }
       
       toast.error(message);

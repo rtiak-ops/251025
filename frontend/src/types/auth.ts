@@ -33,6 +33,16 @@ export interface CreateOrganizationData {
 }
 
 /**
+ * 組織を更新する際に必要なデータ
+ */
+export interface UpdateOrganizationData {
+  name?: string;
+  corporate_id?: string;
+  website?: string;
+  plan?: string;
+}
+
+/**
  * 認証トークンの型定義
  * ログイン成功時にサーバーから受け取るトークンの情報です。
  */

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { createProject } from '../../api';
 import { toast } from 'react-hot-toast';
-import { Plus } from 'lucide-react';
+import { Plus, Settings } from 'lucide-react';
 import type { ProjectSummary, User, Organization } from '../../types';
 import OrgRegistrationModal from '../organization/OrgRegistrationModal';
+import OrgSettingsModal from '../organization/OrgSettingsModal';
 
 interface SidebarProps {
   projects: ProjectSummary[];
@@ -33,6 +34,7 @@ export default function Sidebar({
   organization,
 }: SidebarProps) {
   const [showOrgModal, setShowOrgModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   const handleCreateProject = async () => {
     const name = window.prompt("プロジェクト名を入力してください:");
@@ -58,15 +60,26 @@ export default function Sidebar({
           BizFlow
         </h1>
         {organization ? (
-          <div className="flex flex-col gap-1 mt-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">
-                {organization.plan}
-              </span>
-              {organization.is_verified && (
-                <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
-                  ✓ 認証済
+          <div className="flex flex-col gap-1 mt-1 group">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">
+                  {organization.plan}
                 </span>
+                {organization.is_verified && (
+                  <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
+                    ✓ 認証済
+                  </span>
+                )}
+              </div>
+              {currentUser?.role === 'admin' && (
+                <button 
+                  onClick={() => setShowSettingsModal(true)}
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-indigo-600 transition-all"
+                  title="組織の設定"
+                >
+                  <Settings size={14} />
+                </button>
               )}
             </div>
             <p className="text-xs text-slate-500 dark:text-white font-bold truncate" title={organization.name}>
@@ -204,6 +217,14 @@ export default function Sidebar({
       {showOrgModal && (
         <OrgRegistrationModal 
           onClose={() => setShowOrgModal(false)}
+          onSuccess={onProjectCreated}
+        />
+      )}
+
+      {showSettingsModal && organization && (
+        <OrgSettingsModal 
+          organization={organization}
+          onClose={() => setShowSettingsModal(false)}
           onSuccess={onProjectCreated}
         />
       )}

@@ -25,6 +25,23 @@ class OrganizationCreate(OrganizationBase):
     """
     pass
 
+class OrganizationUpdate(BaseModel):
+    """
+    組織情報更新時に入力されるデータ構造。
+    全てのフィールドが任意です。
+    """
+    name: str | None = None
+    corporate_id: str | None = None
+    website: str | None = None
+    plan: str | None = None
+
+    @field_validator("corporate_id")
+    @classmethod
+    def validate_corporate_id(cls, v: str | None) -> str | None:
+        if v and len(v) > 13:
+            raise ValueError("法人番号は13文字以内である必要があります。")
+        return v
+
 class OrganizationOut(OrganizationBase):
     """
     APIから返却される組織情報のデータ構造。

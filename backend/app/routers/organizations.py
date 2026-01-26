@@ -100,3 +100,43 @@ async def get_my_organization(
     if not org:
         raise HTTPException(status_code=404, detail="組織が見つかりません。")
     return org
+@router.patch("/me", response_model=schemas.OrganizationOut)
+async def update_my_organization(
+    org_update: schemas.OrganizationUpdate,
+    current_user: models.User = Depends(dependencies.admin_required),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    ログイン中の管理者が所属する組織の情報を更新します。
+    """
+    if not current_user.organization_id:
+        raise HTTPException(status_code=400, detail="組織に所属していません。")
+    
+    db_org = await crud.update_organization(db, current_user.organization_id, org_update)
+    if not db_org:
+        raise HTTPException(status_code=404, detail="組織が見つかりません。")
+    return db_org
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_my_organization(
+    current_user: models.User = Depends(dependencies.admin_required),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    ログイン中の管理者が所属する組織を削除します。
+    関連するプロジェクトやデータもカスケード削除されます。
+    """
+    if not current_user.organization_id:
+        raise HTTPException(status_code=400, detail="組織に所属していません。")
+    
+    success = await crud.delete_organization(db, current_user.organization_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="組織が見つかりません。")
+    
+    # 管理者自身の組織紐付けとロールをリセット（オプション、SET NULLが効くがフロントエンドに伝えやすくするため）
+    current_user.organization_id = None
+    current_user.role = "user"
+    db.add(current_user)
+    await db.commit()
+    
+    return None

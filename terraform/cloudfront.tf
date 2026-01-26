@@ -112,6 +112,69 @@ resource "aws_cloudfront_distribution" "main" { # 配信システム本体（司
     max_ttl                = 0
   } # ルール4終了
 
+  ordered_cache_behavior {           # 組織データ用のルールです
+    path_pattern     = "/organizations/*" 
+    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "EC2-${aws_instance.app.id}" # サーバーに繋げます
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Authorization", "Content-Type", "Origin", "Host"]
+
+      cookies {
+        forward = "all"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+    min_ttl                = 0
+    default_ttl            = 0
+    max_ttl                = 0
+  } # 組織ルール終了
+
+  ordered_cache_behavior {           # 管理機能用のルールです
+    path_pattern     = "/admin/*" 
+    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "EC2-${aws_instance.app.id}" # サーバーに繋げます
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Authorization", "Content-Type", "Origin", "Host"]
+
+      cookies {
+        forward = "all"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+    min_ttl                = 0
+    default_ttl            = 0
+    max_ttl                = 0
+  } # 管理ルール終了
+
+  ordered_cache_behavior {           # 監視機能用のルールです
+    path_pattern     = "/monitor/*" 
+    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "EC2-${aws_instance.app.id}" # サーバーに繋げます
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Authorization", "Content-Type", "Origin", "Host"]
+
+      cookies {
+        forward = "all"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+    min_ttl                = 0
+    default_ttl            = 0
+    max_ttl                = 0
+  } # 監視ルール終了
+
   ordered_cache_behavior {     # AI機能用のルールです
     path_pattern     = "/ai/*" # 「/ai/」で始まる通信です
     allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]

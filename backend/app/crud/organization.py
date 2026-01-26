@@ -39,3 +39,33 @@ async def get_organization(db: AsyncSession, org_id: int) -> models.Organization
     result = await db.execute(select(models.Organization).where(models.Organization.id == org_id))
     # 最初に見つかった1件を返す（見つからない場合は None）
     return result.scalar_one_or_none()
+async def update_organization(
+    db: AsyncSession, org_id: int, org_update: schemas.OrganizationUpdate
+) -> models.Organization | None:
+    """
+    指定されたIDの組織情報を更新します。
+    """
+    db_org = await get_organization(db, org_id)
+    if not db_org:
+        return None
+    
+    update_data = org_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_org, key, value)
+    
+    db.add(db_org)
+    await db.commit()
+    await db.refresh(db_org)
+    return db_org
+
+async def delete_organization(db: AsyncSession, org_id: int) -> bool:
+    """
+    指定されたIDの組織を削除します。
+    """
+    db_org = await get_organization(db, org_id)
+    if not db_org:
+        return False
+    
+    await db.delete(db_org)
+    await db.commit()
+    return True

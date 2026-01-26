@@ -4,6 +4,7 @@ import { Users } from "lucide-react";
 import { toast } from "react-hot-toast";
 import type { User } from "../../types";
 import UserCard from "../users/UserCard";
+import axios from "axios";
 
 interface UserManagementViewProps {
   currentUser?: User;
@@ -68,6 +69,10 @@ export default function UserManagementView({ currentUser }: UserManagementViewPr
     deleteMutation.mutate(userId);
   };
 
+  // 組織未登録エラー（400）の判定
+  const usersError = queryClient.getQueryState(["users"])?.error;
+  const isNoOrgError = axios.isAxiosError(usersError) && usersError.response?.status === 400;
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* ページヘッダー */}
@@ -86,7 +91,7 @@ export default function UserManagementView({ currentUser }: UserManagementViewPr
               <div key={i} className="h-40 bg-slate-100 dark:bg-slate-800 rounded-3xl animate-pulse"></div>
             ))}
           </div>
-        ) : (queryClient.getQueryState(["users"])?.error as any)?.response?.status === 400 ? (
+        ) : isNoOrgError ? (
           <div className="py-20 text-center space-y-4">
             <div className="text-5xl">🏢</div>
             <h3 className="text-xl font-bold text-slate-700 dark:text-white">組織が登録されていません</h3>

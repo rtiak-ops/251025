@@ -1,67 +1,92 @@
-# ==================================================================================================
-# 2. ネットワーク設定 (VPC)
-# ==================================================================================================
+# ==========================================
+# VPC ネットワーク設定
+# ==========================================
 
-resource "aws_vpc" "main" {           # 街全体（VPC）を作ります
-  cidr_block           = var.vpc_cidr # 使う住所の範囲を指定します
-  enable_dns_hostnames = true         # サーバーに名前を付けられるようにします
-  enable_dns_support   = true         # AWSの住所解決サービスを使います
+# ------------------------------------------
+# 1. VPC 本体
+# ------------------------------------------
 
-  tags = {                           # ふせん（タグ）を付けます
-    Name = "${var.project_name}-vpc" # プロジェクト名を名札にします
-  }                                  # タグ設定終了
-}                                    # VPC設定終了
+# プロジェクト専用の仮想ネットワーク環境を構築
+resource "aws_vpc" "main" {
+  cidr_block           = var.vpc_cidr # VPC 全体で利用可能な IP アドレス範囲
+  enable_dns_hostnames = true         # インスタンスにホスト名 (例: ip-10-0-x-x.ap-northeast-1.compute.internal) を付与
+  enable_dns_support   = true         # AWS の DNS サーバーを有効化
 
-resource "aws_subnet" "public" {                                                     # 公開エリア（パブリックサブネット）を作ります
-  count                   = 2                                                        # 全く同じエリアを2つ作ります（停電対策）
-  vpc_id                  = aws_vpc.main.id                                          # 作った街（VPC）の中に配置します
-  cidr_block              = "10.0.${count.index}.0/24"                               # 10.0.0.0 と 10.0.1.0 に自動で分けます
-  availability_zone       = data.aws_availability_zones.available.names[count.index] # 東京の違う場所AとBに配置します
-  map_public_ip_on_launch = true                                                     # ここに建てる家には自動で公開住所を付けます
+  tags = {
+    Name = "${var.project_name}-vpc"
+  }
+}
 
-  tags = {                                                        # タグを付けます
-    Name = "${var.project_name}-public-subnet-${count.index + 1}" # 名前を自動で「1」「2」と振ります
-  }                                                               # タグ設定終了
-}                                                                 # 公開サブネット設定終了
+# 利用可能なアベイラビリティゾーン (AZ) の取得
+# 指定したリージョン内で利用可能なAZのリストをデータソースとして取得します。
+data "aws_availability_zones" "available" {
+  state = "available"
+}
 
-resource "aws_subnet" "private" {                                              # 秘密エリア（プライベートサブネット）を作ります
-  count             = 2                                                        # ここも停電対策で2つ作ります
-  vpc_id            = aws_vpc.main.id                                          # 同じ街（VPC）の中に配置します
-  cidr_block        = "10.0.${count.index + 10}.0/24"                          # 10.0.10.0 と 10.0.11.0 に分けます
-  availability_zone = data.aws_availability_zones.available.names[count.index] # ここも場所AとBに分けます
+# ------------------------------------------
+# 2. サブネット (分割されたネットワーク領域)
+# ------------------------------------------
 
-  tags = {                                                         # タグを付けます
-    Name = "${var.project_name}-private-subnet-${count.index + 1}" # 名前タグです
-  }                                                                # タグ設定終了
-}                                                                  # 秘密サブネット設定終了
+# パブリックサブネット
+# インターネットに直接通信が可能な領域（EC2 Web サーバーなどを配置）
+resource "aws_subnet" "public" {
+  count                   = 1
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.0.0/24"                                   # VPC 内での IP 範囲
+  availability_zone       = data.aws_availability_zones.available.names[0] # 可用性を高めるための設置場所 (AZ)
+  map_public_ip_on_launch = true                                            # このサブネットで起動したサーバにパブリック IP を自動で割り振る
 
-resource "aws_internet_gateway" "main" { # 街の入り口（インターネットゲートウェイ）を作ります
-  vpc_id = aws_vpc.main.id               # どの街の入り口か指定します
+  tags = {
+    Name = "${var.project_name}-public-subnet"
+  }
+}
 
-  tags = {                           # タグを付けます
-    Name = "${var.project_name}-igw" # 名前タグです
-  }                                  # タグ設定終了
-}                                    # ゲートウェイ設定終了
+# プライベートサブネット
+# 内部からのアクセスのみを許可する安全な領域（データベース RDS などを配置）
+resource "aws_subnet" "private" {
+  count             = 1
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.10.0/24"                                  # VPC 内での IP 範囲
+  availability_zone = data.aws_availability_zones.available.names[0] # パブリックサブネットと同じ AZ に配置
 
-resource "aws_route_table" "public" { # 地図（ルートテーブル）を作ります
-  vpc_id = aws_vpc.main.id            # この街専用の地図です
+  tags = {
+    Name = "${var.project_name}-private-subnet"
+  }
+}
 
-  route {                                     # 道順を決めます
-    cidr_block = "0.0.0.0/0"                  # 「世界中（どこでも）」に行きたい時は
-    gateway_id = aws_internet_gateway.main.id # さっきの「街の入り口」を通るようにします
-  }                                           # 道順設定終了
+# ------------------------------------------
+# 3. 外部との通信・ルーティング設定
+# ------------------------------------------
 
-  tags = {                                 # タグを付けます
-    Name = "${var.project_name}-public-rt" # 名前タグです
-  }                                        # タグ設定終了
-}                                          # ルートテーブル設定終了
+# インターネットゲートウェイ (IGW)
+# VPC 内のパブリックサブネットがインターネットと通信するための出口/入口
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
 
-resource "aws_route_table_association" "public" {    # 地図を配ります（紐付け）
-  count          = 2                                 # 2つの公開エリアに配ります
-  subnet_id      = aws_subnet.public[count.index].id # 公開エリアの住所です
-  route_table_id = aws_route_table.public.id         # さっきの「入り口への道順」が書いてある地図です
-}                                                    # 紐付け設定終了
+  tags = {
+    Name = "${var.project_name}-igw"
+  }
+}
 
-data "aws_availability_zones" "available" { # AWSに「今使える場所の情報」を聞きます
-  state = "available"                       # 使える場所だけ教えてもらいます
-}                                           # 情報取得終了
+# ルートテーブル (パブリック用)
+# 「宛先が自分（VPC 内）以外ならインターネットゲートウェイへ送る」というルールを定義
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"                  # 全ての通信
+    gateway_id = aws_internet_gateway.main.id # ターゲットとして IGW を指定
+  }
+
+  tags = {
+    Name = "${var.project_name}-public-rt"
+  }
+}
+
+# ルートテーブルとパブリックサブネットの紐付け
+# これにより、パブリックサブネットが実際にインターネット通信可能になります
+resource "aws_route_table_association" "public" {
+  count          = 1
+  subnet_id      = aws_subnet.public[0].id
+  route_table_id = aws_route_table.public.id
+}

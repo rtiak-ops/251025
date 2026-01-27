@@ -1,81 +1,80 @@
-# ==================================================================================================
-# 3. 仮想サーバー (EC2)
-# ==================================================================================================
-# アプリケーションを動かすための「コンピューター」をレンタルします。
+# ==========================================
+# 仮想サーバー (EC2) 設定
+# ==========================================
 
-# --------------------------------------------------------------------------------------------------
-# ① OSイメージ（AMI）の選択
-# --------------------------------------------------------------------------------------------------
-# どの「OS（WindowsかMacかLinuxか）」を入れるかを決めます。
-# ここでは「Amazon Linux 2023」という最新のLinux OSを自動で探してくる設定にしています。
-data "aws_ami" "amazon_linux_2023" { # OS（Amazon Linux 2023）の情報を取得します
-  most_recent = true                 # 最新のバージョンを選びます
-  owners      = ["amazon"]           # AWS公式が提供しているものに限定します
+# ------------------------------------------
+# 1. OS イメージ (AMI) の選択
+# ------------------------------------------
 
-  filter {                              # 検索条件を指定します
-    name   = "name"                     # 名前で検索します
-    values = ["al2023-ami-2023*-x86_64"] # Amazon Linux 2023の標準的な名前を指定します (x86_64)
-  }                                     # フィルター終了
-}                                       # 情報取得終了
+# 最新の Amazon Linux 2023 (x86_64) を自動選択
+data "aws_ami" "amazon_linux_2023" {
+  most_recent = true
+  owners      = ["amazon"]
 
-# --------------------------------------------------------------------------------------------------
-# ② サーバー本体の設定
-# --------------------------------------------------------------------------------------------------
-resource "aws_instance" "app" {                     # サーバー本体（インスタンス）を作ります
-  ami           = data.aws_ami.amazon_linux_2023.id # さっき選んだOS（AMI ID）を使います
-  instance_type = "t3.micro"                       # サーバーの「馬力（スペック）」。12ヶ月無料枠の対象になりやすいタイプです。
-  key_name      = var.key_name                      # SSHログインに使うための「合鍵」の名前です
+  filter {
+    name   = "name"
+    values = ["al2023-ami-2023*-x86_64"]
+  }
+}
 
-  subnet_id                   = aws_subnet.public[0].id                       # 公開エリア（パブリックサブネット）の1つ目に設置します
-  vpc_security_group_ids      = [aws_security_group.ec2.id]                   # サーバー用の「門番（セキュリティグループ）」を指定します
-  iam_instance_profile        = aws_iam_instance_profile.ec2_ssm_profile.name # SSMログイン用の権限を付与します
-  user_data_replace_on_change = true                                          # 自動セットアップの内容を変えたらサーバーを作り直します
+# ------------------------------------------
+# 2. EC2 インスタンス本体
+# ------------------------------------------
 
-  # 記憶装置（SSD）：パソコンのCドライブのようなもの
-  root_block_device {   # ストレージ（SSD）の設定です
-    volume_size = 20    # 容量を20GB確保します
-    volume_type = "gp3" # 高性能でコスパの良い第3世代SSDを使います
-  }                     # ストレージ設定終了
+resource "aws_instance" "app" {
+  ami           = data.aws_ami.amazon_linux_2023.id
+  instance_type = "t3.micro" # 無料枠が利用可能な小型インスタンス
+  key_name      = var.key_name
 
-  tags = {                           # タグ（名札）を付けます
-    Name = "${var.project_name}-ec2" # プロジェクト名＋ec2 という名前にします
-  }                                  # タグ設定終了
+  subnet_id                   = aws_subnet.public[0].id            # パブリックサブネットに配置
+  vpc_security_group_ids      = [aws_security_group.ec2.id]         # セキュリティグループ適用
+  iam_instance_profile        = aws_iam_instance_profile.ec2_ssm_profile.name # Session Manager 使用用の権限
+  user_data_replace_on_change = true                                # 起動スクリプト変更時にインスタンスを再作成する設定
 
-  # --------------------------------------------------------------------------------------------------
-  # ③ 自動セットアップ（User Data）：サーバー起動時に「勝手にお願い！」する作業リスト
-  # --------------------------------------------------------------------------------------------------
-  # サーバーが生まれた瞬間に、Dockerをインストールしたり、アプリを動かしたりする命令を書いています。
+  # ディスク (EBS) 設定
+  root_block_device {
+    volume_size = 20    # 20GB (Docker イメージなどの保存を考慮)
+    volume_type = "gp3" # 最新世代の汎用 SSD
+  }
+
+  tags = {
+    Name = "${var.project_name}-ec2"
+  }
+
+  # ------------------------------------------
+  # 3. 起動スクリプト (User Data)
+  # インスタンス起動時に自動で実行されるセットアップ手順
+  # ------------------------------------------
   user_data = <<-EOF
               #!/bin/bash
-              # 1. メモリが足りなくなっても大丈夫なように「予備の記憶場所（Swap）」を作る
-              fallocate -l 2G /swapfile              # 2GBの巨大なファイルを作ります
-              chmod 600 /swapfile                    # 管理者以外は見られないようにします
-              mkswap /swapfile                       # スワップ専用の形式に変換します
-              swapon /swapfile                       # スワップ機能をONにします
-              echo '/swapfile swap swap defaults 0 0' >> /etc/fstab # 起動時に毎回読み込むように登録します
+              # 1. スワップ領域の確保
+              # t3.micro のメモリ不足を補うために 2GB のスワップファイルを作成
+              fallocate -l 2G /swapfile
+              chmod 600 /swapfile
+              mkswap /swapfile
+              swapon /swapfile
+              echo '/swapfile swap swap defaults 0 0' >> /etc/fstab
 
-              # 2. 必要なツール（DockerやGit）をインストールする
-              dnf update -y                          # OSの全ソフトを最新にします
-              dnf install -y docker git              # DockerとGitを導入します
+              # 2. 基本ソフトのインストール
+              dnf update -y
+              dnf install -y docker git
               
-              # Docker Compose V2 をインストール (dnfで見つからない場合があるため直接ダウンロード)
+              # Docker Compose V2 のインストール
               mkdir -p /usr/local/lib/docker/cli-plugins
               curl -SL https://github.com/docker/compose/releases/download/v2.24.1/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
               chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
               
-              # 3. Docker（コンテナを動かす道具）を使えるようにする
-              systemctl start docker                 # Dockerを起動します
-              systemctl enable docker                # サーバー起動時にDockerも自動で動くようにします
-              usermod -a -G docker ec2-user          # 操作ユーザー（ec2-user）にDockerの権限をあげます
+              # 3. Docker の有効化
+              systemctl start docker
+              systemctl enable docker
+              usermod -a -G docker ec2-user
 
-              # 4. アプリを入れるフォルダを作る
-              mkdir -p /home/ec2-user/251025         # アプリ用の部屋を作ります
-              chown ec2-user:ec2-user /home/ec2-user/251025 # 部屋の持ち主を操作ユーザーにします
-
-              # 5. アプリのソースコードをGitHubから持ってくる
+              # 4. ソースコードのチェックアウト
+              mkdir -p /home/ec2-user/251025
+              chown ec2-user:ec2-user /home/ec2-user/251025
               sudo -u ec2-user git clone https://github.com/rtiak-ops/251025.git /home/ec2-user/251025 || (cd /home/ec2-user/251025 && sudo -u ec2-user git pull)
 
-              # 6. アプリの設定ファイル（.env）をこっそり作る
+              # 5. アプリ用環境変数の設定 (.env 生成)
               cat <<EOT > /home/ec2-user/251025/.env
               DATABASE_URL=postgresql+asyncpg://postgresMaster:${var.db_password}@${aws_db_instance.main.endpoint}/todo_db
               POSTGRES_USER=postgresMaster
@@ -89,24 +88,26 @@ resource "aws_instance" "app" {                     # サーバー本体（イ�
               DOMAIN_NAME=${aws_eip.app.public_ip}
               GOOGLE_API_KEY=${var.google_api_key}
               EOT
-              chown ec2-user:ec2-user /home/ec2-user/251025/.env # 設定ファイルの持ち主も操作ユーザーにします
+              chown ec2-user:ec2-user /home/ec2-user/251025/.env
 
-              # 7. アプリ（コンテナ）を起動する！
-              cd /home/ec2-user/251025               # アプリの部屋に移動します
-              docker compose up -d --build           # アプリをビルドしてバックグラウンドで動かします
+              # 6. コンテナのビルド・起動
+              cd /home/ec2-user/251025
+              docker compose up -d --build
               
-              # 8. データベースの骨組みを作る（初期化）
-              for i in {1..12}; do                   # 最大1分間（5秒x12回）待ちます
-                docker compose exec -T backend alembic upgrade head && break # テーブル作成に成功したらループを抜けます
-                sleep 5                              # 失敗したら5秒待って再挑戦します
-              done                                   # 繰り返し終了
+              # 7. DB マイグレーション
+              # DB 起動を待つために繰り返し実行を試行
+              for i in {1..12}; do
+                docker compose exec -T backend alembic upgrade head && break
+                sleep 5
+              done
               EOF
-} # サーバー設定終了
+}
 
-# --------------------------------------------------------------------------------------------------
-# ④ 固定IPアドレス (Elastic IP) の設定
-# --------------------------------------------------------------------------------------------------
-# サーバーを再起動しても住所（IPアドレス）が変わらないように固定します。
+# ------------------------------------------
+# 4. 固定 IP アドレス (Elastic IP) 設定
+# ------------------------------------------
+
+# サーバーを再起動しても IP アドレスが変わらないように固定化
 resource "aws_eip" "app" {
   domain = "vpc"
 
@@ -115,7 +116,7 @@ resource "aws_eip" "app" {
   }
 }
 
-# インスタンスとEIPを紐付けます（循環参照を避けるために分離しています）
+# 作成した Elastic IP を EC2 インスタンスに紐付け
 resource "aws_eip_association" "eip_assoc" {
   instance_id   = aws_instance.app.id
   allocation_id = aws_eip.app.id

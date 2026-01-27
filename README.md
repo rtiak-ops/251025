@@ -106,6 +106,8 @@
 - **📈 パフォーマンス監視 (Observability)**: 
     - **Slow Query Detection**: SQLAlchemyのイベントリスナーによる100ms超のクエリ自動検知。
     - **Health Dashboard**: DBレイテンシやシステム統計（ユーザー数、タスク数等）のリアルタイム表示。
+- **💰 自動コスト最適化 (Cost Optimization)**: 
+    - **Smart Scheduler**: AWS EventBridge と Lambda を連携させ、業務時間外（夜間）の EC2/RDS 自動停止と、始業前の自動起動プロセスを構築。運用コストを最小化。
 
 ---
 
@@ -231,7 +233,8 @@ erDiagram
 | **Logic** | TanStack Query | 楽観的UI更新（Optimistic Update）の実装による圧倒的なUX。自前でのキャッシュ管理を避け、ライブラリに任せることでコードの抽象化を促進。 |
 | **Database** | PostgreSQL 17 | 複雑なリレーション、JSON型による将来的なAIスレッドの保存を視野に入れ、堅牢なRDBMSを選択。 |
 | **Infra** | AWS, Terraform | インフラのコード化（IaC）。手動設定を排除し、再現性とスケーラビリティを担保。 |
-| **AI** | Gemini Flash | テキスト生成速度とコストのバランス。Gemini 2.5/3.0 Flashを使用することで、タスク分解の高速な応答を実現。 |
+| **AI** | Gemini 3.0 Flash | テキスト生成速度とコストのバランス。Gemini Flashを使用することで、タスク分解の高速な応答を実現。 |
+| **Tools** | Trivy, GitHub Actions, Docker | 自動脆弱性スキャン、完全自動化されたCI/CD、コンテナ化による一貫した実行環境の提供。 |
 
 ---
 
@@ -313,18 +316,6 @@ GitHubのリポジトリ設定（Settings > Secrets and variables > Actions）�
 | `EC2_USER` | `ec2-user` か `ubuntu` (AMIに依存) |
 | `EC2_HOST` | EC2のパブリックIP（動的取得に失敗する場合の予備） |
 | `GOOGLE_API_KEY` | Gemini APIキー |
-
-#### 💡 運用時の Tips (CloudFront の IP 同期)
-このプロジェクトを個人の学習用などで **「毎日 EC2 と RDS を停止・起動」** して運用する場合、以下の点に注意してください。
-
-- **現象**: EC2 を再起動すると、パブリック IP アドレスが変わることがあります。このとき、CloudFront の接続先（Origin）が古い IP のままになり、サイトが表示されなくなる場合があります。
-- **解決策**: EC2 を起動した後、ローカルで以下のコマンドを 1 回実行してください。
-  ```bash
-  cd terraform
-  terraform apply
-  ```
-- **何が起きるか**: Terraform が最新の EC2 の IP アドレスを自動的に検知し、CloudFront の設定を現在の正しい IP へと更新してくれます。EC2 本体の再作成などは発生しません。
-- **もっと楽にするには**: 運用の頻度が高い場合は、EC2 に `Elastic IP`（固定 IP）を割り当てることで、この手動更新の手順を不要にできます（※AWS の追加料金がかかる場合があります）。
 
 #### ④ デプロイ
 `main` または `develop` ブランチにコードを `push` すると、自動的にフロントエンド（S3/CloudFront）とバックエンド（EC2/Docker）が更新されます。

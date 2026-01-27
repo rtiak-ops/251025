@@ -1,46 +1,69 @@
-# ==================================================================================================
-# 5. ファイル置き場 (S3)
-# ==================================================================================================
+# ==========================================
+# ストレージ (S3) 設定
+# ==========================================
 
-resource "aws_s3_bucket" "frontend" {                                                           # フロントエンドのファイルを置くバケツを作ります
-  bucket        = "${var.project_name}-frontend-${data.aws_caller_identity.current.account_id}" # 世界で一つの名前を付けます
-  force_destroy = true                                                                          # 中身が入っていてもバケツを捨てられるようにします
+# ------------------------------------------
+# 1. フロントエンドホスティング用バケット
+# ------------------------------------------
 
-  tags = {                                       # タグを付けます
-    Name = "${var.project_name}-frontend-bucket" # 名前タグです
-  }                                              # タグ設定終了
-}                                                # バケツ設定終了
+# React 等の静的ファイルを配信するための S3 バケット
+resource "aws_s3_bucket" "frontend" {
+  # バケット名は全世界で一意である必要があるため、プロジェクト名とアカウントIDを組み合わせて生成
+  bucket        = "${var.project_name}-frontend-${data.aws_caller_identity.current.account_id}"
+  # Terraform 削除時に、中身のファイル（オブジェクト）があっても強制的に削除する設定
+  force_destroy = true
 
-resource "aws_s3_bucket_public_access_block" "frontend" { # バケツに蓋をして勝手に見られないようにします
-  bucket = aws_s3_bucket.frontend.id                      # さっき作ったバケツに蓋をします
+  tags = {
+    Name = "${var.project_name}-frontend-bucket"
+  }
+}
 
-  block_public_acls       = true # 名簿（ACL）による公開を禁止します
-  block_public_policy     = true # 書類（ポリシー）による公開を禁止します
-  ignore_public_acls      = true # 全ての名簿設定を無視します
-  restrict_public_buckets = true # とにかくバケツを秘密にします
-}                                # 公開制限設定終了
+# ------------------------------------------
+# 2. セキュリティ設定 (パブリックアクセス遮断)
+# ------------------------------------------
 
-resource "aws_s3_bucket_policy" "frontend" {           # 「特定の相手だけ見ていいよ」という許可証を貼ります
-  bucket = aws_s3_bucket.frontend.id                   # バケツに許可証を貼ります
-  policy = data.aws_iam_policy_document.s3_policy.json # 下で書く許可証の内容を使います
-}                                                      # 許可証（ポリシー）設定終了
+# S3 バケット自体をインターネットに直接公開せず、安全な状態に保つ設定
+# ※ CloudFront (OAC) 経由でのみアクセスを許可するため、直接のパブリックアクセスは全て拒否します。
+resource "aws_s3_bucket_public_access_block" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
 
-data "aws_iam_policy_document" "s3_policy" {        # 許可証の内容を書きます
-  statement {                                       # 許可ルール1つ目を書きます
-    actions   = ["s3:GetObject"]                    # 「ファイルの中身を見る」ことを許可します
-    resources = ["${aws_s3_bucket.frontend.arn}/*"] # このバケツの中にある全てのファイルが対象です
+  block_public_acls       = true # パブリック ACL のブロック (ACL を使ったパブリックアクセスを禁止)
+  block_public_policy     = true # パブリックバケットポリシーのブロック (ポリシーを使ったパブリックアクセスを禁止)
+  ignore_public_acls      = true # パブリック ACL の無視 (既存のパブリック ACL も無視)
+  restrict_public_buckets = true # パブリックバケットへのアクセス制限 (パブリックバケットへのアクセスを AWS 認証済みユーザーに限定)
+}
 
-    principals {                                 # 見てもいい相手を指定します
-      type        = "Service"                    # AWSの「サービス」を対象にします
-      identifiers = ["cloudfront.amazonaws.com"] # 配信サービスの「CloudFront」にだけ見せます
-    }                                            # 相手指定終了
+# ------------------------------------------
+# 3. バケットポリシー (アクセス許可)
+# ------------------------------------------
 
-    condition {                                         # さらに厳しい条件を付けます
-      test     = "StringEquals"                         # 次の値が完全に一致した時だけOKにします
-      variable = "AWS:SourceArn"                        # 「どこから来たか」をチェックします
-      values   = [aws_cloudfront_distribution.main.arn] # このプロジェクトのCloudFrontから来た時だけに絞ります
-    }                                                   # 条件設定終了
-  }                                                     # ルール設定終了
-}                                                       # 許可証の内容作成終了
+# CloudFront からのアクセスのみを許可するポリシーをバケットにアタッチ
+resource "aws_s3_bucket_policy" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+  policy = data.aws_iam_policy_document.s3_policy.json
+}
 
-data "aws_caller_identity" "current" {} # あなたのAWSアカウントIDを自動で取ってきます
+# ポリシー内容の定義
+data "aws_iam_policy_document" "s3_policy" {
+  statement {
+    # ファイルの読み取り (GetObject) を許可
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.frontend.arn}/*"]
+
+    # 許可対象: CloudFront サービス
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+
+    # セキュリティ制約: 特定の CloudFront ディストリビューションからのリクエストのみを許可
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+      values   = [aws_cloudfront_distribution.main.arn]
+    }
+  }
+}
+
+# AWSアカウント情報の取得
+data "aws_caller_identity" "current" {}

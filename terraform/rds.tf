@@ -1,36 +1,45 @@
-# ==================================================================================================
-# 4. データベース (RDS)
-# ==================================================================================================
+# ==========================================
+# データベース (RDS) 設定
+# ==========================================
 
-resource "aws_db_subnet_group" "main" {              # データベースを置くグループ（住所録）を作ります
-  name       = "${var.project_name}-db-subnet-group" # グループに名前を付けます
-  subnet_ids = aws_subnet.private[*].id              # 全ての秘密エリア（プライベートサブネット）を対象にします
+# ------------------------------------------
+# 1. DB サブネットグループ
+# ------------------------------------------
 
-  tags = {                                       # タグを付けます
-    Name = "${var.project_name}-db-subnet-group" # 名前タグです
-  }                                              # タグ設定終了
-}                                                # サブネットグループ設定終了
+# RDS データベースを配置する専用のネットワークグループ
+resource "aws_db_subnet_group" "main" {
+  name       = "${var.project_name}-db-subnet-group"
+  subnet_ids = aws_subnet.private[*].id # セキュリティのためプライベートサブネットに配置
 
-resource "aws_db_instance" "main" {            # データベース本体を作ります
-  identifier        = "${var.project_name}-db" # データベースサーバーの名前を決めます
-  allocated_storage = 20                       # 保存できる容量を20GBにします
-  storage_type      = "gp3"                    # 高性能なSSDを使います
-  engine            = "postgres"               # PostgreSQLという種類のシステムを使います
-  engine_version    = "17"                     # バージョンは17にします
-  instance_class    = "db.t3.micro"            # サーバーの馬力を指定します（12ヶ月無料枠の対象になりやすいタイプ）
+  tags = {
+    Name = "${var.project_name}-db-subnet-group"
+  }
+}
 
-  db_name  = "todo_db"        # 最初から作っておくデータの引き出し名です
-  username = "postgresMaster" # 管理者（マスター）の名前を決めます
-  password = var.db_password  # パスワードを別のファイルから読み込みます
+# ------------------------------------------
+# 2. RDS インスタンス (PostgreSQL)
+# ------------------------------------------
 
-  db_subnet_group_name   = aws_db_subnet_group.main.name # 作った住所録（グループ名）を指定します
-  vpc_security_group_ids = [aws_security_group.rds.id]   # データベース用の門番を立たせます
+resource "aws_db_instance" "main" {
+  identifier        = "${var.project_name}-db"
+  allocated_storage = 20           # 容量 (20GB)
+  storage_type      = "gp3"        # 汎用 SSD
+  engine            = "postgres"
+  engine_version    = "17"         # PostgreSQL 17
+  instance_class    = "db.t3.micro" # 無料枠が利用可能なインスタンスクラス
 
-  skip_final_snapshot = true  # 削除する時にバックアップを取らないようにします（節約）
-  publicly_accessible = false # インターネットから直接見えないように隠します
-  apply_immediately   = true  # 変更をすぐに適用します（節約設定の反映）
+  db_name  = "todo_db"        # 初期データベース名
+  username = "postgresMaster" # 管理者ユーザー名
+  password = var.db_password  # variables.tf から取得
 
-  tags = {                           # タグを付けます
-    Name = "${var.project_name}-rds" # 名前タグです
-  }                                  # タグ設定終了
-}                                    # データベース本体の設定終了
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  vpc_security_group_ids = [aws_security_group.rds.id] # RDS 用セキュリティグループ
+
+  skip_final_snapshot = true  # テスト/学習用のため削除時のバックアップをスキップ
+  publicly_accessible = false # インターネットからの直接接続を遮断 (EC2 等からのアクセスのみ許可)
+  apply_immediately   = true  # 設定変更を即座に反映
+
+  tags = {
+    Name = "${var.project_name}-rds"
+  }
+}

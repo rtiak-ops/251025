@@ -30,27 +30,27 @@ data "aws_availability_zones" "available" {
 # パブリックサブネット
 # インターネットに直接通信が可能な領域（EC2 Web サーバーなどを配置）
 resource "aws_subnet" "public" {
-  count                   = 1
+  count                   = 2
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.0.0/24"                                   # VPC 内での IP 範囲
-  availability_zone       = data.aws_availability_zones.available.names[0] # 可用性を高めるための設置場所 (AZ)
+  cidr_block              = "10.0.${count.index}.0/24"                      # VPC 内での IP 範囲
+  availability_zone       = data.aws_availability_zones.available.names[count.index] # 可用性を高めるための設置場所 (AZ)
   map_public_ip_on_launch = true                                            # このサブネットで起動したサーバにパブリック IP を自動で割り振る
 
   tags = {
-    Name = "${var.project_name}-public-subnet"
+    Name = "${var.project_name}-public-subnet-${count.index}"
   }
 }
 
 # プライベートサブネット
 # 内部からのアクセスのみを許可する安全な領域（データベース RDS などを配置）
 resource "aws_subnet" "private" {
-  count             = 1
+  count             = 2
   vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.10.0/24"                                  # VPC 内での IP 範囲
-  availability_zone = data.aws_availability_zones.available.names[0] # パブリックサブネットと同じ AZ に配置
+  cidr_block        = "10.0.${10 + count.index}.0/24"                 # VPC 内での IP 範囲
+  availability_zone = data.aws_availability_zones.available.names[count.index]
 
   tags = {
-    Name = "${var.project_name}-private-subnet"
+    Name = "${var.project_name}-private-subnet-${count.index}"
   }
 }
 
@@ -86,7 +86,7 @@ resource "aws_route_table" "public" {
 # ルートテーブルとパブリックサブネットの紐付け
 # これにより、パブリックサブネットが実際にインターネット通信可能になります
 resource "aws_route_table_association" "public" {
-  count          = 1
-  subnet_id      = aws_subnet.public[0].id
+  count          = 2
+  subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
 }

@@ -10,9 +10,10 @@
 # ※ コスト削減のため、業務時間外にインスタンスを停止します。
 resource "aws_cloudwatch_event_rule" "stop_daily" {
   name                = "${var.project_name}-stop-daily"
-  description         = "毎日18:00にインスタンスを停止"
-  schedule_expression = "cron(0 9 * * ? *)" # UTC 9:00 = JST 18:00
-  
+  description         = "毎日18:00および24:00にインスタンスを停止"
+  schedule_expression = "cron(0 9,15 * * ? *)" # UTC 9:00 = 18:00 JST, UTC 15:00 = 0:00 JST
+  state               = "ENABLED"
+
   tags = {
     Name = "${var.project_name}-stop-daily"
   }
@@ -43,6 +44,7 @@ resource "aws_cloudwatch_event_rule" "start_daily" {
   name                = "${var.project_name}-start-daily"
   description         = "毎日12:00にインスタンスを起動"
   schedule_expression = "cron(0 3 * * ? *)" # UTC 3:00 = JST 12:00
+  state               = "DISABLED"
 
   tags = {
     Name = "${var.project_name}-start-daily"

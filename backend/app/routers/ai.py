@@ -5,14 +5,13 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 
 import openai
 import google.generativeai as genai
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from .. import schemas, models, dependencies
+from .. import models, dependencies
 
 # ----------------------------------------------------------------------
 # AI (LLM) 連携用のルーター

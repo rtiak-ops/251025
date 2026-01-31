@@ -5,7 +5,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pythonjsonlogger import json
 from slowapi.errors import RateLimitExceeded
@@ -13,11 +13,10 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.middleware import SlowAPIMiddleware
 
 from .database import Base, engine, AsyncSessionLocal
-from . import models
 from .routers import ai, auth, todos, projects, admin, monitor, organizations
 from .limiter import limiter
 from .middleware import RequestLoggingMiddleware, SecurityHeadersMiddleware
-from .core.config import CORS_ORIGINS, PROJECT_NAME, DEBUG, ENV
+from .core.config import CORS_ORIGINS, PROJECT_NAME, DEBUG
 import traceback
 from fastapi.responses import JSONResponse
 
@@ -110,7 +109,6 @@ async def health_check():
     システムの健康状態を確認し、DB接続状況を含めてレスポンスを返します。
     """
     from sqlalchemy import text
-    from .database import get_db
     try:
         # DB接続が可能かシンプルなクエリでテスト
         # ここでハングして504になるのを防ぐため、3秒でタイムアウトさせる

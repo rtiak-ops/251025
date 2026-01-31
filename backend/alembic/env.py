@@ -33,7 +33,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # マイグレーション対象となるモデルをインポート
 from app.database import Base
-from app.models import User, Todo  
 
 # autogenerate（モデル変更の自動検知）のためにBaseのメタデータを指定
 target_metadata = Base.metadata

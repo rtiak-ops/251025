@@ -1,7 +1,6 @@
 from __future__ import annotations
 import asyncpg.exceptions
 from fastapi import HTTPException
-from passlib.context import CryptContext
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession

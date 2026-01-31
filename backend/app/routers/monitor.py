@@ -1,11 +1,10 @@
 from __future__ import annotations
-import os
 import time
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from ..database import get_db, engine
-from .. import models, schemas, dependencies
+from ..database import get_db
+from .. import models, dependencies
 
 router = APIRouter(prefix="/monitor", tags=["Monitoring"])
 

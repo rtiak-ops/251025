@@ -3,10 +3,9 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .core import config, security
 from .core.security import decode_token
 from .database import get_db
-from . import crud, models, schemas
+from . import crud, models
 
 # 認証トークンの受け渡しにOAuth2の Bearer形式（Authorization: Bearer <TOKEN>）を使用することを定義
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")

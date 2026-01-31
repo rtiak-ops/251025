@@ -213,7 +213,7 @@ async def get_project_summaries(db: AsyncSession, user_id: int):
     for p in projects:
         # プロジェクト内の全タスク数と完了済みタスク数を集計
         todo_stmt = select(func.count(models.Todo.id)).where(models.Todo.project_id == p.id)
-        completed_stmt = select(func.count(models.Todo.id)).where(models.Todo.project_id == p.id, models.Todo.completed == True)
+        completed_stmt = select(func.count(models.Todo.id)).where(models.Todo.project_id == p.id, models.Todo.completed)
         
         todo_count = (await db.execute(todo_stmt)).scalar() or 0
         completed_count = (await db.execute(completed_stmt)).scalar() or 0

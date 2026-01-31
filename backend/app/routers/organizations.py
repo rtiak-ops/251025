@@ -79,12 +79,12 @@ async def create_organization(
         error_info = str(e.orig) if hasattr(e, 'orig') else str(e)
         logger.warning(f"組織登録の競合: {error_info}")
         if "organizations_name_key" in error_info or "unique constraint" in error_info.lower():
-             raise HTTPException(status_code=409, detail="その組織名は既に登録されている可能性があります。別の名称を試してください。")
-        raise HTTPException(status_code=409, detail="入力された組織名または法人番号は既に使用されています。")
+             raise HTTPException(status_code=409, detail="その組織名は既に登録されている可能性があります。別の名称を試してください。") from e
+        raise HTTPException(status_code=409, detail="入力された組織名または法人番号は既に使用されています。") from e
     except Exception as e:
         await db.rollback()
         logger.error(f"組織登録における予期せぬエラー: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"サーバー側でエラーが発生しました: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"サーバー側でエラーが発生しました: {str(e)}") from e
 
 @router.get("/me", response_model=schemas.OrganizationOut)
 async def get_my_organization(

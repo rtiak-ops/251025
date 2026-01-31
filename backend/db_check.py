@@ -21,7 +21,7 @@ async def check():
             print(f"ID: {o.id}, Name: {o.name}, Created: {o.created_at}")
         
         # ユーザーの確認（組織に紐付いている人）
-        result = await db.execute(select(User).where(User.organization_id != None))
+        result = await db.execute(select(User).where(User.organization_id.isnot(None)))
         users = result.scalars().all()
         print(f"\n--- Users with Organization ({len(users)}) ---")
         for u in users:

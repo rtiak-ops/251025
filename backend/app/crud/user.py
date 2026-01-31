@@ -45,7 +45,7 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate) -> models.User
         hashed_password = get_password_hash(user.password)
     except ValueError as e:
         # パスワード強度チェックなどでエラーが出た場合
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     
     # ユーザーインスタンスの作成
     db_user = models.User(email=user.email, hashed_password=hashed_password)
@@ -70,12 +70,12 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate) -> models.User
              raise HTTPException(
                  status_code=409, 
                  detail="このメールアドレスは既に登録されています。"
-             )
+             ) from e
         else:
              raise HTTPException(
                  status_code=500, 
                  detail="データベース制約エラーが発生しました。"
-             )
+             ) from e
     
     # 保存後の最新情報を取得（ID等）
     await db.refresh(db_user)

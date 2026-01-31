@@ -95,12 +95,12 @@ async def search_users(
         stmt = stmt.where(
             or_(
                 User.organization_id == current_user.organization_id,
-                User.organization_id == None
+                User.organization_id.is_(None)
             )
         )
     else:
         # 自分が無所属の場合は、無所属のユーザーのみ検索可能
-        stmt = stmt.where(User.organization_id == None)
+        stmt = stmt.where(User.organization_id.is_(None))
 
     stmt = stmt.limit(5)
     result = await db.execute(stmt)

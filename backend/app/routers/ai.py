@@ -117,4 +117,4 @@ async def breakdown_task(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="AIレスポンスの解析に失敗しました。"
-        )
+        ) from e

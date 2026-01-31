@@ -1,0 +1,30 @@
+[tool.ruff]
+# チェック対象のディレクトリ
+src = ["app"]
+# Pythonのバージョン指定
+target-version = "py313"
+# 1行の最大文字数
+line-length = 100
+
+[tool.ruff.lint]
+# 使用するルールセットの選択
+# E, F: デフォルト (Error, Pyflakes)
+# I: インポートの自動整列 (Isort)
+# B: バグになりやすい書き方の検知 (flake8-bugbear)
+# UP: 最新のPython記法へのアップグレード提案 (pyupgrade)
+select = ["E", "F", "I", "B", "UP"]
+
+# 無視するルール
+# F403, F405: 既存コードで多用されている 'from module import *' を許容
+# B008: FastAPIの Depends() でエラーが出るのを防ぐ
+# E501: 1行の長さ制限はフォーマッタに任せる
+ignore = ["F403", "F405", "B008", "E501"]
+
+[tool.ruff.lint.isort]
+# インポート整列の設定
+known-first-party = ["app"]
+
+[tool.ruff.format]
+# フォーマッタ設定（今回はチェックのみですが、将来用）
+quote-style = "double"
+indent-style = "space"

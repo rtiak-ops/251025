@@ -1,13 +1,15 @@
 import asyncio
-import sys
 import os
+import sys
 
 # パスを追加
 sys.path.append(os.getcwd())
 
+from sqlalchemy import select
+
 from app.database import AsyncSessionLocal
 from app.models import Organization, User
-from sqlalchemy import select
+
 
 async def check():
     async with AsyncSessionLocal() as db:

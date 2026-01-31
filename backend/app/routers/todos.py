@@ -16,7 +16,7 @@ from __future__ import annotations  # Python 3.10+: 型ヒントの前方参照�
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import crud, schemas, models, dependencies
+from .. import crud, dependencies, models, schemas
 from ..database import get_db
 
 # ===========================

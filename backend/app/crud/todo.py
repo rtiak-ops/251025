@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from .. import models, schemas
+
 
 async def get_todos(db: AsyncSession, owner_id: int, project_id: int | None = None, q: str | None = None) -> list[models.Todo]:
     """

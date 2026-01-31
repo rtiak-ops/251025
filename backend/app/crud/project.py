@@ -1,8 +1,11 @@
 from __future__ import annotations
-from sqlalchemy import select, delete, func
+
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+
 from .. import models, schemas
+
 
 async def get_projects(db: AsyncSession, user_id: int) -> list[models.Project]:
     """
@@ -30,7 +33,7 @@ async def get_projects(db: AsyncSession, user_id: int) -> list[models.Project]:
     else:
         # 組織に属している場合、その組織の全プロジェクトを取得
         stmt = select(models.Project).where(
-            (models.Project.organization_id == user.organization_id)
+            models.Project.organization_id == user.organization_id
         )
 
     # 共同編集者情報も含めて読み込み、作成日時の降順でソート

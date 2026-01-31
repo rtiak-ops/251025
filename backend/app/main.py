@@ -1,24 +1,25 @@
 from __future__ import annotations
+
+import asyncio
 import logging
 import sys
-import asyncio
+import traceback
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pythonjsonlogger import json
-from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from .database import Base, engine, AsyncSessionLocal
-from .routers import ai, auth, todos, projects, admin, monitor, organizations
+from .core.config import CORS_ORIGINS, DEBUG, PROJECT_NAME
+from .database import AsyncSessionLocal, Base, engine
 from .limiter import limiter
 from .middleware import RequestLoggingMiddleware, SecurityHeadersMiddleware
-from .core.config import CORS_ORIGINS, PROJECT_NAME, DEBUG
-import traceback
-from fastapi.responses import JSONResponse
+from .routers import admin, ai, auth, monitor, organizations, projects, todos
 
 # --- ロギング設定（JSON形式で標準出力に出力） ---
 logger = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ async def lifespan(app: FastAPI):
                 timeout=10.0
             )
         logger.info("データベースの初期化が完了しました。")
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.error("データベース接続がタイムアウトしました。DATABASE_URLまたはネットワーク設定を確認してください。")
     except Exception as e:
         logger.error(f"初期化中にエラーが発生しました: {str(e)}", exc_info=True)
@@ -118,9 +119,9 @@ async def health_check():
         return {
             "status": "healthy",
             "database": "connected",
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }
-    except (asyncio.TimeoutError, Exception) as e:
+    except (TimeoutError, Exception) as e:
         logger.error(f"ヘルスチェック失敗: {str(e)}")
         from fastapi.responses import JSONResponse
         return JSONResponse(
@@ -129,7 +130,7 @@ async def health_check():
                 "status": "unhealthy",
                 "database": "disconnected",
                 "error": "Database connection timed out or failed. Check DATABASE_URL.",
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(UTC).isoformat()
             }
         )
 

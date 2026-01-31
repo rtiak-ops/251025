@@ -1,8 +1,12 @@
 from __future__ import annotations
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
+
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from ..database import Base
+
 
 class Todo(Base):
     """
@@ -23,9 +27,9 @@ class Todo(Base):
     order = Column(Integer, default=0, nullable=False)
     
     # 作成日時（UTC）
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     # 更新日時（自動更新、UTC）
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
 
     # 所属プロジェクトのID
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)

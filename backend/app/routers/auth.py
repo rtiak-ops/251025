@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Body, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from .. import crud, schemas, models, dependencies
+
+from .. import crud, dependencies, models, schemas
 from ..core.security import create_access_token
 from ..database import get_db
 from ..limiter import limiter
@@ -74,7 +75,8 @@ async def search_users(
     1. 3文字未満の検索を禁止（無差別な探索を防ぐ）
     2. 検索対象を「組織未所属のユーザー」または「自分の組織のユーザー」に限定
     """
-    from sqlalchemy import select, or_
+    from sqlalchemy import or_, select
+
     from ..models import User
     
     # 短すぎる検索クエリを拒否

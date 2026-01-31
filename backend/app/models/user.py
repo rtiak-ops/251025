@@ -1,8 +1,12 @@
 from __future__ import annotations
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
+
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
 from ..database import Base
+
 
 class User(Base):
     """
@@ -18,7 +22,7 @@ class User(Base):
     # ハッシュ化されたパスワード
     hashed_password = Column(String(255), nullable=False)
     # アカウント作成日時（UTC）
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     # ユーザーロール（admin, user 等）
     role = Column(String(20), default="user", nullable=False)
 

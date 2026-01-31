@@ -1,11 +1,14 @@
 from __future__ import annotations
+
 import asyncpg.exceptions
 from fastapi import HTTPException
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from .. import models, schemas
 from ..core.security import get_password_hash, verify_password
+
 
 async def get_user_by_email(db: AsyncSession, email: str) -> models.User | None:
     """

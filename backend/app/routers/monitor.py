@@ -1,10 +1,13 @@
 from __future__ import annotations
+
 import time
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from .. import dependencies, models
 from ..database import get_db
-from .. import models, dependencies
 
 router = APIRouter(prefix="/monitor", tags=["Monitoring"])
 
@@ -46,8 +49,9 @@ async def get_system_stats(
     システム全体の統計情報を取得します（管理者権限が必要）。
     管理者本人が所属している組織に関連するデータ件数を集計します。
     """
-    from ..models import User, Project, Todo, AuditLog
     from sqlalchemy import func, select
+
+    from ..models import AuditLog, Project, Todo, User
 
     # 各テーブルのレコード件数を取得するための基本クエリ
     user_stmt = select(func.count(User.id))

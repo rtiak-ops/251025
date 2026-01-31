@@ -1,7 +1,9 @@
 from datetime import datetime
-from fastapi import APIRouter, Depends, status, Request
+
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from .. import schemas, models, crud, dependencies
+
+from .. import crud, dependencies, models, schemas
 from ..database import get_db
 from ..limiter import limiter
 
@@ -57,9 +59,10 @@ async def list_users(
     所属組織に属しているユーザーのリストを取得します。管理者権限が必要です。
     組織に所属していない管理者は、この機能を使用できません。
     """
-    from ..models import User
-    from sqlalchemy import select
     from fastapi import HTTPException
+    from sqlalchemy import select
+
+    from ..models import User
     
     # 組織に所属していない場合はエラー
     if not current_user.organization_id:
@@ -90,8 +93,9 @@ async def update_user_role(
     注意: システム全体の管理者が0人になるような変更（自分一人の場合等）は拒否されます。
     同じ組織に所属するユーザーのみ変更可能です。
     """
-    from ..models import User
     from sqlalchemy import select
+
+    from ..models import User
     
     # 組織に所属していない場合はエラー
     if not current_user.organization_id:
@@ -167,9 +171,10 @@ async def add_user_to_organization(
     - 管理者自身が組織に所属している必要があります。
     - 既に対象ユーザーが何らかの組織に所属している場合は追加できません。
     """
-    from ..models import User
-    from sqlalchemy import select
     from fastapi import HTTPException
+    from sqlalchemy import select
+
+    from ..models import User
 
     if not current_user.organization_id:
         raise HTTPException(status_code=400, detail="あなたは組織に所属していないため、メンバーを追加できません。先に組織を作成してください。")
@@ -220,9 +225,10 @@ async def delete_user(
     - 最後の管理者を削除することはできません
     - 同じ組織に所属するユーザーのみ削除可能です
     """
-    from ..models import User
-    from sqlalchemy import select, func
     from fastapi import HTTPException
+    from sqlalchemy import func, select
+
+    from ..models import User
     
     # 組織に所属していない場合はエラー
     if not current_user.organization_id:

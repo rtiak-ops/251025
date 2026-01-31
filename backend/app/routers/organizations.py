@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from .. import crud, models, schemas, dependencies
+
+from .. import crud, dependencies, models, schemas
 from ..database import get_db
 
 # 組織（テナント）管理用のルーター
@@ -30,8 +31,9 @@ async def create_organization(
             await db.commit()
             await db.refresh(current_user)
     
-    from sqlalchemy.exc import IntegrityError
     import logging
+
+    from sqlalchemy.exc import IntegrityError
     logger = logging.getLogger(__name__)
 
     try:
@@ -156,7 +158,8 @@ async def leave_organization(
     
     # 管理者チェック: 最後の管理者の場合は退会不可
     if current_user.role == "admin":
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
+
         from ..models import User
         # 同組織内の他の管理者の数を数える
         admin_count_stmt = select(func.count(User.id)).where(

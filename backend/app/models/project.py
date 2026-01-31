@@ -1,8 +1,12 @@
 from __future__ import annotations
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
+
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from ..database import Base
+
 
 class Project(Base):
     """
@@ -18,9 +22,9 @@ class Project(Base):
     # プロジェクトの説明（詳細）
     description = Column(Text, nullable=True)
     # 作成日時（UTC）
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     # 更新日時（自動更新、UTC）
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
     
     # プロジェクト作成者（オーナー）のユーザーID
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)

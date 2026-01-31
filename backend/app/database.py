@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 from collections.abc import AsyncGenerator
+
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+
 from .core.config import DATABASE_URL, DEBUG, ENV
 
 # データベース接続用の非同期エンジンを作成
@@ -33,7 +36,7 @@ AsyncSessionLocal = sessionmaker(
 Base = declarative_base()
 
 # FastAPIの各種エンドポイントでDBセッションを依存性注入として受け取るための関数
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+async def get_db() -> AsyncGenerator[AsyncSession]:
     """
     リクエストごとに新しい非同期DBセッションを生成し、
     処理が完了したら自動的にクローズします。

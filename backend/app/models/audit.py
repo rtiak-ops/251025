@@ -1,8 +1,12 @@
 from __future__ import annotations
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
+
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from ..database import Base
+
 
 class AuditLog(Base):
     """
@@ -24,7 +28,7 @@ class AuditLog(Base):
     # 操作の詳細内容（JSON文字列等）
     details = Column(Text, nullable=True)
     # ログ記録日時（UTC）
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     
     # 関連組織のID（組織単位でのログ抽出用）
     organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True, index=True)

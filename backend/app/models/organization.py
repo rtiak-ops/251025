@@ -1,8 +1,12 @@
 from __future__ import annotations
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
+
 from sqlalchemy import Boolean, Column, DateTime, Integer, String
 from sqlalchemy.orm import relationship
+
 from ..database import Base
+
 
 class Organization(Base):
     """
@@ -24,7 +28,7 @@ class Organization(Base):
     # 利用プラン（free, pro, enterprise 等）
     plan = Column(String(50), default="free", nullable=False)
     # 作成日時（UTC）
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     # リレーションシップ: この組織に所属するユーザー
     users = relationship("User", back_populates="organization")

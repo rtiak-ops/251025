@@ -1,9 +1,12 @@
-from datetime import datetime
 import json
-from sqlalchemy import select, or_, cast, String
+from datetime import datetime
+
+from sqlalchemy import String, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from ..models import AuditLog, User
 from ..schemas import AuditLogOut
+
 
 async def create_audit_log(
     db: AsyncSession,

@@ -6,12 +6,12 @@ from __future__ import annotations
 import json
 import logging
 
-import openai
 import google.generativeai as genai
+import openai
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from .. import models, dependencies
+from .. import dependencies, models
 
 # ----------------------------------------------------------------------
 # AI (LLM) 連携用のルーター

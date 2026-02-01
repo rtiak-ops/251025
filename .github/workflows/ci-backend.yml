@@ -70,7 +70,7 @@ jobs:
 
       # カバレッジレポートをCodecovにアップロード（push時のみ）
       - name: カバレッジレポートのアップロード
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         if: github.event_name == 'push'
         with:
           file: ./backend/coverage.xml

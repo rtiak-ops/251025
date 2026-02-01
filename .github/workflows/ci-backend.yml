@@ -46,7 +46,7 @@ jobs:
 
       # Pythonの実行環境をセットアップ
       - name: Python環境のセットアップ
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
           cache: 'pip' # pipのキャッシュを利用して高速化

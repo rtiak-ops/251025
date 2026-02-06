@@ -33,4 +33,5 @@ certbot/
 *.tfstate
 *.tfstate.*
 terraform.tfvars
+*.auto.tfvars
 .terraform.lock.hcl

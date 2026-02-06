@@ -1,12 +1,3 @@
-# ==========================================
-# 仮想サーバー (EC2) 設定
-# ==========================================
-
-# ------------------------------------------
-# 1. OS イメージ (AMI) の選択
-# ------------------------------------------
-
-# 最新の Amazon Linux 2023 (x86_64) を自動選択
 data "aws_ami" "amazon_linux_2023" {
   most_recent = true
   owners      = ["amazon"]
@@ -17,38 +8,28 @@ data "aws_ami" "amazon_linux_2023" {
   }
 }
 
-# ------------------------------------------
-# 2. EC2 インスタンス本体
-# ------------------------------------------
-
 resource "aws_instance" "app" {
   ami           = data.aws_ami.amazon_linux_2023.id
-  instance_type = "t3.micro" # 無料枠が利用可能な小型インスタンス
+  instance_type = var.instance_type
   key_name      = var.key_name
 
-  subnet_id                   = aws_subnet.public[0].id            # パブリックサブネットに配置
-  vpc_security_group_ids      = [aws_security_group.ec2.id]         # セキュリティグループ適用
-  iam_instance_profile        = aws_iam_instance_profile.ec2_ssm_profile.name # Session Manager 使用用の権限
-  user_data_replace_on_change = true                                # 起動スクリプト変更時にインスタンスを再作成する設定
+  subnet_id                   = var.public_subnet_id
+  vpc_security_group_ids      = [var.ec2_sg_id]
+  iam_instance_profile        = var.iam_instance_profile_name
+  user_data_replace_on_change = true
 
-  # ディスク (EBS) 設定
   root_block_device {
-    volume_size = 20    # 20GB (Docker イメージなどの保存を考慮)
-    volume_type = "gp3" # 最新世代の汎用 SSD
+    volume_size = 20
+    volume_type = "gp3"
   }
 
   tags = {
     Name = "${var.project_name}-ec2"
   }
 
-  # ------------------------------------------
-  # 3. 起動スクリプト (User Data)
-  # インスタンス起動時に自動で実行されるセットアップ手順
-  # ------------------------------------------
   user_data = <<-EOF
               #!/bin/bash
               # 1. スワップ領域の確保
-              # t3.micro のメモリ不足を補うために 2GB のスワップファイルを作成
               fallocate -l 2G /swapfile
               chmod 600 /swapfile
               mkswap /swapfile
@@ -76,7 +57,7 @@ resource "aws_instance" "app" {
 
               # 5. アプリ用環境変数の設定 (.env 生成)
               cat <<EOT > /home/ec2-user/251025/.env
-              DATABASE_URL=postgresql+asyncpg://postgresMaster:${var.db_password}@${aws_db_instance.main.endpoint}/todo_db
+              DATABASE_URL=postgresql+asyncpg://postgresMaster:${var.db_password}@${var.rds_endpoint}/todo_db
               POSTGRES_USER=postgresMaster
               POSTGRES_PASSWORD=${var.db_password}
               POSTGRES_DB=todo_db
@@ -95,7 +76,6 @@ resource "aws_instance" "app" {
               docker compose up -d --build
               
               # 7. DB マイグレーション
-              # DB 起動を待つために繰り返し実行を試行
               for i in {1..12}; do
                 docker compose exec -T backend alembic upgrade head && break
                 sleep 5
@@ -103,11 +83,6 @@ resource "aws_instance" "app" {
               EOF
 }
 
-# ------------------------------------------
-# 4. 固定 IP アドレス (Elastic IP) 設定
-# ------------------------------------------
-
-# サーバーを再起動しても IP アドレスが変わらないように固定化
 resource "aws_eip" "app" {
   domain = "vpc"
 
@@ -116,9 +91,7 @@ resource "aws_eip" "app" {
   }
 }
 
-# 作成した Elastic IP を EC2 インスタンスに紐付け
 resource "aws_eip_association" "eip_assoc" {
   instance_id   = aws_instance.app.id
   allocation_id = aws_eip.app.id
 }
-

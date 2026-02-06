@@ -51,3 +51,10 @@ variable "google_api_key" {
   type        = string
   sensitive   = true
 }
+
+# GitHub リポジトリ名 (IAM ロールで使用)
+variable "github_repo" {
+  description = "GitHub repository (e.g. user/repo)"
+  type        = string
+  default     = "rtiak-ops/251025"
+}

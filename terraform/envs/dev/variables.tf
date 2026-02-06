@@ -51,3 +51,9 @@ variable "google_api_key" {
   type        = string
   sensitive   = true
 }
+
+variable "github_repo" {
+  description = "GitHub repository"
+  type        = string
+  default     = "rtiak-ops/251025"
+}

@@ -118,12 +118,12 @@ resource "aws_lambda_function" "start_instances" {
 
 data "archive_file" "lambda_stop" {
   type        = "zip"
-  output_path = "${path.module}/lambda_stop.zip"
-  source_dir  = "${path.module}/lambda/stop"
+  output_path = "${path.module}/../../lambda_stop.zip"
+  source_dir  = "${path.module}/../../lambda/stop"
 }
 
 data "archive_file" "lambda_start" {
   type        = "zip"
-  output_path = "${path.module}/lambda_start.zip"
-  source_dir  = "${path.module}/lambda/start"
+  output_path = "${path.module}/../../lambda_start.zip"
+  source_dir  = "${path.module}/../../lambda/start"
 }

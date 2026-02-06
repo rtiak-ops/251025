@@ -81,7 +81,7 @@ resource "aws_instance" "app" {
               POSTGRES_PASSWORD=${var.db_password}
               POSTGRES_DB=todo_db
               SECRET_KEY=${var.secret_key}
-              ENV=production
+              ENV=${var.environment}
               DEBUG=false
               CORS_ORIGINS=http://${aws_eip.app.public_ip},http://localhost,http://localhost:5173
               VITE_API_BASE_URL=http://${aws_eip.app.public_ip}

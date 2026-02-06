@@ -19,7 +19,7 @@ from .core.config import CORS_ORIGINS, DEBUG, PROJECT_NAME
 from .database import AsyncSessionLocal, Base, engine
 from .limiter import limiter
 from .middleware import RequestLoggingMiddleware, SecurityHeadersMiddleware
-from .routers import admin, ai, auth, monitor, organizations, projects, todos
+from .routers import admin_audit, admin_users, ai, auth, monitor, organizations, projects, todos
 
 # --- ロギング設定（JSON形式で標準出力に出力） ---
 logger = logging.getLogger(__name__)
@@ -139,6 +139,7 @@ app.include_router(auth.router)           # 認証（登録、ログイン）
 app.include_router(projects.router)       # プロジェクト管理
 app.include_router(todos.router)          # タスク管理
 app.include_router(ai.router)             # AI連携（タスク分解等）
-app.include_router(admin.router)          # 管理者機能（監査ログ、ユーザー管理）
+app.include_router(admin_audit.router)    # 監査ログ
+app.include_router(admin_users.router)    # ユーザー管理
 app.include_router(monitor.router)        # 監視、統計
 app.include_router(organizations.router)  # 組織管理

@@ -32,7 +32,7 @@ data "aws_availability_zones" "available" {
 resource "aws_subnet" "public" {
   count                   = 2
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.${count.index}.0/24"                      # VPC 内での IP 範囲
+  cidr_block              = cidrsubnet(var.vpc_cidr, 8, count.index)                      # VPC 内での IP 範囲
   availability_zone       = data.aws_availability_zones.available.names[count.index] # 可用性を高めるための設置場所 (AZ)
   map_public_ip_on_launch = true                                            # このサブネットで起動したサーバにパブリック IP を自動で割り振る
 
@@ -46,7 +46,7 @@ resource "aws_subnet" "public" {
 resource "aws_subnet" "private" {
   count             = 2
   vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.${10 + count.index}.0/24"                 # VPC 内での IP 範囲
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, 10 + count.index)                 # VPC 内での IP 範囲
   availability_zone = data.aws_availability_zones.available.names[count.index]
 
   tags = {

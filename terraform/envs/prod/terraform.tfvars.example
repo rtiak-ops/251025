@@ -1,0 +1,26 @@
+# プロジェクトの識別名
+project_name = "todo-app"             # プロジェクトの名前を指定します（例: todo-app）
+
+# 環境名（production/staging など）
+environment  = "production"           # どの環境か指定します（例: production）
+
+# VPCのネットワーク範囲
+vpc_cidr     = "10.0.0.0/16"          # ネットワークの住所の広さを指定します
+
+# データベースのマスターパスワード
+# 【重要】本番環境では必ず複雑なパスワードに変更してください
+db_password  = "your-secure-password" # データベースの鍵（パスワード）を決めます
+
+# AWSに登録済みのSSHキーペアの名前
+# インスタンスへのログインに使用します
+key_name     = "app-key"              # 事前にAWSで作った合鍵（キーペア）の名前を書きます
+
+# アプリケーションの秘密鍵（64文字の16進数文字列）
+# 【重要】新しい秘密鍵を生成してください
+# 生成方法: python -c "import secrets; print(secrets.token_hex(32))"
+secret_key   = "YOUR_SECRET_KEY_HERE"  # アプリケーションのセキュリティ用秘密鍵
+
+# Google APIキー
+# 【重要】実際のGoogle APIキーを設定してください
+google_api_key = "YOUR_GOOGLE_API_KEY_HERE"  # Google APIサービス用のキー
+

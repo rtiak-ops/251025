@@ -55,7 +55,7 @@ EC2 上で、コンテナのデータを RDS へコピーします。
 2.  **バックアップ作成 (Dump)**
     ```bash
     # プロジェクトディレクトリに移動してから実行
-    cd ~/251025
+    cd ~/learning-app
     docker compose exec -it db pg_dump -U postgresMaster todo_db > backup.sql
     ```
 3.  **RDS へ復元 (Restore)**

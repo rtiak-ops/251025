@@ -83,7 +83,7 @@ jobs:
         with:
           context: ./frontend
           push: false
-          tags: todo-frontend:latest
+          tags: learning-frontend:latest
           cache-from: type=gha # GitHub Actionsのキャッシュを利用
           cache-to: type=gha,mode=max
 

@@ -82,7 +82,7 @@ CloudFront のドメイン（例: `d123.cloudfront.net`）からのアクセス�
 2.  **EC2 上の `.env` を編集**:
     プロジェクトディレクトリに移動して `nano` エディタで開きます。
     ```bash
-    cd ~/251025
+    cd ~/learning-app
     nano .env
     ```
 
@@ -130,7 +130,7 @@ RDS起動
 EC2 に SSH でログインし、フロントエンドの定義を無効化します。
 
 ```bash
-cd ~/251025
+cd ~/learning-app
 nano docker-compose.yml
 ```
 

@@ -77,8 +77,8 @@ exit
 
 1. **コードの取得**
    ```bash
-   git clone https://github.com/rtiak-ops/251025
-   cd 251025
+   git clone https://github.com/rtiak-ops/learning-app
+   cd learning-app
    ```
 2. **環境設定 (.env)**
    ```bash

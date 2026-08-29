@@ -51,12 +51,12 @@ resource "aws_instance" "app" {
               usermod -a -G docker ec2-user
 
               # 4. ソースコードのチェックアウト
-              mkdir -p /home/ec2-user/251025
-              chown ec2-user:ec2-user /home/ec2-user/251025
-              sudo -u ec2-user git clone https://github.com/rtiak-ops/251025.git /home/ec2-user/251025 || (cd /home/ec2-user/251025 && sudo -u ec2-user git pull)
+              mkdir -p /home/ec2-user/learning-app
+              chown ec2-user:ec2-user /home/ec2-user/learning-app
+              sudo -u ec2-user git clone https://github.com/rtiak-ops/learning-app.git /home/ec2-user/learning-app || (cd /home/ec2-user/learning-app && sudo -u ec2-user git pull)
 
               # 5. アプリ用環境変数の設定 (.env 生成)
-              cat <<EOT > /home/ec2-user/251025/.env
+              cat <<EOT > /home/ec2-user/learning-app/.env
               DATABASE_URL=postgresql+asyncpg://postgresMaster:${var.db_password}@${var.rds_endpoint}/todo_db
               POSTGRES_USER=postgresMaster
               POSTGRES_PASSWORD=${var.db_password}
@@ -69,10 +69,10 @@ resource "aws_instance" "app" {
               DOMAIN_NAME=${aws_eip.app.public_ip}
               GOOGLE_API_KEY=${var.google_api_key}
               EOT
-              chown ec2-user:ec2-user /home/ec2-user/251025/.env
+              chown ec2-user:ec2-user /home/ec2-user/learning-app/.env
 
               # 6. コンテナのビルド・起動
-              cd /home/ec2-user/251025
+              cd /home/ec2-user/learning-app
               docker compose up -d --build
               
               # 7. DB マイグレーション

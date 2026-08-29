@@ -11,7 +11,7 @@ import SearchBar from "./components/layout/SearchBar";
 import { useAppLogic } from "./hooks/useAppLogic";
 
 /**
- * 【BizFlow メインアプリケーション】
+ * 【Learning App メインアプリケーション】
  * アプリケーションの全体構造（レイアウト）と、各画面（View）の切り替えを管理するルートコンポーネントです。
  * 画面遷移のロジック、検索バー、サイドバー、各種通知（Toaster）を統合しています。
  */
@@ -51,7 +51,7 @@ export default function App() {
         <div className="w-full max-w-md glass p-8 rounded-3xl animate-in zoom-in duration-500 max-h-[calc(100vh-2rem)] overflow-y-auto">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">
-              BizFlow
+              Learning App
             </h1>
             <p className="text-slate-500 dark:text-white font-medium">プロフェッショナルな業務管理を</p>
           </div>

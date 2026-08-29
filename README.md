@@ -1,7 +1,7 @@
-# 🚀 BizFlow: Enterprise AI Task Management Platform
+# 🚀 Learning App: Enterprise AI Task Management Platform
 
-[![CI/CD Pipeline](https://github.com/rtiak-ops/251025/actions/workflows/ci.yml/badge.svg)](https://github.com/rtiak-ops/251025/actions/workflows/ci.yml)
-[![Trivy Security Scan](https://img.shields.io/badge/Security-Trivy_Passed-brightgreen)](https://github.com/rtiak-ops/251025/security/code-scanning)
+[![CI/CD Pipeline](https://github.com/rtiak-ops/learning-app/actions/workflows/ci.yml/badge.svg)](https://github.com/rtiak-ops/learning-app/actions/workflows/ci.yml)
+[![Trivy Security Scan](https://img.shields.io/badge/Security-Trivy_Passed-brightgreen)](https://github.com/rtiak-ops/learning-app/security/code-scanning)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react)](https://reactjs.org/)
@@ -42,7 +42,7 @@
 
 ## 🌟 プロジェクト概要
 
-**BizFlow** は、単なるタスク管理を超えた、**「実務の複雑さに耐えうるプロフェッショナルなタスクプラットフォーム」**です。
+**Learning App** は、単なるタスク管理を超えた、**「実務の複雑さに耐えうるプロフェッショナルなタスクプラットフォーム」**です。
 プロジェクト管理、ビジネスワークフロー、そして最新のLLM（大規模言語モデル）によるタスク分解機能を統合しました。
 
 ビジネス現場で求められる「優先順位の可視化」「プロジェクト横断の進捗管理」「AIによる業務の細分化」を、グラスモーフィズムを採用したプレミアムなUXで実現しています。
@@ -276,8 +276,8 @@ B2B SaaSにおいて「勝手に他社を名乗る」プロトコル上のリス
 最も手軽に環境を構築できる方法です。
 
 ```bash
-git clone https://github.com/rtiak-ops/251025.git
-cd 251025
+git clone https://github.com/rtiak-ops/learning-app.git
+cd learning-app
 cp .env.example .env
 # .envにGOOGLE_API_KEYなどを設定（任意）
 docker compose up --build

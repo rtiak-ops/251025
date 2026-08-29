@@ -55,7 +55,7 @@ export default function Sidebar({
     <aside className="w-64 glass h-[calc(100vh-2rem)] sticky top-4 flex flex-col p-6 rounded-3xl">
       <div className="mb-10">
         <h1 className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">
-          BizFlow
+          Learning App
         </h1>
         {organization ? (
           <div className="flex flex-col gap-1 mt-1">

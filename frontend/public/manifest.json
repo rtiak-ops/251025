@@ -1,6 +1,6 @@
 {
-  "name": "BizFlow: AI Task Management",
-  "short_name": "BizFlow",
+  "name": "Learning App: AI Task Management",
+  "short_name": "Learning App",
   "description": "Professional AI-powered task management platform.",
   "start_url": "/",
   "display": "standalone",

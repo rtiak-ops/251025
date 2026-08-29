@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-PROJECT_DIR="/home/ec2-user/251025"
+PROJECT_DIR="/home/ec2-user/learning-app"
 
 # プロジェクトフォルダがない場合はクローン、ある場合は移動
 if [ ! -d "" ]; then

@@ -55,5 +55,5 @@ variable "google_api_key" {
 variable "github_repo" {
   description = "GitHub repository"
   type        = string
-  default     = "rtiak-ops/251025"
+  default     = "rtiak-ops/learning-app"
 }
